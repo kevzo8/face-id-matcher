@@ -1,0 +1,4 @@
+applicant_id,id_image_path,selfie_image_path
+APP001,samples/id_001.jpg,samples/selfie_001.jpg
+APP002,samples/id_002.jpg,samples/selfie_002.jpg
+APP003,samples/id_003.jpg,samples/selfie_003.jpg
