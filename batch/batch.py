@@ -125,6 +125,10 @@ def main():
     results = []
     completed = 0
 
+    # Collect extra columns from input (everything except the required + image paths)
+    extra_cols = [c for c in (rows[0].keys() if rows else [])
+                  if c not in {"applicant_id", "id_image_path", "selfie_image_path", "selfie_path"}]
+
     if args.workers <= 1:
         for row in rows:
             result = process_pair(
@@ -132,11 +136,17 @@ def main():
                 row["id_image_path"], row["selfie_image_path"],
                 args.threshold,
             )
-            results.append(result)
+            extra = {c: row.get(c, "") for c in extra_cols}
+            results.append((result, extra))
             completed += 1
             status = result[3]
             icon = {"auto_approve": "PASS", "manual_review": "FAIL", "error": "ERR"}[status]
-            print(f"  [{completed}/{total}] {icon}  {result[0]}  similarity={result[1]:.1f}%")
+            name_tag = f"  {extra['name']}" if "name" in extra and extra["name"] else ""
+            try:
+                print(f"  [{completed}/{total}] {icon}  {result[0]}{name_tag}  similarity={result[1]:.1f}%")
+            except UnicodeEncodeError:
+                safe_name = extra.get("name", "").encode("ascii", "replace").decode() if "name" in extra else ""
+                print(f"  [{completed}/{total}] {icon}  {result[0]}  {safe_name}  similarity={result[1]:.1f}%")
     else:
         with ThreadPoolExecutor(max_workers=args.workers) as executor:
             futures = {
@@ -144,29 +154,37 @@ def main():
                     process_pair, provider, row["applicant_id"],
                     row["id_image_path"], row["selfie_path"] if "selfie_path" in row else row["selfie_image_path"],
                     args.threshold,
-                ): row["applicant_id"]
+                ): row
                 for row in rows
             }
             for future in as_completed(futures):
+                row = futures[future]
                 result = future.result()
-                results.append(result)
+                extra = {c: row.get(c, "") for c in extra_cols}
+                results.append((result, extra))
                 completed += 1
                 status = result[3]
                 icon = {"auto_approve": "PASS", "manual_review": "FAIL", "error": "ERR"}[status]
-                print(f"  [{completed}/{total}] {icon}  {result[0]}  similarity={result[1]:.1f}%")
+                name_tag = f"  {extra['name']}" if "name" in extra and extra["name"] else ""
+                try:
+                    print(f"  [{completed}/{total}] {icon}  {result[0]}{name_tag}  similarity={result[1]:.1f}%")
+                except UnicodeEncodeError:
+                    safe_name = extra.get("name", "").encode("ascii", "replace").decode() if "name" in extra else ""
+                    print(f"  [{completed}/{total}] {icon}  {result[0]}  {safe_name}  similarity={result[1]:.1f}%")
 
-    results.sort(key=lambda r: r[0])
+    results.sort(key=lambda r: r[0][0])
 
     with open(args.output, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["applicant_id", "similarity", "distance", "decision", "error"])
-        for r in results:
-            writer.writerow([f"{r[0]:.4f}" if isinstance(r[0], float) else r[0],
-                             f"{r[1]:.2f}", f"{r[2]:.4f}", r[3], r[4]])
+        header = ["applicant_id"] + extra_cols + ["similarity", "distance", "decision", "error"]
+        writer.writerow(header)
+        for (r, extra) in results:
+            writer.writerow([r[0]] + [extra.get(c, "") for c in extra_cols] +
+                             [f"{r[1]:.2f}", f"{r[2]:.4f}", r[3], r[4]])
 
-    approved = sum(1 for r in results if r[3] == "auto_approve")
-    review = sum(1 for r in results if r[3] == "manual_review")
-    errors = sum(1 for r in results if r[3] == "error")
+    approved = sum(1 for (r, _) in results if r[3] == "auto_approve")
+    review = sum(1 for (r, _) in results if r[3] == "manual_review")
+    errors = sum(1 for (r, _) in results if r[3] == "error")
 
     print(f"\n{'='*60}")
     print(f"  RESULTS")

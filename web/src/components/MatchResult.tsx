@@ -6,11 +6,12 @@ interface MatchResultProps {
     similarity: number;
     match: boolean;
     threshold: number;
+    error?: string;
   };
 }
 
 export function MatchResult({ result }: MatchResultProps) {
-  const { distance, similarity, match, threshold } = result;
+  const { distance, similarity, match, threshold, error } = result;
   const matchColor = match ? '#22c55e' : '#ef4444';
   const bgColor = match ? '#052e16' : '#450a0a';
 
@@ -51,6 +52,13 @@ export function MatchResult({ result }: MatchResultProps) {
           {match ? 'Auto-Approve' : 'Manual Review'}
         </span>
       </div>
+
+      {/* Error/warning */}
+      {error && (
+        <div style={{ textAlign: 'center', marginBottom: 8, fontSize: 12, color: match ? '#f59e0b' : '#ef4444' }}>
+          {error}
+        </div>
+      )}
 
       {/* Bar */}
       <div style={{ maxWidth: 340, margin: '0 auto 8px' }}>
