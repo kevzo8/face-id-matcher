@@ -15,31 +15,35 @@ Research, benchmark, and integrate a 1:1 face matching solution that compares a 
 
 | Vendor | API | Pricing (per 1K comparisons) | Free Tier | Accuracy (general) | Accuracy (Asian/PH IDs) | Setup Difficulty | Latency |
 |--------|-----|------------------------------|-----------|-------------------|------------------------|-----------------|---------|
+| **Megamatcher (Neurotechnology)** | `/biometric` (already integrated) | Already licensed — $0 marginal | N/A (owned) | High (~99%) | Good (tunable) | **None** (already in stack) | ~100-300ms |
 | **Amazon Rekognition** | `CompareFaces` | $1.00 (first 1M/month tier) | 1K/month for 12 months | High (~99.5%) | Good | Easy (AWS SDK) | ~200-500ms |
 | **Azure Face API** | `Verify` | ~$0.50-$1.00 per 1K | 30K/month free | High (~99.5%) | Good | Easy (Azure SDK) | ~200-400ms |
 | **Face++ (Megvii)** | `/compare` | ~$0.19 per 1K (pay-as-you-go) | 1 QPS free forever | High | **Best** (trained on Asian faces) | Medium (REST API) | ~100-300ms |
 | **face_recognition (dlib)** | Python library | $0 (self-hosted) | Unlimited | Moderate (~95-98%) | Moderate | Medium (needs CMake, dlib) | ~100-500ms (CPU) |
 | **face-api.js** | JavaScript library | $0 (browser-side) | Unlimited | Moderate (~95-98%) | Moderate | Easy (npm install) | ~50-200ms (client) |
 
+> **Note on Megamatcher:** Already integrated in the OWA via the `/biometric` endpoint (Payara backend). Currently used for face **enrollment** (1:N), but the Neurotechnology Megamatcher SDK also supports 1:1 face **verification** — comparing two face images and returning a match score. Since the license is already paid for and the infrastructure is in place, it should be the **first option evaluated** for production. The OWA already sends selfie images to `/biometric`; adding ID photo comparison would require a new endpoint or extending the existing one to accept two images.
+
 ### 2.2 Pricing at Scale
 
-| Volume / Month | AWS Rekognition | Azure Face API | Face++ | dlib (self-hosted) |
-|----------------|-----------------|----------------|--------|---------------------|
-| 1,000 | $1.00 (free tier) | $0.50 (free tier) | $0.19 (free tier) | $0 |
-| 10,000 | $10.00 | $5.00 | $1.90 | $0 |
-| 100,000 | $100.00 | $50.00 | $19.00 | $0 |
-| 1,000,000 | $1,000.00 | $500.00 | $190.00 | $0 (add servers) |
+| Volume / Month | Megamatcher (owned) | AWS Rekognition | Azure Face API | Face++ | dlib (self-hosted) |
+|----------------|---------------------|-----------------|----------------|--------|---------------------|
+| 1,000 | $0 | $1.00 (free tier) | $0.50 (free tier) | $0.19 (free tier) | $0 |
+| 10,000 | $0 | $10.00 | $5.00 | $1.90 | $0 |
+| 100,000 | $0 | $100.00 | $50.00 | $19.00 | $0 |
+| 1,000,000 | $0 | $1,000.00 | $500.00 | $190.00 | $0 (add servers) |
 
-**Note:** Self-hosted (dlib) has zero API cost but requires server infrastructure (CPU or GPU). A $50/month VM can process ~100K comparisons/month.
+**Note:** Megamatcher has zero marginal cost since the license is already owned. Self-hosted (dlib/InsightFace) also has zero API cost but requires server infrastructure.
 
 ### 2.3 API Limits & Rate Limits
 
 | Vendor | Rate Limit | Max Image Size | Concurrent Requests |
 |--------|-----------|----------------|-------------------|
+| Megamatcher | License-based (no API limit) | Configurable | Thread pool |
 | AWS Rekognition | 50 TPS default (raisable) | 15MB (JPEG/PNG) | No hard limit |
 | Azure Face API | 10 TPS (Standard tier) | 6MB (JPEG) | 10 concurrent |
 | Face++ | 1 QPS (free), 100 QPS (paid) | 2MB (free), 10MB (paid) | Varies by plan |
-| dlib | CPU-bound (~2-5/sec on 4-core) | No limit | Thread pool |
+| dlib/InsightFace | CPU-bound (~2-5/sec on 4-core) | No limit | Thread pool |
 | face-api.js | Browser-bound | No limit | One at a time |
 
 ### 2.4 Accuracy Notes for Philippine ID Images
@@ -57,15 +61,29 @@ Philippine government IDs (SSS, UMID, PhilID, Driver's License) present specific
 
 ## 3. Recommendation
 
-### Primary: Amazon Rekognition (for POC and production)
+### Primary: Megamatcher (for production — already in the stack)
 
 **Rationale:**
-- Easiest to integrate (well-documented SDK, boto3)
+- **Already integrated** in the OWA via `/biometric` endpoint — no new vendor to onboard
+- License already paid for — zero marginal cost per comparison
+- Neurotechnology Megamatcher SDK supports 1:1 face verification (not just enrollment)
+- Already handles Philippine ID images in production
+- Infrastructure (Payara backend) is in place and proven
+- Tunable matching threshold — can be calibrated for PH ID quality
+- No external API dependency — works on-premise
+
+**Implementation path:** Extend the existing `/biometric` endpoint (or add a `/biometric/verify` endpoint) to accept two face images (ID photo + selfie) and return a match score. The Megamatcher SDK's `Verify` function compares two face templates and returns a similarity score.
+
+### Secondary: Amazon Rekognition (for POC and comparison benchmarking)
+
+**Rationale:**
+- Easi to integrate (well-documented SDK, boto3)
 - Good accuracy across diverse faces
 - Free tier sufficient for POC (1K comparisons/month)
 - Team has AWS access
 - `CompareFaces` API returns similarity score (0-100) and face bounding boxes
 - No infrastructure to manage
+- Can be used to benchmark against Megamatcher's accuracy
 
 ### Alternative: Face++ (if PH ID accuracy is insufficient)
 
@@ -75,14 +93,14 @@ Philippine government IDs (SSS, UMID, PhilID, Driver's License) present specific
 - Simple REST API with base64 image input
 - Free tier: 1 QPS forever (enough for POC)
 
-### Free Fallback: dlib / face-api.js (for zero-budget POC)
+### Free Fallback: InsightFace / face-api.js (for zero-budget POC)
 
 **Rationale:**
 - Zero cost — good for initial proof of concept
 - face-api.js runs entirely in the browser (no server needed)
-- dlib runs locally on any machine
+- InsightFace (ONNX) runs locally on any machine — no compilation needed
 - Moderate accuracy (~95-98%) — sufficient for demonstrating the concept
-- Can upgrade to cloud API later without changing the POC architecture
+- Can upgrade to Megamatcher or cloud API later without changing the POC architecture
 
 ---
 
