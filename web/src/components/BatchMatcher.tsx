@@ -52,7 +52,7 @@ function checkOrientation(detection: faceapi.WithFaceLandmarks<{ detection: face
   return null;
 }
 
-type Provider = 'local' | 'rekognition';
+type Provider = 'local' | 'rekognition' | 'megamatcher';
 
 interface BatchMatcherProps {
   detectionModel: DetectionModel;
@@ -145,7 +145,7 @@ export function BatchMatcher({ detectionModel, provider, serverUrl, threshold, o
       const name = id.name || selfie.name || code;
 
       try {
-        if (provider === 'rekognition') {
+        if (provider !== 'local') {
           const idEl = id.element || await loadImage(id.file);
           const selfieEl = selfie.element || await loadImage(selfie.file);
           if (!id.element) id.element = idEl;
@@ -184,8 +184,8 @@ export function BatchMatcher({ detectionModel, provider, serverUrl, threshold, o
 
           const detectorOptions =
             detectionModel === 'fast'
-              ? new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.3 })
-              : new faceapi.SsdMobilenetv1Options({ minConfidence: 0.3 });
+              ? new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.1 })
+              : new faceapi.SsdMobilenetv1Options({ minConfidence: 0.1 });
 
           const idDet = await faceapi
             .detectSingleFace(idEl, detectorOptions)
@@ -452,6 +452,7 @@ export function BatchMatcher({ detectionModel, provider, serverUrl, threshold, o
               {showPhotos ? 'Hide Photos' : 'Show Photos'}
             </button>
           </div>
+          <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ color: '#64748b', textAlign: 'left' }}>
@@ -517,6 +518,7 @@ export function BatchMatcher({ detectionModel, provider, serverUrl, threshold, o
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

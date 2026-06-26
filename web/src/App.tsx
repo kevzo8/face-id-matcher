@@ -10,7 +10,7 @@ type ImageData = {
 } | null;
 
 type DetectionModel = 'fast' | 'accurate';
-type Provider = 'local' | 'rekognition';
+type Provider = 'local' | 'rekognition' | 'megamatcher';
 
 function checkOrientation(detection: faceapi.WithFaceLandmarks<{ detection: faceapi.FaceDetection }>): string | null {
   const landmarks = detection.landmarks;
@@ -40,7 +40,7 @@ export default function App() {
     threshold: number;
     error?: string;
   } | null>(null);
-  const [threshold, setThreshold] = useState(0.5);
+  const [threshold, setThreshold] = useState(0.7);
   const [detectionModel, setDetectionModel] = useState<DetectionModel>('accurate');
   const [provider, setProvider] = useState<Provider>('local');
   const [serverUrl, setServerUrl] = useState('http://localhost:8000');
@@ -73,7 +73,7 @@ export default function App() {
     setResult(null);
 
     try {
-      if (provider === 'rekognition') {
+      if (provider !== 'local') {
         const canvas = document.createElement('canvas');
         const toBase64 = (img: HTMLImageElement) => {
           canvas.width = img.naturalWidth;
@@ -109,8 +109,8 @@ export default function App() {
 
       const detectorOptions =
         detectionModel === 'fast'
-          ? new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.3 })
-          : new faceapi.SsdMobilenetv1Options({ minConfidence: 0.3 });
+          ? new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.1 })
+          : new faceapi.SsdMobilenetv1Options({ minConfidence: 0.1 });
 
       const idDetection = await faceapi
         .detectSingleFace(idImage.element, detectorOptions)
@@ -184,7 +184,7 @@ export default function App() {
     <div style={{ maxWidth: 1000, margin: '0 auto', padding: 16 }}>
       {/* Header */}
       <header style={{ marginBottom: 16, textAlign: 'center' }}>
-        <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>Face ID Matcher</div>
+        <div style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: 700, marginBottom: 4 }}>Face ID Matcher</div>
         <p style={{ color: '#94a3b8', fontSize: 13 }}>
           Compare any two face photos — selfie vs ID, or ID vs ID — with 1:1 face matching
         </p>
@@ -196,10 +196,10 @@ export default function App() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 16,
+          gap: 'clamp(8px, 2vw, 16px)',
           marginBottom: 12,
           flexWrap: 'wrap',
-          padding: '8px 16px',
+          padding: 'clamp(6px, 1.5vw, 10px) clamp(8px, 2vw, 16px)',
           background: '#1e293b',
           borderRadius: 8,
         }}
@@ -221,6 +221,7 @@ export default function App() {
           >
             <option value="local">face-api.js (browser)</option>
             <option value="rekognition">AWS Rekognition (cloud)</option>
+            <option value="megamatcher">Megamatcher (server)</option>
           </select>
         </label>
 
@@ -246,8 +247,8 @@ export default function App() {
           </label>
         )}
 
-        {/* Server URL (cloud only) */}
-        {provider === 'rekognition' && (
+        {/* Server URL (server providers) */}
+        {provider !== 'local' && (
           <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ color: '#94a3b8', fontSize: 12 }}>Server:</span>
             <input
@@ -281,9 +282,9 @@ export default function App() {
                 step="0.05"
                 value={threshold}
                 onChange={(e) => setThreshold(parseFloat(e.target.value))}
-                style={{ width: 80 }}
-              />
-              <span style={{ color: '#e2e8f0', fontSize: 11, fontWeight: 600 }}>
+              style={{ width: 'min(80px, 30vw)' }}
+            />
+              <span style={{ color: '#e2e8f0', fontSize: 11, fontWeight: 600, minWidth: 24 }}>
                 {threshold.toFixed(2)}
               </span>
             </div>
@@ -296,7 +297,7 @@ export default function App() {
               display: 'flex',
               alignItems: 'center',
               height: 6,
-              width: 200,
+              width: 'min(200px, 70vw)',
               borderRadius: 3,
               background: 'linear-gradient(to right, #22c55e, #eab308, #ef4444)',
               position: 'relative',
@@ -316,7 +317,7 @@ export default function App() {
               }}
             />
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', width: 200, fontSize: 10, color: '#64748b' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', width: 'min(200px, 70vw)', fontSize: 10, color: '#64748b' }}>
             <span style={{ color: '#22c55e' }}>Same person</span>
             <span style={{ color: '#eab308' }}>Unsure</span>
             <span style={{ color: '#ef4444' }}>Different</span>
@@ -325,18 +326,20 @@ export default function App() {
       </div>
 
       {/* Mode toggle */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginBottom: 12, flexWrap: 'wrap' }}>
         {(['single', 'batch'] as const).map((m) => (
           <button
             key={m}
             onClick={() => setMode(m)}
             style={{
+              flex: '1 1 auto',
               padding: '5px 16px',
-              fontSize: 13,
+              fontSize: 'clamp(11px, 3vw, 13px)',
               fontWeight: 600,
               border: 'none',
               borderRadius: 6,
               cursor: 'pointer',
+              whiteSpace: 'nowrap',
               background: mode === m ? '#3b82f6' : '#1e293b',
               color: mode === m ? '#fff' : '#64748b',
             }}
@@ -378,7 +381,7 @@ export default function App() {
             fontSize: 12,
             lineHeight: 1.6,
             color: '#94a3b8',
-            maxWidth: 600,
+            maxWidth: 'min(600px, 100%)',
             margin: '0 auto 12px',
           }}
         >
@@ -409,7 +412,7 @@ export default function App() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
           gap: 16,
           marginBottom: 16,
         }}
@@ -485,7 +488,7 @@ export default function App() {
       {/* Footer */}
       <footer style={{ marginTop: 12, textAlign: 'center', color: '#475569', fontSize: 11 }}>
         {provider === 'rekognition'
-          ? 'Using AWS Rekognition cloud API — images sent to server for matching'
+          ? `Using ${provider === 'rekognition' ? 'AWS Rekognition' : 'Megamatcher'} — images sent to server for matching`
           : `Powered by face-api.js (${detectionModel === 'fast' ? 'TinyFaceDetector' : 'SSD MobileNet'} + 128D face descriptors) — all processing in browser. No images uploaded.`}
       </footer>
         </>

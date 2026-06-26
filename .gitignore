@@ -9,3 +9,6 @@ target/
 *.log
 .vscode/
 .idea/
+
+# Kaggle dataset images (too large for git)
+samples/kaggle/Selfies ID Images dataset/

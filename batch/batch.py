@@ -7,7 +7,8 @@ Processes KYC applications in bulk by comparing selfie images against ID photos.
 Usage:
     python batch.py --input pairs.csv --output results.csv --threshold 0.6
     python batch.py --input pairs.csv --provider rekognition --threshold 0.6
-    python batch.py --input pairs.csv --provider dlib --workers 4
+    python batch.py --input pairs.csv --provider megamatcher --workers 4
+    python batch.py --input pairs.csv --provider insightface --workers 4
 
 Input CSV format:
     applicant_id,id_image_path,selfie_image_path
@@ -34,6 +35,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from providers.insightface_provider import InsightFaceProvider
 from providers.rekognition_provider import RekognitionProvider
+from providers.megamatcher_provider import MegamatcherProvider
 
 
 def get_provider(name: str):
@@ -41,8 +43,10 @@ def get_provider(name: str):
         return InsightFaceProvider()
     elif name == "rekognition":
         return RekognitionProvider()
+    elif name == "megamatcher":
+        return MegamatcherProvider()
     else:
-        print(f"Unknown provider: {name}. Use 'insightface' or 'rekognition'.")
+        print(f"Unknown provider: {name}. Use 'insightface', 'rekognition', or 'megamatcher'.")
         sys.exit(1)
 
 
@@ -79,7 +83,7 @@ def main():
         help="Output CSV file (default: results_<timestamp>.csv)",
     )
     parser.add_argument(
-        "--provider", "-p", default="insightface", choices=["insightface", "rekognition"],
+        "--provider", "-p", default="insightface", choices=["insightface", "rekognition", "megamatcher"],
         help="Face matching provider (default: insightface — free, local)",
     )
     parser.add_argument(

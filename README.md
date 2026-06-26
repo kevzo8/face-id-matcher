@@ -1,10 +1,34 @@
 # CPS-221 Face Match POC
 
-1:1 face matching solution that compares a user's selfie with their ID photo for identity verification.
+1:1 face matching — compares a selfie against an ID photo to verify identity. Supports multiple providers so you can compare accuracy, speed, and cost.
 
-## Quick Start
+---
 
-### Web App (React + face-api.js — free, browser-side)
+## Which Provider Should I Use?
+
+| Provider | Where it runs | Cost | Accuracy | Best for |
+|----------|--------------|------|----------|----------|
+| **face-api.js** | Browser (JS) | Free | ~90-95% | Quick POC, no server needed |
+| **InsightFace** | Python (local) | Free | ~95-98% | Batch processing, no cloud |
+| **AWS Rekognition** | Cloud (AWS) | $0.001/compare | ~99% | Production cloud option |
+| **Megamatcher** | SDK (Java/C++) | Licensed ($0 marginal) | ~95-99% | SVI's licensed SDK — already paid for |
+| **dlib** | Python (local) | Free | ~90-95% | Not recommended — hard to install on Windows |
+
+### Why can't I pick InsightFace or dlib in the web dropdown?
+
+Because they're **Python/C++ libraries** — they can't run inside a web browser. The web app has three modes:
+
+| Web dropdown option | What it does | Server needed? |
+|--------------------|--------------|----------------|
+| **face-api.js (browser)** | Runs entirely in your browser — no data leaves your PC | No |
+| **AWS Rekognition (cloud)** | Sends images to a Python FastAPI server → calls AWS API | Yes (Python server + AWS creds) |
+| **Megamatcher (server)** | Sends images to a Python FastAPI server → calls Megamatcher SDK (or falls back to InsightFace) | Yes (Python server) |
+
+InsightFace and dlib are available in the **Python batch script** (`--provider insightface`) since that runs locally on your machine.
+
+---
+
+## Quick Start — Web App
 
 ```bash
 cd web
@@ -13,109 +37,190 @@ npm run download-models    # download face recognition model weights
 npm run dev                # starts on http://localhost:5180
 ```
 
-Open http://localhost:5180 in your browser. Upload an ID photo and a selfie (or use your webcam), then click "Compare Faces".
+Open http://localhost:5180 — upload/take two photos and click **Compare Faces**.
 
-### Batch Script (Python — free, local)
+Choose provider at the top:
+- **face-api.js (browser)** — works immediately, all processing in-browser
+- **AWS Rekognition / Megamatcher** — requires the Python server running
+
+---
+
+## Provider Details
+
+### face-api.js (Browser)
+
+- JavaScript library built on TensorFlow.js
+- Runs **entirely in the browser** — no images uploaded anywhere
+- Models: SSD MobileNet (accurate/slow) or TinyFaceDetector (fast/less accurate)
+- Produces a 128-number face descriptor, compares with Euclidean distance
+- Good for quick testing — no infrastructure needed
+
+### InsightFace (Python)
+
+- Free, open-source, ONNX-based face recognition
+- Uses the `buffalo_l` model — produces 512-dimension embeddings
+- Runs **locally on your machine** — no cloud calls
+- More accurate than face-api.js, but requires Python
+
+### AWS Rekognition (Cloud)
+
+- Amazon's cloud face recognition API
+- **Requires AWS credentials** (`aws configure`) with `AmazonRekognitionReadOnlyAccess`
+- Cost: ~$0.001 per face compare
+- Uses the FastAPI Python server as a bridge between web app and AWS
+
+### Megamatcher (Neurotechnology SDK)
+
+- **SVI already owns a license** — used in production OWA via `/biometric` endpoint
+- Commercial SDK (Java/C++/.NET) — not available in Python
+- **In this POC**: the Python provider detects if the SDK is installed. If not, it falls back to InsightFace so you can still test the workflow.
+- **For production**: integrate directly in Java (Spring Boot) using the SDK — skip Python entirely
+
+#### Should I use Java batch processing for Megamatcher?
+
+**Yes.** Megamatcher's native SDK is Java/C++/.NET. The Python provider here is just a POC placeholder. For real batch processing:
+
+```java
+// Pseudocode — Megamatcher Java SDK
+NMatcher matcher = new NMatcher();
+NSubject idSubject = matcher.createSubject();
+idSubject.setImage(/* ID photo path */);
+// ... compare with selfie, get score
+```
+
+### dlib (face_recognition)
+
+- Popular Python face recognition library
+- **Problem**: Requires CMake + C++ compiler to install on Windows
+- With Python 3.14, this is very difficult to set up
+- **Not recommended** for this POC — use InsightFace instead (no CMake needed)
+
+---
+
+## Batch Script (Python)
+
+Process multiple pairs at once from a CSV file.
+
+### Install
 
 ```bash
 cd batch
 pip install -r requirements.txt
-python batch.py --input sample_pairs.csv --output results.csv --threshold 0.6
 ```
 
-### API Server (optional — for AWS Rekognition)
+### Usage
 
 ```bash
-cd server
-pip install -r requirements.txt
-aws configure                # enter your AWS access key + secret
-python main.py               # starts on http://localhost:5190
-```
+# Using InsightFace (free, local, no cloud)
+python batch.py --input pairs.csv --provider insightface
 
-## Project Structure
+# Using AWS Rekognition (needs AWS credentials)
+python batch.py --input pairs.csv --provider rekognition
 
-```
-face-id-matcher/
-├── web/                    # React + Vite web app (face-api.js)
-│   ├── src/
-│   │   ├── App.tsx         # Main app
-│   │   ├── components/     # ImageCapture, MatchResult
-│   │   └── main.tsx
-│   ├── scripts/
-│   │   └── download-models.js
-│   ├── public/models/      # face-api.js model weights (downloaded)
-│   └── package.json
-├── batch/                  # Python batch processor
-│   ├── providers/
-│   │   ├── base.py         # Provider interface
-│   │   ├── dlib_provider.py     # Free local matching (face_recognition)
-│   │   └── rekognition_provider.py  # AWS Rekognition
-│   ├── batch.py            # CLI entry point
-│   ├── sample_pairs.csv    # Example input
-│   └── requirements.txt
-├── server/                 # Optional FastAPI server
-│   ├── main.py             # POST /compare endpoint
-│   └── requirements.txt
-├── samples/                # Sample ID + selfie image pairs
-├── CPS-221-spike-report.md # Vendor research and comparison
-└── README.md
-```
+# Using Megamatcher (SDK or fallback)
+python batch.py --input pairs.csv --provider megamatcher
 
-## Providers
+# Custom threshold (0.7 = most lenient, 0.3 = strictest)
+python batch.py --input pairs.csv --threshold 0.7
 
-| Provider | Cost | Accuracy | Setup |
-|----------|------|----------|-------|
-| `dlib` (default) | Free | ~95-98% | `pip install face-recognition` |
-| `rekognition` | $0.001/compare | ~99.5% | AWS credentials required |
-| `face-api.js` (web) | Free | ~95-98% | Download model weights |
-
-## Batch Script Usage
-
-```bash
-# Basic usage (free, local)
-python batch.py --input pairs.csv --output results.csv
-
-# With AWS Rekognition
-python batch.py --input pairs.csv --provider rekognition --threshold 0.6
-
-# Parallel processing (4 workers)
+# Parallel processing (faster with many images)
 python batch.py --input pairs.csv --workers 4
 
-# Custom threshold (lower = more lenient)
-python batch.py --input pairs.csv --threshold 0.5
+# Custom output file
+python batch.py --input pairs.csv --output my_results.csv
 ```
 
 ### Input CSV Format
 
 ```csv
-applicant_id,id_image_path,selfie_image_path
-APP001,samples/id_001.jpg,samples/selfie_001.jpg
-APP002,samples/id_002.jpg,samples/selfie_002.jpg
+applicant_id,id_image_path,selfie_image_path,extra_info
+APP001,C:/photos/1_ID_John.jpg,C:/photos/1_Selfie_John.jpg,optional data
+APP002,C:/photos/2_ID_Jane.jpg,C:/photos/2_Face_Jane.jpg,anything
 ```
 
-### Output CSV Format
+Any extra columns are preserved in the output.
+
+### Can I test the files I uploaded in the web batch upload?
+
+**Yes** — the web app's Batch Upload tab and the Python batch script both use the same approach. The CSV should point to your file paths. If your files are named like `1_ID_Kevin.jpg` and `1_Selfie_Kevin.jpg`, the CSV would be:
+
+```csv
+applicant_id,id_image_path,selfie_image_path
+1,C:/path/to/1_ID_Kevin.jpg,C:/path/to/1_Selfie_Kevin.jpg
+```
+
+### Output CSV
 
 ```csv
 applicant_id,similarity,distance,decision,error
 APP001,87.34,0.1266,auto_approve,
 APP002,42.10,0.5790,manual_review,
-APP003,0.00,1.0000,error,No face detected in ID image
+APP003,0.00,1.0000,error,No face detected
 ```
 
-## AWS Rekognition Setup
+Decisions: `auto_approve` (match) / `manual_review` (no match) / `error`
 
-1. Create an IAM user in AWS Console with `AmazonRekognitionReadOnlyAccess` policy
-2. Save the access key ID and secret
-3. Run `aws configure` and enter credentials
-4. Use `--provider rekognition` with the batch script
-5. Or run the FastAPI server for web-based matching
+---
 
-## Threshold Calibration
+## API Server (FastAPI)
 
-| Threshold | Behavior |
-|-----------|----------|
-| 0.40 | Very lenient — high false accept |
-| 0.50 | Lenient — good for low-quality images |
-| **0.60** | **Balanced (recommended)** |
-| 0.70 | Strict — may reject valid matches |
-| 0.80 | Very strict — high false reject |
+Bridges the web app to cloud/SDK providers.
+
+```bash
+cd server
+pip install -r requirements.txt
+aws configure                         # only for Rekognition
+python main.py --provider insightface  # starts on port 5190
+python main.py --provider rekognition  # needs AWS creds
+python main.py --provider megamatcher  # SDK or fallback
+```
+
+The web app connects to `http://localhost:5190` when set to a server provider.
+
+---
+
+## Threshold Guide
+
+The threshold slider controls how strict the comparison is:
+
+| Setting | Value | Meaning |
+|---------|-------|---------|
+| Strict | 0.30 | Only very similar faces match (few false accepts) |
+| Default | 0.50 | Balanced — recommended starting point |
+| Max leniency | 0.70 | Allows some differences (fewer false rejects) |
+
+The default is 0.50. For the POC, set to 0.70 (max leniency) to minimize "no match" errors.
+
+---
+
+## Project Structure
+
+```
+face-id-matcher/
+├── web/                          # React + Vite web app
+│   ├── src/
+│   │   ├── App.tsx               # Main app with settings + single compare
+│   │   ├── components/
+│   │   │   ├── ImageCapture.tsx   # Camera + file upload
+│   │   │   ├── MatchResult.tsx    # Single compare result display
+│   │   │   └── BatchMatcher.tsx   # Batch upload + results table
+│   │   └── main.tsx
+│   ├── public/models/            # face-api.js model weights
+│   └── package.json
+├── batch/                        # Python batch processor
+│   ├── providers/
+│   │   ├── base.py               # Provider interface
+│   │   ├── insightface_provider.py  # Free local (recommended)
+│   │   ├── rekognition_provider.py  # AWS cloud
+│   │   ├── megamatcher_provider.py  # Licensed SDK + fallback
+│   │   └── dlib_provider.py      # Hard to install, not recommended
+│   ├── batch.py                  # CLI entry point
+│   ├── sample_pairs.csv
+│   └── requirements.txt
+├── server/                       # FastAPI bridge server
+│   ├── main.py                   # POST /compare endpoint
+│   └── requirements.txt
+├── samples/                      # Test images
+├── CPS-221-spike-report.md       # Full vendor comparison
+└── README.md
+```

@@ -9,6 +9,7 @@ Usage:
     python main.py                    # starts on http://localhost:5190
     python main.py --port 8080        # custom port
     python main.py --provider dlib    # use local dlib instead of Rekognition
+    python main.py --provider megamatcher  # use Megamatcher (SDK or fallback)
 """
 
 import argparse
@@ -26,6 +27,7 @@ from pydantic import BaseModel
 
 from providers.insightface_provider import InsightFaceProvider
 from providers.rekognition_provider import RekognitionProvider
+from providers.megamatcher_provider import MegamatcherProvider
 
 app = FastAPI(title="CPS-221 Face Match API", version="1.0.0")
 
@@ -91,12 +93,14 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="CPS-221 Face Match API Server")
     parser.add_argument("--port", type=int, default=5190)
-    parser.add_argument("--provider", default="rekognition", choices=["insightface", "rekognition"])
+    parser.add_argument("--provider", default="rekognition", choices=["insightface", "rekognition", "megamatcher"])
     parser.add_argument("--host", default="127.0.0.1")
     args = parser.parse_args()
 
     if args.provider == "insightface":
         provider = InsightFaceProvider()
+    elif args.provider == "megamatcher":
+        provider = MegamatcherProvider()
     else:
         provider = RekognitionProvider()
 

@@ -447,7 +447,7 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
             <img
               src={image.url}
               alt={title}
-              style={{ width: '100%', display: 'block', maxHeight: 220, objectFit: 'contain' }}
+              style={{ width: '100%', display: 'block', maxHeight: 'min(220px, 50vh)', objectFit: 'contain' }}
             />
           </div>
           {/* Status badge */}
