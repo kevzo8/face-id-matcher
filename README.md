@@ -212,11 +212,28 @@ face-id-matcher/
 │   │   ├── base.py               # Provider interface
 │   │   ├── insightface_provider.py  # Free local (recommended)
 │   │   ├── rekognition_provider.py  # AWS cloud
-│   │   ├── megamatcher_provider.py  # Licensed SDK + fallback
+│   │   ├── megamatcher_provider.py  # Licensed SDK wrapper + fallback
 │   │   └── dlib_provider.py      # Hard to install, not recommended
 │   ├── batch.py                  # CLI entry point
 │   ├── sample_pairs.csv
 │   └── requirements.txt
+├── batch-java/                   # Megamatcher Java batch (Maven project)
+│   ├── src/main/java/com/svi/facematch/
+│   │   ├── MegamatcherBatchProcessor.java  # CLI batch processor
+│   │   ├── MegamatcherEngine.java           # SDK wrapper
+│   │   ├── MatchResult.java                 # Result model
+│   │   └── CSVUtils.java                    # CSV I/O
+│   ├── lib/                                # Place SDK jars here
+│   ├── pom.xml
+│   └── README.md
+├── batch-cpp/                     # dlib C++ batch (CMake project)
+│   ├── src/
+│   │   ├── main.cpp
+│   │   ├── face_match.h
+│   │   └── face_match.cpp
+│   ├── models/                    # Place model files here
+│   ├── CMakeLists.txt
+│   └── README.md
 ├── server/                       # FastAPI bridge server
 │   ├── main.py                   # POST /compare endpoint
 │   └── requirements.txt
