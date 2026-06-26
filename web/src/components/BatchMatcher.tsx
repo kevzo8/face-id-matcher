@@ -10,6 +10,7 @@ type PairResult = {
   distance: number;
   match: boolean;
   error?: string;
+  warnings?: string[];
   idUrl?: string;
   selfieUrl?: string;
   override?: boolean | null;
@@ -52,7 +53,7 @@ function checkOrientation(detection: faceapi.WithFaceLandmarks<{ detection: face
   return null;
 }
 
-type Provider = 'local' | 'rekognition' | 'megamatcher';
+type Provider = 'local' | 'rekognition' | 'megamatcher' | 'insightface';
 
 interface BatchMatcherProps {
   detectionModel: DetectionModel;
@@ -157,6 +158,7 @@ export function BatchMatcher({ detectionModel, provider, serverUrl, threshold, o
             body: JSON.stringify({
               source_image: toBase64(idEl),
               target_image: toBase64(selfieEl),
+              threshold,
             }),
           });
 
@@ -169,9 +171,10 @@ export function BatchMatcher({ detectionModel, provider, serverUrl, threshold, o
           batchResults.push({
             code,
             name,
-            similarity: (data.similarity || 0) * 100,
-            distance: data.distance || 1,
-            match: (data.similarity || 0) >= (data.threshold || 0.9),
+            similarity: data.similarity ?? 0,
+            distance: data.distance ?? 1,
+            match: data.match ?? false,
+            warnings: data.warnings ?? undefined,
             idUrl: idEl.src,
             selfieUrl: selfieEl.src,
           });
@@ -492,7 +495,14 @@ export function BatchMatcher({ detectionModel, provider, serverUrl, threshold, o
                   <td style={{ padding: '4px 6px', textAlign: 'center' }}>
                     {r.error ? '-' : r.match ? 'YES' : 'NO'}
                   </td>
-                  <td style={{ padding: '4px 6px', color: '#ef4444', fontSize: 11 }}>{r.error || ''}</td>
+                  <td style={{ padding: '4px 6px', color: '#ef4444', fontSize: 11 }}>
+                    {r.error || ''}
+                    {!r.error && r.warnings && r.warnings.length > 0 && (
+                      <span style={{ color: '#f59e0b', cursor: 'default' }} title={r.warnings.join('\n')}>
+                        ⚠ {r.warnings.length}
+                      </span>
+                    )}
+                  </td>
                   <td style={{ padding: '4px 6px', textAlign: 'center' }}>
                     {r.idUrl && r.selfieUrl && (
                       <button
@@ -550,6 +560,14 @@ export function BatchMatcher({ detectionModel, provider, serverUrl, threshold, o
             <div style={{ textAlign: 'center', marginBottom: 12, color: '#94a3b8', fontSize: 13 }}>
               {comparePair.code} &mdash; {comparePair.name} &middot; Similarity: {comparePair.similarity.toFixed(1)}% &middot; {comparePair.match ? 'MATCH' : 'NO MATCH'}
             </div>
+            {comparePair.warnings && comparePair.warnings.length > 0 && (
+              <div style={{ marginBottom: 8, fontSize: 10, color: '#f59e0b', background: '#451a03', borderRadius: 6, padding: '6px 10px', lineHeight: 1.5 }}>
+                <strong style={{ fontSize: 11 }}>Quality issues:</strong>
+                {comparePair.warnings.map((w, i) => (
+                  <div key={i} style={{ marginLeft: 4 }}>&bull; {w}</div>
+                ))}
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
               <div style={{ flex: 1, textAlign: 'center' }}>
                 <div style={{ color: '#22c55e', fontSize: 11, marginBottom: 4, fontWeight: 600 }}>ID Photo</div>

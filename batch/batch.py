@@ -51,9 +51,6 @@ def get_provider(name: str):
 
 
 def process_pair(provider, applicant_id: str, id_path: str, selfie_path: str, threshold: float):
-    id_path = os.path.abspath(id_path)
-    selfie_path = os.path.abspath(selfie_path)
-
     if not os.path.exists(id_path):
         return applicant_id, 0.0, 1.0, "error", f"ID image not found: {id_path}"
     if not os.path.exists(selfie_path):
@@ -94,6 +91,10 @@ def main():
         "--workers", "-w", type=int, default=1,
         help="Number of parallel workers (default: 1)",
     )
+    parser.add_argument(
+        "--base-dir", "-b", default=None,
+        help="Base directory for resolving relative paths in the input CSV (default: input CSV's directory)",
+    )
     args = parser.parse_args()
 
     if not os.path.exists(args.input):
@@ -104,6 +105,10 @@ def main():
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         args.output = f"results_{timestamp}.csv"
 
+    base_dir = args.base_dir
+    if base_dir is None:
+        base_dir = os.path.dirname(os.path.abspath(args.input))
+
     provider = get_provider(args.provider)
 
     rows = []
@@ -113,7 +118,19 @@ def main():
         if not required.issubset(set(reader.fieldnames or [])):
             print(f"Error: CSV must have columns: {', '.join(required)}")
             sys.exit(1)
-        rows = list(reader)
+        for row in reader:
+            # Resolve relative paths against base_dir, store original for output
+            id_rel = row["id_image_path"]
+            selfie_rel = row["selfie_image_path"]
+            if not os.path.isabs(id_rel):
+                id_abs = os.path.normpath(os.path.join(base_dir, id_rel))
+            else:
+                id_abs = id_rel
+            if not os.path.isabs(selfie_rel):
+                selfie_abs = os.path.normpath(os.path.join(base_dir, selfie_rel))
+            else:
+                selfie_abs = selfie_rel
+            rows.append((row, id_abs, selfie_abs, id_rel, selfie_rel))
 
     total = len(rows)
     print(f"\n{'='*60}")
@@ -130,18 +147,18 @@ def main():
     completed = 0
 
     # Collect extra columns from input (everything except the required + image paths)
-    extra_cols = [c for c in (rows[0].keys() if rows else [])
+    extra_cols = [c for c in (rows[0][0].keys() if rows else [])
                   if c not in {"applicant_id", "id_image_path", "selfie_image_path", "selfie_path"}]
 
     if args.workers <= 1:
-        for row in rows:
+        for (row, id_abs, selfie_abs, id_rel, selfie_rel) in rows:
             result = process_pair(
                 provider, row["applicant_id"],
-                row["id_image_path"], row["selfie_image_path"],
+                id_abs, selfie_abs,
                 args.threshold,
             )
             extra = {c: row.get(c, "") for c in extra_cols}
-            results.append((result, extra))
+            results.append((result, extra, id_rel, selfie_rel))
             completed += 1
             status = result[3]
             icon = {"auto_approve": "PASS", "manual_review": "FAIL", "error": "ERR"}[status]
@@ -156,16 +173,16 @@ def main():
             futures = {
                 executor.submit(
                     process_pair, provider, row["applicant_id"],
-                    row["id_image_path"], row["selfie_path"] if "selfie_path" in row else row["selfie_image_path"],
+                    id_abs, selfie_abs,
                     args.threshold,
-                ): row
-                for row in rows
+                ): (row, id_rel, selfie_rel)
+                for (row, id_abs, selfie_abs, id_rel, selfie_rel) in rows
             }
             for future in as_completed(futures):
-                row = futures[future]
+                row, id_rel, selfie_rel = futures[future]
                 result = future.result()
                 extra = {c: row.get(c, "") for c in extra_cols}
-                results.append((result, extra))
+                results.append((result, extra, id_rel, selfie_rel))
                 completed += 1
                 status = result[3]
                 icon = {"auto_approve": "PASS", "manual_review": "FAIL", "error": "ERR"}[status]
@@ -180,15 +197,16 @@ def main():
 
     with open(args.output, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        header = ["applicant_id"] + extra_cols + ["similarity", "distance", "decision", "error"]
+        header = ["applicant_id"] + extra_cols + ["similarity", "distance", "decision", "error", "id_image_path", "selfie_image_path"]
         writer.writerow(header)
-        for (r, extra) in results:
+        for (r, extra, id_rel, selfie_rel) in results:
+            # write original relative paths (from input) so they work in the web app
             writer.writerow([r[0]] + [extra.get(c, "") for c in extra_cols] +
-                             [f"{r[1]:.2f}", f"{r[2]:.4f}", r[3], r[4]])
+                             [f"{r[1]:.2f}", f"{r[2]:.4f}", r[3], r[4], id_rel, selfie_rel])
 
-    approved = sum(1 for (r, _) in results if r[3] == "auto_approve")
-    review = sum(1 for (r, _) in results if r[3] == "manual_review")
-    errors = sum(1 for (r, _) in results if r[3] == "error")
+    approved = sum(1 for (r, _, _, _) in results if r[3] == "auto_approve")
+    review = sum(1 for (r, _, _, _) in results if r[3] == "manual_review")
+    errors = sum(1 for (r, _, _, _) in results if r[3] == "error")
 
     print(f"\n{'='*60}")
     print(f"  RESULTS")

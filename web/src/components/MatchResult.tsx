@@ -7,11 +7,12 @@ interface MatchResultProps {
     match: boolean;
     threshold: number;
     error?: string;
+    warnings?: string[];
   };
 }
 
 export function MatchResult({ result }: MatchResultProps) {
-  const { distance, similarity, match, threshold, error } = result;
+  const { distance, similarity, match, threshold, error, warnings } = result;
   const matchColor = match ? '#22c55e' : '#ef4444';
   const bgColor = match ? '#052e16' : '#450a0a';
 
@@ -53,10 +54,20 @@ export function MatchResult({ result }: MatchResultProps) {
         </span>
       </div>
 
-      {/* Error/warning */}
+      {/* Error */}
       {error && (
         <div style={{ textAlign: 'center', marginBottom: 8, fontSize: 12, color: match ? '#f59e0b' : '#ef4444' }}>
           {error}
+        </div>
+      )}
+
+      {/* Quality warnings */}
+      {warnings && warnings.length > 0 && (
+        <div style={{ marginBottom: 8, fontSize: 10, color: '#f59e0b', background: '#451a03', borderRadius: 6, padding: '6px 10px', lineHeight: 1.5 }}>
+          <strong style={{ fontSize: 11 }}>Quality issues detected:</strong>
+          {warnings.map((w, i) => (
+            <div key={i} style={{ marginLeft: 4 }}>&bull; {w}</div>
+          ))}
         </div>
       )}
 

@@ -1,0 +1,41 @@
+pair_id,type,name
+correct_0,SAME,Weslley
+correct_1,SAME,Juliana
+correct_2,SAME,Luis
+correct_3,SAME,Rayanne
+correct_4,SAME,Fernanda
+correct_5,SAME,Daiane
+correct_6,SAME,Alejandra
+correct_7,SAME,Matheus
+correct_8,SAME,Bruno
+correct_9,SAME,Gabriel
+correct_10,SAME,Clarissa
+correct_11,SAME,Andrea Ran
+correct_12,SAME,Paolo
+correct_13,SAME,Miia
+correct_14,SAME,Klara
+correct_15,SAME,Diego
+correct_16,SAME,Ewa
+correct_17,SAME,Anna
+correct_18,SAME,Kateryna
+correct_19,SAME,Mykhailo
+correct_20,SAME,Vitalijs
+correct_21,SAME,Alessandro
+correct_22,SAME,Mark
+correct_23,SAME,Massimiliano
+correct_24,SAME,Kasia
+correct_25,SAME,Anastasia
+correct_26,SAME,Valeriia
+wrong_0,DIFFERENT,Weslley vs Alessandro
+wrong_1,DIFFERENT,Juliana vs Fernanda
+wrong_2,DIFFERENT,Luis vs Weslley
+wrong_3,DIFFERENT,Rayanne vs Kasia
+wrong_4,DIFFERENT,Fernanda vs Gabriel
+wrong_5,DIFFERENT,Daiane vs Bruno
+wrong_6,DIFFERENT,Alejandra vs Bruno
+wrong_7,DIFFERENT,Matheus vs Fernanda
+wrong_8,DIFFERENT,Bruno vs Kasia
+wrong_9,DIFFERENT,Gabriel vs Rayanne
+wrong_10,DIFFERENT,Clarissa vs Mark
+wrong_11,DIFFERENT,Andrea Ran vs Kasia
+wrong_12,DIFFERENT,Paolo vs Kateryna

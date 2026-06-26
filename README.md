@@ -193,6 +193,118 @@ The default is 0.50. For the POC, set to 0.70 (max leniency) to minimize "no mat
 
 ---
 
+---
+
+## Sample Results (Kaggle Dirty Test — 40 pairs)
+
+Full threshold sweep using `samples/kaggle/` with InsightFace at default threshold **0.7**:
+
+| Metric | Value |
+|--------|-------|
+| Total pairs | 40 (27 same-person + 13 cross-person) |
+| Correctly identified (same) | 27 / 27 (100%) |
+| Correctly rejected (cross) | 13 / 13 (100%) |
+| Errors | 0 |
+| Same-person similarity range | 35.98% – 78.50% |
+| Cross-person similarity range | 0.0% – 8.7% |
+| Gap between min-same and max-cross | **27.3 points** |
+
+### Sample row (same person)
+```
+applicant_id=correct_0, name=Weslley, similarity=62.08%, match=true
+```
+### Sample row (cross person)
+```
+applicant_id=wrong_0, name=Weslley vs Alessandro, similarity=0.8%, match=false
+```
+
+Run it yourself:
+```bash
+python batch/batch.py --input samples/kaggle/dirty_pairs.csv --provider insightface --threshold 0.7 --base-dir .
+```
+
+---
+
+## Deploy InsightFace Server to Hugging Face Spaces
+
+Run the InsightFace provider as a public API server on Hugging Face Spaces using Docker.
+
+### 1. Create a Hugging Face Space
+
+1. Go to https://huggingface.co/new-space
+2. Set **Space name** (e.g., `face-id-matcher`)
+3. Choose **Docker** as the Space SDK
+4. Set **Space hardware** (CPU is sufficient — choose at least `cpu-2` for reasonable speed)
+5. Click **Create Space**
+
+### 2. Push the Dockerfile
+
+```bash
+# In your repo root:
+git add Dockerfile.huggingface
+git commit -m "Add Hugging Face Spaces Dockerfile"
+
+# Follow HF instructions to push to your Space's git repo
+# (or use the HF web UI to upload the file)
+```
+
+The Space will auto-detect `Dockerfile.huggingface` if you **rename it to `Dockerfile`** in the Space repo. Alternatively, set **Dockerfile Path** to `Dockerfile.huggingface` in the Space settings.
+
+### 3. How it works
+
+| Aspect | Detail |
+|--------|--------|
+| **Port** | 7860 (HF Spaces default) |
+| **Provider** | InsightFace (`buffalo_l` model, ONNX CPU) |
+| **Endpoint** | `POST /compare` — multipart (`id_image`+`selfie_image`) or JSON (`source_image`+`target_image` base64) |
+| **Health** | `GET /health` — returns status + provider name |
+| **Models** | Pre-downloaded during build (~200 MB cached in the image) |
+| **Env var** | `FACE_MATCH_PROVIDER=insightface` auto-initializes on startup |
+
+### 4. Configure the Web App
+
+1. Open the web app (`http://localhost:5180`)
+2. In the settings bar, select **InsightFace (server)** from the Provider dropdown
+3. A **Server** text field appears — enter your HF Space URL:
+   ```
+   https://your-username-face-id-matcher.hf.space
+   ```
+4. Upload photos and click **Compare Faces** — the app sends images to the HF Space for matching
+
+> **Note:** The server accepts both **multipart form data** (`id_image` + `selfie_image`) and **JSON base64** (`source_image` + `target_image`). The web app sends JSON base64 by default. Use the `/docs` Swagger UI at `https://your-space.hf.space/docs` for manual testing.
+
+### 5. Test with curl
+
+Multipart form:
+```bash
+curl -X POST https://your-username-face-id-matcher.hf.space/compare \
+  -F "id_image=@/path/to/id.jpg" \
+  -F "selfie_image=@/path/to/selfie.jpg" \
+  -F "threshold=0.7"
+```
+
+Or JSON base64:
+```bash
+ID_B64=$(base64 -w0 /path/to/id.jpg)
+SELFIE_B64=$(base64 -w0 /path/to/selfie.jpg)
+curl -X POST https://your-username-face-id-matcher.hf.space/compare \
+  -H "Content-Type: application/json" \
+  -d "{\"source_image\":\"$ID_B64\",\"target_image\":\"$SELFIE_B64\",\"threshold\":0.7}"
+```
+
+Response format:
+```json
+{
+  "similarity": 87.34,
+  "distance": 0.1266,
+  "match": true,
+  "threshold": 0.6,
+  "error": null
+}
+```
+
+---
+
 ## Project Structure
 
 ```
@@ -203,7 +315,8 @@ face-id-matcher/
 │   │   ├── components/
 │   │   │   ├── ImageCapture.tsx   # Camera + file upload
 │   │   │   ├── MatchResult.tsx    # Single compare result display
-│   │   │   └── BatchMatcher.tsx   # Batch upload + results table
+│   │   │   ├── BatchMatcher.tsx   # Batch upload + results table
+│   │   │   └── CsvViewer.tsx     # CSV upload viewer + compare modal
 │   │   └── main.tsx
 │   ├── public/models/            # face-api.js model weights
 │   └── package.json
@@ -239,5 +352,6 @@ face-id-matcher/
 │   └── requirements.txt
 ├── samples/                      # Test images
 ├── CPS-221-spike-report.md       # Full vendor comparison
+├── Dockerfile.huggingface        # Hugging Face Spaces deployment
 └── README.md
 ```

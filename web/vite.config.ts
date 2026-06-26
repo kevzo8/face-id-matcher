@@ -1,8 +1,42 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import fs from 'fs';
+import path from 'path';
+
+const samplesDir = path.resolve(__dirname, '..', 'samples');
+
+const mimeTypes: Record<string, string> = {
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+};
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'static-samples',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          if (!req.url?.startsWith('/samples/')) return next();
+          const urlPath = decodeURIComponent(req.url.replace(/\\/g, '/'));
+          const filePath = path.join(samplesDir, urlPath.slice('/samples/'.length));
+          if (!fs.existsSync(filePath)) {
+            res.statusCode = 404;
+            res.end('Not found');
+            return;
+          }
+          const ext = path.extname(filePath).toLowerCase();
+          const contentType = mimeTypes[ext] || 'application/octet-stream';
+          const content = fs.readFileSync(filePath);
+          res.writeHead(200, { 'Content-Type': contentType, 'Content-Length': content.length });
+          res.end(content);
+        });
+      },
+    },
+  ],
   server: {
     port: 5180,
     strictPort: true,

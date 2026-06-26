@@ -13,6 +13,7 @@ class MatchResult:
     similarity: float
     match: bool
     error: str | None = None
+    warnings: list[str] | None = None
 
 
 class BaseProvider(ABC):

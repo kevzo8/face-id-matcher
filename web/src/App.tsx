@@ -3,6 +3,7 @@ import * as faceapi from 'face-api.js';
 import { ImageCapture } from './components/ImageCapture';
 import { MatchResult } from './components/MatchResult';
 import { BatchMatcher } from './components/BatchMatcher';
+import { CsvViewer } from './components/CsvViewer';
 
 type ImageData = {
   url: string;
@@ -10,7 +11,7 @@ type ImageData = {
 } | null;
 
 type DetectionModel = 'fast' | 'accurate';
-type Provider = 'local' | 'rekognition' | 'megamatcher';
+type Provider = 'local' | 'rekognition' | 'megamatcher' | 'insightface';
 
 function checkOrientation(detection: faceapi.WithFaceLandmarks<{ detection: faceapi.FaceDetection }>): string | null {
   const landmarks = detection.landmarks;
@@ -42,9 +43,9 @@ export default function App() {
   } | null>(null);
   const [threshold, setThreshold] = useState(0.7);
   const [detectionModel, setDetectionModel] = useState<DetectionModel>('accurate');
-  const [provider, setProvider] = useState<Provider>('local');
-  const [serverUrl, setServerUrl] = useState('http://localhost:8000');
-  const [mode, setMode] = useState<'single' | 'batch'>('single');
+  const [provider, setProvider] = useState<Provider>('insightface');
+  const [serverUrl, setServerUrl] = useState('https://kvega-cps221-face-match.hf.space');
+  const [mode, setMode] = useState<'single' | 'batch' | 'csv'>('single');
   const [showInfo, setShowInfo] = useState(false);
 
   useEffect(() => {
@@ -88,6 +89,7 @@ export default function App() {
           body: JSON.stringify({
             source_image: toBase64(idImage.element),
             target_image: toBase64(selfieImage.element),
+            threshold,
           }),
         });
 
@@ -98,10 +100,10 @@ export default function App() {
 
         const data = await res.json();
         setResult({
-          distance: 1 - (data.similarity || 0),
-          similarity: (data.similarity || 0) * 100,
-          match: (data.similarity || 0) >= (data.threshold || 0.9),
-          threshold: data.threshold || 0.9,
+          distance: data.distance ?? 1,
+          similarity: data.similarity ?? 0,
+          match: data.match ?? false,
+          threshold: data.threshold ?? 0.6,
         });
         setMatching(false);
         return;
@@ -181,153 +183,18 @@ export default function App() {
   }
 
   return (
-    <div style={{ maxWidth: 1000, margin: '0 auto', padding: 16 }}>
+    <div style={{ maxWidth: 1200, margin: '0 auto', padding: 16 }}>
       {/* Header */}
-      <header style={{ marginBottom: 16, textAlign: 'center' }}>
-        <div style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: 700, marginBottom: 4 }}>Face ID Matcher</div>
+      <header style={{ marginBottom: 12, textAlign: 'center' }}>
+        <div style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: 700, marginBottom: 2 }}>Face ID Matcher</div>
         <p style={{ color: '#94a3b8', fontSize: 13 }}>
           Compare any two face photos — selfie vs ID, or ID vs ID — with 1:1 face matching
         </p>
       </header>
 
-      {/* Settings bar — always visible */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 'clamp(8px, 2vw, 16px)',
-          marginBottom: 12,
-          flexWrap: 'wrap',
-          padding: 'clamp(6px, 1.5vw, 10px) clamp(8px, 2vw, 16px)',
-          background: '#1e293b',
-          borderRadius: 8,
-        }}
-      >
-        {/* Provider */}
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ color: '#94a3b8', fontSize: 12 }}>Provider:</span>
-          <select
-            value={provider}
-            onChange={(e) => setProvider(e.target.value as Provider)}
-            style={{
-              padding: '4px 8px',
-              borderRadius: 4,
-              border: '1px solid #475569',
-              background: '#0f172a',
-              color: '#e2e8f0',
-              fontSize: 12,
-            }}
-          >
-            <option value="local">face-api.js (browser)</option>
-            <option value="rekognition">AWS Rekognition (cloud)</option>
-            <option value="megamatcher">Megamatcher (server)</option>
-          </select>
-        </label>
-
-        {/* Detection model (local only) */}
-        {provider === 'local' && (
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: '#94a3b8', fontSize: 12 }}>Detection:</span>
-            <select
-              value={detectionModel}
-              onChange={(e) => setDetectionModel(e.target.value as DetectionModel)}
-              style={{
-                padding: '4px 8px',
-                borderRadius: 4,
-                border: '1px solid #475569',
-                background: '#0f172a',
-                color: '#e2e8f0',
-                fontSize: 12,
-              }}
-            >
-              <option value="accurate">SSD MobileNet (accurate, slower)</option>
-              <option value="fast">TinyFaceDetector (fast, less accurate)</option>
-            </select>
-          </label>
-        )}
-
-        {/* Server URL (server providers) */}
-        {provider !== 'local' && (
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: '#94a3b8', fontSize: 12 }}>Server:</span>
-            <input
-              type="text"
-              value={serverUrl}
-              onChange={(e) => setServerUrl(e.target.value)}
-              style={{
-                padding: '4px 8px',
-                borderRadius: 4,
-                border: '1px solid #475569',
-                background: '#0f172a',
-                color: '#e2e8f0',
-                fontSize: 12,
-                width: 160,
-              }}
-            />
-          </label>
-        )}
-
-        {/* Threshold (shared) */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: '#94a3b8', fontSize: 12, textAlign: 'right' }}>
-              <strong>Strict</strong><br /><span style={{ fontSize: 9, color: '#64748b' }}>Fewer matches</span>
-            </span>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <input
-                type="range"
-                min="0.3"
-                max="0.7"
-                step="0.05"
-                value={threshold}
-                onChange={(e) => setThreshold(parseFloat(e.target.value))}
-              style={{ width: 'min(80px, 30vw)' }}
-            />
-              <span style={{ color: '#e2e8f0', fontSize: 11, fontWeight: 600, minWidth: 24 }}>
-                {threshold.toFixed(2)}
-              </span>
-            </div>
-            <span style={{ color: '#94a3b8', fontSize: 12, textAlign: 'left' }}>
-              <strong>Lenient</strong><br /><span style={{ fontSize: 9, color: '#64748b' }}>More matches</span>
-            </span>
-          </label>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              height: 6,
-              width: 'min(200px, 70vw)',
-              borderRadius: 3,
-              background: 'linear-gradient(to right, #22c55e, #eab308, #ef4444)',
-              position: 'relative',
-            }}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                left: `${((threshold - 0.3) / 0.4) * 100}%`,
-                transform: 'translateX(-50%)',
-                width: 10,
-                height: 10,
-                borderRadius: '50%',
-                background: '#e2e8f0',
-                border: '2px solid #0f172a',
-                transition: 'left 0.15s',
-              }}
-            />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', width: 'min(200px, 70vw)', fontSize: 10, color: '#64748b' }}>
-            <span style={{ color: '#22c55e' }}>Same person</span>
-            <span style={{ color: '#eab308' }}>Unsure</span>
-            <span style={{ color: '#ef4444' }}>Different</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Mode toggle */}
+      {/* Mode tabs */}
       <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginBottom: 12, flexWrap: 'wrap' }}>
-        {(['single', 'batch'] as const).map((m) => (
+        {(['single', 'batch', 'csv'] as const).map((m) => (
           <button
             key={m}
             onClick={() => setMode(m)}
@@ -344,7 +211,7 @@ export default function App() {
               color: mode === m ? '#fff' : '#64748b',
             }}
           >
-            {m === 'single' ? '\u2696 Single Compare' : '\u2630 Batch Upload'}
+            {m === 'single' ? '\u2696 Single Compare' : m === 'batch' ? '\u2630 Batch Upload' : '\u2630 View CSV'}
           </button>
         ))}
       </div>
@@ -353,145 +220,199 @@ export default function App() {
         <p style={{ color: '#f59e0b', textAlign: 'center', marginBottom: 12, fontSize: 13 }}>Loading face recognition models...</p>
       )}
 
-      {/* Info toggle */}
-      <div style={{ textAlign: 'center', marginBottom: 8 }}>
-        <button
-          onClick={() => setShowInfo(!showInfo)}
-          style={{
-            padding: '3px 12px',
-            fontSize: 11,
-            border: '1px solid #475569',
-            borderRadius: 12,
-            cursor: 'pointer',
-            background: 'transparent',
-            color: '#64748b',
-          }}
-        >
-          {showInfo ? '\u25BC' : '\u25B6'} How this works
-        </button>
-      </div>
+      {/* Two-column layout */}
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        {/* === Left: Main content === */}
+        <div style={{ flex: '1 1 0', minWidth: 280 }}>
+          <div style={{ display: mode === 'batch' ? 'block' : 'none' }}>
+            <BatchMatcher
+              detectionModel={detectionModel}
+              provider={provider}
+              serverUrl={serverUrl}
+              threshold={threshold}
+              onBack={() => setMode('single')}
+            />
+          </div>
+          <div style={{ display: mode === 'csv' ? 'block' : 'none' }}>
+            <CsvViewer />
+          </div>
+          <div style={{ display: mode === 'single' ? 'block' : 'none' }}>
+            {/* Capture panels */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12, marginBottom: 12 }}>
+              <ImageCapture
+                title="1. ID Photo"
+                subtitle="Upload or take a photo of an ID card"
+                image={idImage}
+                onCapture={setIdImage}
+                facingMode="environment"
+                accentColor="#22c55e"
+                icon="card"
+              />
+              <ImageCapture
+                title="2. Selfie"
+                subtitle="Take a selfie, upload a photo, or use another ID"
+                image={selfieImage}
+                onCapture={setSelfieImage}
+                facingMode="user"
+                accentColor="#3b82f6"
+                icon="person"
+              />
+            </div>
 
-      {showInfo && (
-        <div
-          style={{
-            background: '#1e293b',
-            borderRadius: 8,
-            padding: 12,
-            marginBottom: 12,
-            fontSize: 12,
-            lineHeight: 1.6,
-            color: '#94a3b8',
-            maxWidth: 'min(600px, 100%)',
-            margin: '0 auto 12px',
-          }}
-        >
-          <strong style={{ color: '#e2e8f0' }}>How Face Matching Works</strong><br />
-          1. Upload or take two photos (e.g. ID card + selfie)<br />
-          2. The app detects faces and creates a unique <strong style={{ color: '#e2e8f0' }}>faceprint</strong> (128 numbers) for each<br />
-          3. It measures the <strong style={{ color: '#e2e8f0' }}>distance</strong> between the two faceprints<br />
-          4. <strong style={{ color: '#e2e8f0' }}>Smaller distance</strong> = more likely the same person<br /><br />
-          <strong style={{ color: '#e2e8f0' }}>The Slider</strong> controls how strict the comparison is:<br />
-          Move left toward <strong style={{ color: '#22c55e' }}>Same person</strong> for fewer false matches (recommended for KYC),<br />
-          Move right toward <strong style={{ color: '#ef4444' }}>Different</strong> to allow more matches even with differences
+            {/* Controls */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+              <button
+                onClick={handleMatch}
+                disabled={!idImage || !selfieImage || matching || !modelsLoaded}
+                style={{
+                  padding: '10px 28px',
+                  fontSize: 15,
+                  fontWeight: 600,
+                  border: 'none',
+                  borderRadius: 8,
+                  cursor: idImage && selfieImage && !matching && modelsLoaded ? 'pointer' : 'not-allowed',
+                  background: idImage && selfieImage && !matching && modelsLoaded ? '#a855f7' : '#334155',
+                  color: '#fff',
+                }}
+              >
+                {matching ? 'Matching...' : '\u2696 Compare Faces'}
+              </button>
+              <button onClick={handleReset} style={{ padding: '10px 20px', fontSize: 13, border: '1px solid #475569', borderRadius: 8, cursor: 'pointer', background: 'transparent', color: '#94a3b8' }}>
+                Reset
+              </button>
+            </div>
+
+            {/* Result */}
+            {result && <MatchResult result={result} />}
+          </div>
         </div>
-      )}
 
-      <div style={{ display: mode === 'batch' ? 'block' : 'none' }}>
-        <BatchMatcher
-          detectionModel={detectionModel}
-          provider={provider}
-          serverUrl={serverUrl}
-          threshold={threshold}
-          onBack={() => setMode('single')}
-        />
-      </div>
-      <div style={{ display: mode === 'single' ? 'block' : 'none' }}>
-        <>
+        {/* === Right: Sidebar === */}
+        <div style={{ flex: '0 0 300px', background: '#1e293b', borderRadius: 8, padding: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-      {/* Capture panels */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: 16,
-          marginBottom: 16,
-        }}
-      >
-        <ImageCapture
-          title="1. ID Photo"
-          subtitle="Upload or take a photo of an ID card"
-          image={idImage}
-          onCapture={setIdImage}
-          facingMode="environment"
-          accentColor="#22c55e"
-          icon="card"
-        />
-        <ImageCapture
-          title="2. Selfie"
-          subtitle="Take a selfie, upload a photo, or use another ID"
-          image={selfieImage}
-          onCapture={setSelfieImage}
-          facingMode="user"
-          accentColor="#3b82f6"
-          icon="person"
-        />
-      </div>
+          {/* Provider */}
+          <div>
+            <label style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>PROVIDER</label>
+            <select
+              value={provider}
+              onChange={(e) => setProvider(e.target.value as Provider)}
+              style={{ width: '100%', padding: '6px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 13 }}
+            >
+              <option value="local">face-api.js (browser)</option>
+              <option value="insightface">InsightFace (server)</option>
+              <option value="rekognition">AWS Rekognition (cloud)</option>
+              <option value="megamatcher">Megamatcher (server)</option>
+            </select>
+          </div>
 
-      {/* Controls */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
-          justifyContent: 'center',
-          marginBottom: 12,
-          flexWrap: 'wrap',
-        }}
-      >
-        <button
-          onClick={handleMatch}
-          disabled={!idImage || !selfieImage || matching || !modelsLoaded}
-          style={{
-            padding: '10px 28px',
-            fontSize: 15,
-            fontWeight: 600,
-            border: 'none',
-            borderRadius: 8,
-            cursor: idImage && selfieImage && !matching && modelsLoaded ? 'pointer' : 'not-allowed',
-            background: idImage && selfieImage && !matching && modelsLoaded ? '#a855f7' : '#334155',
-            color: '#fff',
-            transition: 'background 0.2s',
-          }}
-        >
-          {matching ? 'Matching...' : '\u2696 Compare Faces'}
-        </button>
+          {/* Detection model (local only) */}
+          {provider === 'local' && (
+            <div>
+              <label style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>DETECTION</label>
+              <select
+                value={detectionModel}
+                onChange={(e) => setDetectionModel(e.target.value as DetectionModel)}
+                style={{ width: '100%', padding: '6px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 13 }}
+              >
+                <option value="accurate">SSD MobileNet (accurate, slower)</option>
+                <option value="fast">TinyFaceDetector (fast, less accurate)</option>
+              </select>
+            </div>
+          )}
 
-        <button
-          onClick={handleReset}
-          style={{
-            padding: '10px 20px',
-            fontSize: 13,
-            border: '1px solid #475569',
-            borderRadius: 8,
-            cursor: 'pointer',
-            background: 'transparent',
-            color: '#94a3b8',
-          }}
-        >
-          Reset
-        </button>
-      </div>
+          {/* Server URL (server providers) */}
+          {provider !== 'local' && (
+            <div>
+              <label style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>SERVER URL</label>
+              <input
+                type="text"
+                value={serverUrl}
+                onChange={(e) => setServerUrl(e.target.value)}
+                style={{ width: '100%', padding: '6px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 13, boxSizing: 'border-box' }}
+              />
+            </div>
+          )}
 
-      {/* Result */}
-      {result && <MatchResult result={result} />}
+          {/* Threshold */}
+          <div>
+            <label style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>THRESHOLD</label>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
+                <span style={{ color: '#94a3b8', fontSize: 11, textAlign: 'right', flex: 1 }}>
+                  <strong>Strict</strong><br /><span style={{ fontSize: 9, color: '#64748b' }}>Fewer</span>
+                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <input type="range" min="0.5" max="0.9" step="0.05" value={threshold} onChange={(e) => setThreshold(parseFloat(e.target.value))} style={{ width: 90 }} />
+                  <span style={{ color: '#e2e8f0', fontSize: 13, fontWeight: 600 }}>{threshold.toFixed(2)}</span>
+                </div>
+                <span style={{ color: '#94a3b8', fontSize: 11, textAlign: 'left', flex: 1 }}>
+                  <strong>Lenient</strong><br /><span style={{ fontSize: 9, color: '#64748b' }}>More</span>
+                </span>
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', height: 6, width: '100%', borderRadius: 3, background: 'linear-gradient(to right, #ef4444, #eab308, #22c55e)', position: 'relative' }}>
+                <div style={{ position: 'absolute', left: `${((threshold - 0.5) / 0.4) * 100}%`, transform: 'translateX(-50%)', width: 10, height: 10, borderRadius: '50%', background: '#e2e8f0', border: '2px solid #0f172a', transition: 'left 0.15s' }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: 11, color: '#64748b' }}>
+                <span style={{ color: '#ef4444' }}>Different</span>
+                <span style={{ color: '#eab308' }}>Unsure</span>
+                <span style={{ color: '#22c55e' }}>Same person</span>
+              </div>
+            </div>
+          </div>
 
-      {/* Footer */}
-      <footer style={{ marginTop: 12, textAlign: 'center', color: '#475569', fontSize: 11 }}>
-        {provider === 'rekognition'
-          ? `Using ${provider === 'rekognition' ? 'AWS Rekognition' : 'Megamatcher'} — images sent to server for matching`
-          : `Powered by face-api.js (${detectionModel === 'fast' ? 'TinyFaceDetector' : 'SSD MobileNet'} + 128D face descriptors) — all processing in browser. No images uploaded.`}
-      </footer>
-        </>
+          {/* Provider explanation */}
+          <div style={{ borderTop: '1px solid #334155', paddingTop: 10 }}>
+            {provider === 'local' && (
+              <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
+                <strong style={{ color: '#e2e8f0' }}>face-api.js (browser)</strong><br />
+                Runs entirely in your browser. No data leaves your PC.<br />
+                Uses {detectionModel === 'fast' ? 'TinyFaceDetector' : 'SSD MobileNet'} with 128-dim face descriptors.<br />
+                <em style={{ color: '#64748b' }}>Fast (instant), free, good for quick testing.</em>
+              </div>
+            )}
+            {provider === 'insightface' && (
+              <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
+                <strong style={{ color: '#e2e8f0' }}>InsightFace (server)</strong><br />
+                ONNX-based face matching. <strong>High accuracy (~95-98%)</strong>.<br />
+                <em style={{ color: '#f59e0b' }}>Slower on HF Spaces (CPU, cold starts).<br />
+                Run locally + ngrok for faster results.</em>
+              </div>
+            )}
+            {provider === 'rekognition' && (
+              <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
+                <strong style={{ color: '#e2e8f0' }}>AWS Rekognition (cloud)</strong><br />
+                Amazon's cloud API. Highest accuracy (~99%).<br />
+                <em style={{ color: '#64748b' }}>Costs $0.001 per comparison. Requires AWS credentials.</em>
+              </div>
+            )}
+            {provider === 'megamatcher' && (
+              <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
+                <strong style={{ color: '#e2e8f0' }}>Megamatcher (server)</strong><br />
+                Licensed SDK from Neurotechnology. Already paid for by SVI.<br />
+                <em style={{ color: '#64748b' }}>Zero marginal cost. Needs SDK jars in batch-java/lib/.</em>
+              </div>
+            )}
+          </div>
+
+          {/* How it works (collapsible) */}
+          <div style={{ borderTop: '1px solid #334155', paddingTop: 10 }}>
+            <button
+              onClick={() => setShowInfo(!showInfo)}
+              style={{ width: '100%', textAlign: 'left', padding: '2px 0', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', background: 'transparent', color: '#94a3b8' }}
+            >
+              {showInfo ? '\u25BC' : '\u25B6'} HOW IT WORKS
+            </button>
+            {showInfo && (
+              <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6, marginTop: 6 }}>
+                1. Upload/take two photos (ID + selfie)<br />
+                2. App creates a unique <strong style={{ color: '#e2e8f0' }}>faceprint</strong> for each<br />
+                3. Measures the <strong style={{ color: '#e2e8f0' }}>distance</strong> between them<br />
+                4. <strong style={{ color: '#e2e8f0' }}>Smaller distance</strong> = same person<br /><br />
+                <strong>Slider</strong>: Move toward <strong style={{ color: '#22c55e' }}>Same person</strong> (stricter) for fewer false matches. Move toward <strong style={{ color: '#ef4444' }}>Different</strong> (more lenient) to accept more matches.
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
