@@ -1,0 +1,17 @@
+applicant_id,name,id_image_path,selfie_image_path
+10,Kevin,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\10_ID_Kevin.png,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\10_Selfie_Kevin.png
+11,Kevin_BlackWhite,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\11_ID_Kevin_BlackWhite.png,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\11_Photo_Kevin.jpg
+12,Fernanda_WrongOrientation,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\12_ID_Fernanda_WrongOrientation.jpg,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\12_Selfie_Fernanda.jpg
+13,Fernanda,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\13_ID_Fernanda.jpg,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\13_Face_Fernanda.jpg
+14,KevinWithGlasses,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\14_ID_KevinWithGlasses.jpg,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\14_Photo_Louie.jpg
+14,KevinWithGlasses,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\14_ID_KevinWithGlasses.jpg,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\14_Selfie_Kevin.jpg
+15,Nathan,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\15_ID_Nathan.png,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\15_Photo_Nathan.png
+1,Clarissa_Vignette,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\1_ID_Clarissa_Vignette.jpg,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\1_Selfie_Clarissa.jpg
+2,Clarissa_BlackWhite_Vignette,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\2_ID_Clarissa_BlackWhite_Vignette.jpg,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\2_Selfie_Clarissa.jpg
+3,Paolo_Dark_BlackWhite,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\3_ID_Paolo_Dark_BlackWhite.jpg,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\3_Selfie_Paolo.jpg
+4,Paolo_BlackWhite,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\4_ID_Paolo_BlackWhite.jpg,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\4_Selfie_Paolo.jpg
+5,Miia_BlackWhite,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\5_ID_Miia_BlackWhite.jpg,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\5_Selfie_Miia.jpg
+6,Miia_Sepia_WrongOrientation,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\6_ID_Miia_Sepia_WrongOrientation.jpg,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\6_Selfie_Miia.jpg
+7,Diego_WrongOrientation_BlackWhite,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\7_ID_Diego_WrongOrientation_BlackWhite.jpg,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\7_Face_Diego.jpg
+8,Diego_Wrong_Orientation_Landscape,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\8_ID_Diego_Wrong_Orientation_Landscape.jpg,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\8_Photo_Diego.jpg
+9,Louie,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\9_ID_Louie.png,C:\Users\kevin.vega\face-id-matcher\samples\batch_upload\9_Selfie_Louie.jpg

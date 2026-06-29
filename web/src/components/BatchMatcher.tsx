@@ -495,11 +495,13 @@ export function BatchMatcher({ detectionModel, provider, serverUrl, threshold, o
                   <td style={{ padding: '4px 6px', textAlign: 'center' }}>
                     {r.error ? '-' : r.match ? 'YES' : 'NO'}
                   </td>
-                  <td style={{ padding: '4px 6px', color: '#ef4444', fontSize: 11 }}>
-                    {r.error || ''}
+                  <td style={{ padding: '4px 6px', fontSize: 11 }}>
+                    {r.error && <span style={{ color: '#ef4444' }}>{r.error}</span>}
                     {!r.error && r.warnings && r.warnings.length > 0 && (
-                      <span style={{ color: '#f59e0b', cursor: 'default' }} title={r.warnings.join('\n')}>
-                        ⚠ {r.warnings.length}
+                      <span style={{ color: '#f59e0b' }}>
+                        {r.warnings.map((w, i) => (
+                          <div key={i}>&#9888; {w}</div>
+                        ))}
                       </span>
                     )}
                   </td>
