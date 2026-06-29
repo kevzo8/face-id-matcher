@@ -35,6 +35,14 @@ export default defineConfig({
           res.end(content);
         });
       },
+      closeBundle() {
+        const src = path.join(samplesDir, 'dirty-pairs');
+        const dest = path.resolve(__dirname, 'dist', 'samples', 'dirty-pairs');
+        if (fs.existsSync(src) && !fs.existsSync(dest)) {
+          fs.cpSync(src, dest, { recursive: true });
+          console.log(`[static-samples] Copied dirty-pairs to ${dest}`);
+        }
+      },
     },
   ],
   server: {

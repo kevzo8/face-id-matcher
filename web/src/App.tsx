@@ -125,16 +125,14 @@ export default function App() {
         .withFaceDescriptor();
 
       if (!idDetection) {
-        setResult({ distance: 1, similarity: 0, match: false, threshold, error: 'No face detected in the ID photo' });
+        setResult({ distance: 1, similarity: 0, match: false, threshold, error: 'No face detected in the ID photo. ID photo might be too small or face might not be clear — make sure to take the photos clearly, with good lighting and face directly facing the camera.' });
         setMatching(false);
-        alert('No face detected in the ID photo. Try a clearer photo with better lighting.');
         return;
       }
 
       if (!selfieDetection) {
-        setResult({ distance: 1, similarity: 0, match: false, threshold, error: 'No face detected in the selfie' });
+        setResult({ distance: 1, similarity: 0, match: false, threshold, error: 'No face detected in the selfie. Make sure the photo is clear, with good lighting and face directly facing the camera.' });
         setMatching(false);
-        alert('No face detected in the selfie. Try a clearer photo facing the camera directly.');
         return;
       }
 

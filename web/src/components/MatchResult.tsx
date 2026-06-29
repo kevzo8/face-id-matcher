@@ -54,12 +54,16 @@ export function MatchResult({ result }: MatchResultProps) {
         </span>
       </div>
 
-      {/* Error */}
-      {error && (
+      {/* Error or default no-match guidance */}
+      {error ? (
         <div style={{ textAlign: 'center', marginBottom: 8, fontSize: 12, color: match ? '#f59e0b' : '#ef4444' }}>
           {error}
         </div>
-      )}
+      ) : !match ? (
+        <div style={{ textAlign: 'center', marginBottom: 8, fontSize: 12, color: '#f59e0b', maxWidth: 340, margin: '0 auto 8px', lineHeight: 1.5 }}>
+          ID photo might be too small or face might not be clear. Make sure to take the photos clearly, with good lighting and face directly facing the camera.
+        </div>
+      ) : null}
 
       {/* Quality warnings */}
       {warnings && warnings.length > 0 && (

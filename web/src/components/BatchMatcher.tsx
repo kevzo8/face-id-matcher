@@ -568,6 +568,11 @@ export function BatchMatcher({ detectionModel, provider, serverUrl, threshold, o
                 ))}
               </div>
             )}
+            {!comparePair.match && (!comparePair.warnings || comparePair.warnings.length === 0) && (
+              <div style={{ textAlign: 'center', marginBottom: 8, fontSize: 11, color: '#f59e0b', maxWidth: 400, margin: '0 auto 8px', lineHeight: 1.5 }}>
+                ID photo might be too small or face might not be clear. Make sure to take the photos clearly, with good lighting and face directly facing the camera.
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
               <div style={{ flex: 1, textAlign: 'center' }}>
                 <div style={{ color: '#22c55e', fontSize: 11, marginBottom: 4, fontWeight: 600 }}>ID Photo</div>
