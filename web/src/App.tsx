@@ -14,7 +14,7 @@ type ImageData = {
 } | null;
 
 type DetectionModel = 'fast' | 'accurate';
-type Provider = 'local' | 'rekognition' | 'megamatcher' | 'insightface';
+type Provider = 'local' | 'rekognition' | 'megamatcher' | 'insightface' | 'faceplusplus';
 
 function checkOrientation(detection: faceapi.WithFaceLandmarks<{ detection: faceapi.FaceDetection }>): string | null {
   const landmarks = detection.landmarks;
@@ -74,7 +74,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (provider === 'rekognition') {
+    if (provider === 'rekognition' || provider === 'faceplusplus') {
       setServerUrl('https://face-id-matcher.onrender.com');
     } else if (provider === 'insightface' || provider === 'megamatcher') {
       setServerUrl('https://kvega-cps221-face-match.hf.space');
@@ -313,6 +313,7 @@ export default function App() {
             >
               <option value="insightface">InsightFace (server)</option>
               <option value="rekognition">AWS Rekognition (cloud)</option>
+              <option value="faceplusplus">Face++ (cloud)</option>
               <option value="megamatcher">Megamatcher (server)</option>
               <option value="local">face-api.js (browser)</option>
             </select>

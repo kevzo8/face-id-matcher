@@ -53,7 +53,7 @@ function checkOrientation(detection: faceapi.WithFaceLandmarks<{ detection: face
   return null;
 }
 
-type Provider = 'local' | 'rekognition' | 'megamatcher' | 'insightface';
+type Provider = 'local' | 'rekognition' | 'megamatcher' | 'insightface' | 'faceplusplus';
 
 interface BatchMatcherProps {
   detectionModel: DetectionModel;

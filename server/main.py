@@ -47,6 +47,9 @@ async def lifespan(app: FastAPI):
     elif provider_name == "dlib":
         from providers.dlib_provider import DlibProvider
         provider = DlibProvider()
+    elif provider_name == "faceplusplus":
+        from providers.faceplusplus_provider import FacePlusPlusProvider
+        provider = FacePlusPlusProvider()
     yield
 
 
@@ -135,7 +138,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="CPS-221 Face Match API Server")
     parser.add_argument("--port", type=int, default=5190)
-    parser.add_argument("--provider", default="rekognition", choices=["insightface", "rekognition", "megamatcher"])
+    parser.add_argument("--provider", default="rekognition", choices=["insightface", "rekognition", "megamatcher", "faceplusplus"])
     parser.add_argument("--host", default="127.0.0.1")
     args = parser.parse_args()
 
@@ -145,6 +148,9 @@ if __name__ == "__main__":
     elif args.provider == "megamatcher":
         from providers.megamatcher_provider import MegamatcherProvider
         provider = MegamatcherProvider()
+    elif args.provider == "faceplusplus":
+        from providers.faceplusplus_provider import FacePlusPlusProvider
+        provider = FacePlusPlusProvider()
     else:
         from providers.rekognition_provider import RekognitionProvider
         provider = RekognitionProvider()
