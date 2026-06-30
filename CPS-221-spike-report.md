@@ -20,6 +20,7 @@ The face matching proof-of-concept is fully functional with:
 | Validation (Megamatcher) | ✅ Done | Full-resolution: ~100% accuracy. 800px: 45% error rate on landscapes |
 | Validation (Rekognition) | ✅ Done | Both datasets: **100% accuracy** (0 FN, 0 FP, 0 errors) |
 | Validation (Face++) | ✅ Done | 800px: 85.2% (23/27 AP, 4 FN). With auto-rotation. Resolution-sensitive. |
+| Validation (Azure Face API) | ⛔ Blocked | Requires Microsoft approval via https://aka.ms/facerecognition — not available for immediate testing |
 | Documentation | ✅ Done | README with full guide, spike report, sample results per dataset |
 
 ---
@@ -412,6 +413,49 @@ Values below are **InsightFace cosine similarity** (0 = different, 1 = identical
 
 ## 8. Validation Results (InsightFace `buffalo_l` — Kaggle Dataset)
 
+### 8.0 Test Methodology
+
+#### Source Data: Kaggle "Selfies & ID Images" Dataset
+
+The primary test data comes from a publicly available [Kaggle dataset](https://www.kaggle.com/datasets) containing **27 subjects** (11 Hispanic, 16 Caucasian), each with:
+- **1–2 ID photos** (scanned government-style ID cards, 4000×3000+ resolution)
+- **13 selfies** taken in varying conditions (lighting, angle, distance)
+
+This gives us **27 same-person pairs** (ID photo vs selfie of the same person) for testing true positive rate.
+
+#### The "40 Dirty Pairs" Test Set
+
+To test both **true positives** (same person should match) and **true negatives** (different people should NOT match), we created a synthetic test set of **40 pairs**:
+
+- **27 same-person pairs** (pairs 1–27): Each subject's ID photo matched against their own selfie. These should all produce high similarity scores (auto-approve).
+- **13 cross-person pairs** (pairs 28–40): Each subject's ID photo matched against a **different person's** selfie (e.g., Weslley's ID vs Alessandro's selfie). These should all produce low similarity scores (manual review / reject).
+
+**Why "dirty"?** The images were intentionally **resized to 800px max dimension** and **JPEG-compressed** (quality 85) to simulate real-world conditions:
+- Mobile phone cameras often produce compressed images
+- ID photos scanned at low resolution
+- Network transfer may further compress images
+- Landscape vs portrait orientation mismatches (ID is landscape, selfie is portrait)
+
+This "dirty" preprocessing stresses the face detection algorithms more than pristine full-resolution images would, giving us a more realistic picture of production performance.
+
+#### What We Measure
+
+| Metric | Definition | Ideal |
+|--------|-----------|-------|
+| **Auto-Approve (AP)** | Same-person pair correctly matched (similarity ≥ threshold) | 27/27 (100%) |
+| **Manual Review (MR)** | Cross-person pair correctly rejected (similarity < threshold) | 13/13 (100%) |
+| **False Negative (FN)** | Same-person pair incorrectly rejected | 0 |
+| **False Positive (FP)** | Cross-person pair incorrectly matched | 0 |
+| **Error** | Face detection failure (no face found in one or both images) | 0 |
+
+#### Two Resolution Levels
+
+Each provider was tested at **two resolutions** to isolate resolution sensitivity:
+1. **800px (dirty pairs)**: Compressed, resized — simulates worst-case production images
+2. **Original (Kaggle)**: Full resolution (4000×3000+) — simulates best-case production images
+
+Providers that perform well at 800px are more robust for production use.
+
 ### 8.1 Full Kaggle Sweep (27 same-person pairs)
 
 | Threshold | Pass | Fail | Accuracy |
@@ -555,7 +599,26 @@ Testing the 4 Face++ failures at 2000px resolution (using Kaggle originals) reve
 
 - **AWS Rekognition** is flawless on this dataset — 100% accuracy, 0 errors, 0 false positives, 0 false negatives. Similarity scores are uniformly high (98.5%+) with zero sensitivity to orientation or resolution.
 
-### 8.7 Multi-Provider Comparison (Kaggle — Original Full Resolution)
+### 8.7 Azure Face API (Blocked — Requires Microsoft Approval)
+
+Azure Face API was attempted but **could not be tested** due to Microsoft's responsible AI policy.
+
+**Setup completed:**
+- Azure resource created: `face-id-matcher.cognitiveservices.azure.com`
+- F0 (Free) tier: 30,000 transactions/month
+- Endpoint and API key configured
+
+**Blocker:** The `/face/v1.0/verify` endpoint (face-to-face comparison) returned:
+```
+Feature is not supported, missing approval for one or more of the following features:
+Identification, Verification. Please apply for access at https://aka.ms/facerecognition
+```
+
+**Resolution:** Microsoft requires a formal application at https://aka.ms/facerecognition explaining the use case before enabling face verification. Approval can take days to weeks. This is part of Microsoft's responsible AI policy to prevent misuse of facial recognition technology.
+
+**Implication for SVI:** If Azure Face API is the chosen provider, the application must be submitted well in advance of production launch. The 30K/month free tier is generous (vs Rekognition's 1K/month for 12 months), but the approval process adds lead time.
+
+### 8.8 Multi-Provider Comparison (Kaggle — Original Full Resolution)
 
 | Metric | InsightFace (buffalo_l) | Megamatcher (pynsdk) | AWS Rekognition |
 |--------|------------------------|---------------------|-----------------|
@@ -567,7 +630,7 @@ Testing the 4 Face++ failures at 2000px resolution (using Kaggle originals) reve
 
 **Note:** On original full-resolution Kaggle images, all 3 providers achieve 100% accuracy on processable pairs. Megamatcher scores are notably higher on originals (mean ~94%) vs 800px (where 45% fail entirely). Rekognition's 2 errors are purely AWS size-limit issues, not face detection failures.
 
-### 8.8 face-api.js (Browser-Based)
+### 8.9 face-api.js (Browser-Based)
 
 face-api.js was evaluated conceptually but not benchmarked against the 40-pair dataset because:
 - It runs in the browser, not batchable via Python CLI
@@ -575,7 +638,63 @@ face-api.js was evaluated conceptually but not benchmarked against the 40-pair d
 - Accuracy is expected to be similar to InsightFace (both use similar deep learning models — MobileNet/ResNet backbone)
 - Suitable for real-time preview/quality checks in the browser before server submission
 
-### 8.9 Key Findings (All Providers)
+### 8.10 Provider Pros & Cons Summary
+
+#### AWS Rekognition
+
+| Pros | Cons |
+|------|------|
+| **100% accuracy** on both 800px and full-resolution datasets | $0.001/txn (most expensive cloud option) |
+| Zero face detection failures — handles all orientations and resolutions | 5MB image size limit (Daiane's selfie exceeded this) |
+| No preprocessing needed — works on raw images as-is | Requires AWS account and IAM credentials |
+| Highest similarity scores (98.5%–100%) with maximum separation gap | Free tier limited to 1K calls/month for 12 months only |
+| Zero false positives on cross-person pairs | Latency ~200-500ms (network round-trip to AWS) |
+| Mature, well-documented API with SDKs in all major languages | Data leaves your infrastructure (sent to AWS) |
+
+#### InsightFace (Self-Hosted)
+
+| Pros | Cons |
+|------|------|
+| **$0/txn** — completely free, open source | 92.5% accuracy on 800px (3 errors, 2 false negatives) |
+| 100% accuracy on full-resolution Kaggle images | Requires self-hosting (server costs, maintenance) |
+| Runs entirely on your infrastructure — no data leaves | CPU-bound inference (~2-5/sec on 4-core) |
+| No API rate limits or size limits | Paolo's face undetectable at 800px (hard edge case) |
+| Easy setup — `pip install insightface` | Lower similarity scores (19%–67%) require careful threshold tuning |
+| Already deployed to Hugging Face Spaces for POC | No official support — community-driven |
+
+#### Face++ (Megvii)
+
+| Pros | Cons |
+|------|------|
+| **$0.00019/txn** — cheapest cloud option (10x cheaper than Rekognition) | 85.2% accuracy on 800px (4 false negatives) |
+| 1 QPS free forever — no time limit on free tier | Resolution-sensitive — needs ≥2000px for optimal results |
+| Auto-rotation support fixes orientation issues | Cross-person scores dangerously high (max 62.8%) — risk of false positives |
+| Simple REST API — easy to integrate | Free tier limited to 1 request/second (slow for batch processing) |
+| Good accuracy on production-quality images (~93% at 2000px) | Data sent to Chinese company's servers (compliance concerns) |
+| No image size limit on paid tier | No official SDK — raw HTTP calls only |
+
+#### Megamatcher (Neurotechnology)
+
+| Pros | Cons |
+|------|------|
+| **$0/txn** — SVI already owns the license | 45% error rate on 800px landscape images |
+| ~100% accuracy on full-resolution originals | Requires high-resolution inputs (≥600×800) |
+| Already integrated in SVI's OWA backend (`/biometric` endpoint) | SDK is large (~500MB) — complex deployment |
+| Highest scores on processable pairs (mean ~94%) | 1 false negative on processed pairs (Fernanda) |
+| Supports 1:1 verification, 1:N identification, and deduplication | 30-day trial only for new deployments |
+| On-premise — no data leaves your infrastructure | Windows/Linux only — no macOS/iOS/Android SDK in Python |
+
+#### Azure Face API
+
+| Pros | Cons |
+|------|------|
+| **30K/month free** — most generous free tier | **Blocked** — requires Microsoft approval via https://aka.ms/facerecognition |
+| $0.00050/txn after free tier (cheaper than Rekognition) | Approval process takes days to weeks |
+| Mature API with good documentation | Responsible AI restrictions may limit use cases |
+| Runs on Azure infrastructure (familiar to SVI) | Cannot be tested immediately — adds lead time |
+| Supports face detection, verification, identification, and grouping | Data leaves your infrastructure (sent to Microsoft) |
+
+### 8.11 Key Findings (All Providers)
 
 1. **Resolution matters for Megamatcher and Face++** — Megamatcher fails on 45% of 800px landscape images but achieves 95.5% accuracy on processed pairs and ~100% on full-resolution originals. Face++ fails on 4/27 same-person pairs at 800px but succeeds at 2000px (Paolo: 0% → 61.4%). The 800px failures are dataset artifacts, not production concerns (real captures will be full resolution).
 2. **InsightFace is the best free option** — 100% accuracy on full-resolution, 92.5% on 800px, only 3 detection errors (all Paolo — a legitimately hard case). At $0/txn, it's ideal for POC and low-volume production.
