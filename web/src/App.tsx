@@ -103,6 +103,7 @@ export default function App() {
             source_image: toBase64(idImage.element),
             target_image: toBase64(selfieImage.element),
             threshold,
+            provider,
           }),
         });
 

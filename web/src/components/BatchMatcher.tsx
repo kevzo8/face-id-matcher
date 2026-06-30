@@ -177,6 +177,7 @@ export function BatchMatcher({ detectionModel, provider, serverUrl, threshold, o
               source_image: toBase64(idEl),
               target_image: toBase64(selfieEl),
               threshold,
+              provider,
             }),
           });
 
