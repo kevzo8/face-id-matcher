@@ -8,6 +8,9 @@ import { CsvViewer } from './components/CsvViewer';
 type ImageData = {
   url: string;
   element: HTMLImageElement;
+  width: number;
+  height: number;
+  size: number;
 } | null;
 
 type DetectionModel = 'fast' | 'accurate';
@@ -40,6 +43,7 @@ export default function App() {
     match: boolean;
     threshold: number;
     error?: string;
+    warnings?: string[];
   } | null>(null);
   const [threshold, setThreshold] = useState(0.7);
   const [detectionModel, setDetectionModel] = useState<DetectionModel>('accurate');
