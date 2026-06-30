@@ -48,7 +48,7 @@ export default function App() {
   const [threshold, setThreshold] = useState(0.7);
   const [detectionModel, setDetectionModel] = useState<DetectionModel>('accurate');
   const [provider, setProvider] = useState<Provider>('insightface');
-  const [serverUrl, setServerUrl] = useState('https://kvega-cps221-face-match.hf.space');
+  const [serverUrl, setServerUrl] = useState('https://face-id-matcher.onrender.com');
   const [mode, setMode] = useState<'single' | 'batch' | 'csv'>('single');
   const [showInfo, setShowInfo] = useState(false);
   const [showTips, setShowTips] = useState(true);
