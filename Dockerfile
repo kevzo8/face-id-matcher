@@ -10,7 +10,8 @@ RUN python -m pip install --no-cache-dir \
         "uvicorn[standard]>=0.34.0" \
         python-multipart>=0.0.20 \
         boto3>=1.36.0 \
-        requests>=2.31.0
+        requests>=2.31.0 \
+        Pillow>=10.0.0
 
 EXPOSE 10000
 
