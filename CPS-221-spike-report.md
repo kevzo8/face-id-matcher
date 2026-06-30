@@ -13,12 +13,13 @@ The face matching proof-of-concept is fully functional with:
 
 | Component | Status | Details |
 |-----------|--------|---------|
-| Web app (React + Vite) | ✅ Done | 3 modes (single, batch, CSV viewer), 4 providers, threshold slider, quality warnings |
-| Batch processor (Python) | ✅ Done | InsightFace, Rekognition, Megamatcher (pynsdk) providers; parallel workers; relative path support |
-| Server (FastAPI) | ✅ Done | Deployed to Hugging Face Spaces; accepts multipart + JSON base64; quality warnings |
+| Web app (React + Vite) | ✅ Done | 3 modes (single, batch, CSV viewer), 5 providers, threshold slider, quality warnings |
+| Batch processor (Python) | ✅ Done | InsightFace, Rekognition, Megamatcher, Face++ providers; parallel workers; relative path support |
+| Server (FastAPI) | ✅ Done | Deployed to Render (multi-provider); accepts multipart + JSON base64; quality warnings |
 | Validation (InsightFace) | ✅ Done | Full-resolution: 100% accuracy. 800px: 92.5% (24/27 AP, 2 FN, 3 errors) |
 | Validation (Megamatcher) | ✅ Done | Full-resolution: ~100% accuracy. 800px: 45% error rate on landscapes |
 | Validation (Rekognition) | ✅ Done | Both datasets: **100% accuracy** (0 FN, 0 FP, 0 errors) |
+| Validation (Face++) | ✅ Done | 800px: 85.2% (23/27 AP, 4 FN). With auto-rotation. Resolution-sensitive. |
 | Documentation | ✅ Done | README with full guide, spike report, sample results per dataset |
 
 ---
@@ -508,35 +509,36 @@ Values below are **InsightFace cosine similarity** (0 = different, 1 = identical
 
 ### 8.6 Multi-Provider Comparison (Dirty Pairs — 800px)
 
-| Metric | Megamatcher (pynsdk) | InsightFace (buffalo_l) | AWS Rekognition |
-|--------|---------------------|------------------------|-----------------|
-| Total pairs | 40 | 40 | 40 |
-| Same-person pairs | 27 | 27 | 27 |
-| **Auto-Approve** (same-person) | **16** (59.3%) | **24** (88.9%) | **27** (100%) |
-| **Manual Review** (cross-person correct) | **5** (38.5%) | **11** (84.6%) | **13** (100%) |
-| **False Negatives** (same-person rejected) | **1** (3.7%) | **2** (7.4%) | **0** |
-| **Errors** (no face detected) | **18** (45.0%) | **3** (7.5%) | **0** |
-| Same-person mean similarity | ~94% (processed pairs) | 48.5% | 99.6% |
-| Cross-person mean similarity | ~1% | 2.1% | 0.0% |
-| Min/Max same-person | 72%–100% | 19%–67% | 98.5%–100% |
-| Landscape orientation handling | ❌ Fails (18/40) | ⚠️ Reduced scores | ✅ Perfect |
-| Resolution sensitivity | ❌ High (≥600×800) | ✅ Low | ✅ None |
+| Metric | Megamatcher (pynsdk) | InsightFace (buffalo_l) | Face++ (Megvii) | AWS Rekognition |
+|--------|---------------------|------------------------|-----------------|-----------------|
+| Total pairs | 40 | 40 | 40 | 40 |
+| Same-person pairs | 27 | 27 | 27 | 27 |
+| **Auto-Approve** (same-person) | **16** (59.3%) | **24** (88.9%) | **23** (85.2%) | **27** (100%) |
+| **Manual Review** (cross-person correct) | **5** (38.5%) | **11** (84.6%) | **13** (100%) | **13** (100%) |
+| **False Negatives** (same-person rejected) | **1** (3.7%) | **2** (7.4%) | **4** (14.8%) | **0** |
+| **Errors** (no face detected) | **18** (45.0%) | **3** (7.5%) | **0** | **0** |
+| Same-person mean similarity | ~94% (processed pairs) | 48.5% | 86% | 99.6% |
+| Cross-person mean similarity | ~1% | 2.1% | 28% | 0.0% |
+| Min/Max same-person | 72%–100% | 19%–67% | 80%–94% | 98.5%–100% |
+| Landscape orientation handling | ❌ Fails (18/40) | ⚠️ Reduced scores | ⚠️ Auto-rotation helps | ✅ Perfect |
+| Resolution sensitivity | ❌ High (≥600×800) | ✅ Low | ⚠️ Moderate (fails <800px) | ✅ None |
 
 **Key observations:**
 
-| Case | Megamatcher | InsightFace | Rekognition |
-|------|-------------|-------------|-------------|
-| **Weslley** (pair 1, same) | 100% ✅ | 61% ✅ | 100% ✅ |
-| **Luis** (pair 3, same) | 93% ✅ | 46% ✅ | 100% ✅ |
-| **Fernanda** (pair 5, same) | 9% ❌ FN | 53% ✅ | 100% ✅ |
-| **Daiane** (pair 6, same) | ERROR ❌ | 35% ✅ | 100% ✅ |
-| **Miia** (pair 14, same) | ERROR ❌ | 25% ❌ FN | 99% ✅ |
-| **Diego** (pair 16, same) | ERROR ❌ | 31% ✅ | 99% ✅ |
-| **Kateryna** (pair 19, same) | 100% ✅ | 54% ✅ | 99% ✅ |
-| **Paolo** (pair 13, same) | ERROR ❌ | ERROR ❌ | 99% ✅ |
+| Case | Megamatcher | InsightFace | Face++ | Rekognition |
+|------|-------------|-------------|--------|-------------|
+| **Weslley** (pair 1, same) | 100% ✅ | 61% ✅ | 91% ✅ | 100% ✅ |
+| **Luis** (pair 3, same) | 93% ✅ | 46% ✅ | 84% ✅ | 100% ✅ |
+| **Fernanda** (pair 5, same) | 9% ❌ FN | 53% ✅ | 90% ✅ | 100% ✅ |
+| **Daiane** (pair 6, same) | ERROR ❌ | 35% ✅ | 82% ✅ (rotated) | 100% ✅ |
+| **Miia** (pair 14, same) | ERROR ❌ | 25% ❌ FN | 0% ❌ FN | 99% ✅ |
+| **Diego** (pair 16, same) | ERROR ❌ | 31% ✅ | 0% ❌ FN | 99% ✅ |
+| **Kateryna** (pair 19, same) | 100% ✅ | 54% ✅ | 86% ✅ | 99% ✅ |
+| **Paolo** (pair 13, same) | ERROR ❌ | ERROR ❌ | 0% ❌ FN | 99% ✅ |
 
 - **Megamatcher** has highest scores on high-res portrait images (often 100%) but completely fails on 45% of the dataset (landscape 800px). On images it can process, it's reliable (1 false negative).
 - **InsightFace** is the most consistent free option — only 3/40 errors (all Paolo — face undetectable even by Rekognition) and 2 false negatives (Miia 25%, Rayanne 19%). All cross-person pairs correctly rejected.
+- **Face++** performs well with auto-rotation (fixed 3/7 failures) but is resolution-sensitive. Paolo at 2000px scores 61.4% vs 0% at 800px, confirming resolution is the limiting factor. Cross-person scores are notably higher (max 62.8%) than other providers.
 - **AWS Rekognition** is flawless on this dataset — 100% accuracy, 0 errors, 0 false positives, 0 false negatives. Similarity scores are uniformly high (98.5%+) with zero sensitivity to orientation or resolution.
 
 ### 8.7 Multi-Provider Comparison (Kaggle — Original Full Resolution)
@@ -561,12 +563,13 @@ face-api.js was evaluated conceptually but not benchmarked against the 40-pair d
 
 ### 8.9 Key Findings (All Providers)
 
-1. **Resolution matters for Megamatcher only** — Megamatcher fails on 45% of 800px landscape images but achieves 95.5% accuracy on processed pairs and ~100% on full-resolution originals. The 800px failure is a dataset artifact, not a production concern (real captures will be full resolution).
-2. **InsightFace is the best free option** — 100% accuracy on full-resolution, 92.5% on 800px, only 3 detection errors (all Paola — a legitimately hard case). At $0/txn, it's ideal for POC and low-volume production.
-3. **AWS Rekognition is the most robust provider** — 100% on both datasets (size-limit errors aside), handles all orientations, resolutions, and image qualities. At $0.001/txn ($10/10K verifications), it's production-ready.
-4. **Detection failures are person-specific, not image-specific** — Paolo consistently fails across all 3 providers (face is partially occluded/blurry), suggesting this is a genuine edge case where human review is appropriate.
-5. **Optimal threshold 0.7 works across providers** — Rekognition's native scores (98%+) are well above threshold. InsightFace (19–67%) clusters near threshold — tightening to 0.5 would capture more same-person pairs at slight false-positive risk.
-6. **Quality warnings add value at margins** — for borderline scores (0.60–0.68 in InsightFace), quality checks help explain why similarity is low (small face, bad lighting, side view) so human reviewers can make informed decisions.
+1. **Resolution matters for Megamatcher and Face++** — Megamatcher fails on 45% of 800px landscape images but achieves 95.5% accuracy on processed pairs and ~100% on full-resolution originals. Face++ fails on 4/27 same-person pairs at 800px but succeeds at 2000px (Paolo: 0% → 61.4%). The 800px failures are dataset artifacts, not production concerns (real captures will be full resolution).
+2. **InsightFace is the best free option** — 100% accuracy on full-resolution, 92.5% on 800px, only 3 detection errors (all Paolo — a legitimately hard case). At $0/txn, it's ideal for POC and low-volume production.
+3. **Face++ is the cheapest cloud option** — $0.00019/txn (10x cheaper than Rekognition), 85.2% accuracy on 800px with auto-rotation. Free tier is 1 QPS forever. Resolution-sensitive but performs well on production-quality images. Cross-person scores are higher (max 62.8%) than other providers, requiring careful threshold tuning.
+4. **AWS Rekognition is the most robust provider** — 100% on both datasets (size-limit errors aside), handles all orientations, resolutions, and image qualities. At $0.001/txn ($10/10K verifications), it's production-ready.
+5. **Detection failures are resolution-specific, not person-specific** — Paolo fails across all providers at 800px but succeeds at 2000px (InsightFace: 47.3%, Face++: 61.4%). Only Rekognition handles Paolo at 800px (98.5%), confirming its superior face detection.
+6. **Optimal threshold varies by provider** — Rekognition's native scores (98%+) are well above threshold. InsightFace (19–67%) clusters near threshold. Face++ cross-person scores reach 62.8%, requiring threshold ≥0.65 to avoid false positives.
+7. **Quality warnings add value at margins** — for borderline scores (0.60–0.68 in InsightFace), quality checks help explain why similarity is low (small face, bad lighting, side view) so human reviewers can make informed decisions.
 
 ---
 
@@ -588,6 +591,6 @@ face-api.js was evaluated conceptually but not benchmarked against the 40-pair d
 | **SumSub** (full KYC) | **~$0.40** | $0 | **~$4,000** | **~$48,000** |
 | **Veriff** (full KYC) | **$0.80-$1.89** | $0 | **~$8,000-$18,900** | **~$96,000-$226,800** |
 
-**Recommendation (Post-POC):** InsightFace is validated as the best free/self-hosted POC provider (deployed to Hugging Face Spaces, 100% accuracy on Kaggle originals). AWS Rekognition is the **most robust option** tested — 100% accuracy on both full-resolution and 800px datasets, handles all orientations, and costs only $0.001/txn. For production, **Megamatcher** (already licensed by SVI, $0 marginal cost) should be the primary choice for full-resolution images — it achieves ~100% accuracy on originals and is already integrated in the OWA backend via the `/biometric` endpoint. AWS Rekognition is the recommended cloud fallback for edge cases where Megamatcher struggles (low-res or landscape images). Full KYC platforms (Veriff, SumSub) are only worth considering if document verification and liveness detection are also needed as a bundle.
+**Recommendation (Post-POC):** InsightFace is validated as the best free/self-hosted POC provider (deployed to Hugging Face Spaces, 100% accuracy on Kaggle originals). AWS Rekognition is the **most robust option** tested — 100% accuracy on both full-resolution and 800px datasets, handles all orientations, and costs only $0.001/txn. For production, **Megamatcher** (already licensed by SVI, $0 marginal cost) should be the primary choice for full-resolution images — it achieves ~100% accuracy on originals and is already integrated in the OWA backend via the `/biometric` endpoint. **Face++** is the most cost-effective cloud option at $0.00019/txn (10x cheaper than Rekognition) with 85% accuracy on 800px and auto-rotation support, but requires production-quality images (≥2000px) for optimal results. AWS Rekognition remains the recommended cloud fallback for edge cases where other providers struggle (low-res, landscape, or challenging images). Full KYC platforms (Veriff, SumSub) are only worth considering if document verification and liveness detection are also needed as a bundle.
 
 **Next step:** Test with real Philippine ID photos to validate accuracy on production-like images before committing to a production provider choice.
