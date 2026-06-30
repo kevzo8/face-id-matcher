@@ -73,6 +73,14 @@ export default function App() {
     loadModels();
   }, []);
 
+  useEffect(() => {
+    if (provider === 'rekognition') {
+      setServerUrl('https://face-id-matcher.onrender.com');
+    } else if (provider === 'insightface' || provider === 'megamatcher') {
+      setServerUrl('https://kvega-cps221-face-match.hf.space');
+    }
+  }, [provider]);
+
   const handleMatch = useCallback(async () => {
     if (!idImage || !selfieImage || !modelsLoaded) return;
     setMatching(true);
