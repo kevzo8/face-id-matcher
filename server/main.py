@@ -28,10 +28,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from providers.insightface_provider import InsightFaceProvider
-from providers.rekognition_provider import RekognitionProvider
-from providers.megamatcher_provider import MegamatcherProvider
-
 provider = None
 
 
@@ -40,11 +36,17 @@ async def lifespan(app: FastAPI):
     global provider
     provider_name = os.environ.get("FACE_MATCH_PROVIDER", "")
     if provider_name == "insightface":
+        from providers.insightface_provider import InsightFaceProvider
         provider = InsightFaceProvider()
     elif provider_name == "megamatcher":
+        from providers.megamatcher_provider import MegamatcherProvider
         provider = MegamatcherProvider()
     elif provider_name == "rekognition":
+        from providers.rekognition_provider import RekognitionProvider
         provider = RekognitionProvider()
+    elif provider_name == "dlib":
+        from providers.dlib_provider import DlibProvider
+        provider = DlibProvider()
     yield
 
 
@@ -138,10 +140,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.provider == "insightface":
+        from providers.insightface_provider import InsightFaceProvider
         provider = InsightFaceProvider()
     elif args.provider == "megamatcher":
+        from providers.megamatcher_provider import MegamatcherProvider
         provider = MegamatcherProvider()
     else:
+        from providers.rekognition_provider import RekognitionProvider
         provider = RekognitionProvider()
 
     print(f"\n  CPS-221 Face Match API Server")
