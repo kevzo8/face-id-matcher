@@ -80,6 +80,24 @@ export function BatchMatcher({ detectionModel, provider, serverUrl, threshold, o
   const [showPhotos, setShowPhotos] = useState(true);
   const [comparePair, setComparePair] = useState<PairResult | null>(null);
   const [orphans, setOrphans] = useState<FileEntry[]>([]);
+  const [sortBy, setSortBy] = useState<string>('code');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (col: string) => {
+    setSortDir((d) => (sortBy === col ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+    setSortBy(col);
+  };
+
+  const sorted = [...results].sort((a, b) => {
+    let va: any = (a as any)[sortBy];
+    let vb: any = (b as any)[sortBy];
+    if (sortBy === 'code') { va = parseInt(va, 10); vb = parseInt(vb, 10); }
+    if (typeof va === 'string') va = va.toLowerCase();
+    if (typeof vb === 'string') vb = vb.toLowerCase();
+    if (va == null) va = -Infinity;
+    if (vb == null) vb = -Infinity;
+    return (va < vb ? -1 : va > vb ? 1 : 0) * (sortDir === 'asc' ? 1 : -1);
+  });
 
   const handleFiles = useCallback(async (files: FileList | File[]) => {
     const parsed: FileEntry[] = [];
@@ -174,6 +192,7 @@ export function BatchMatcher({ detectionModel, provider, serverUrl, threshold, o
             similarity: data.similarity ?? 0,
             distance: data.distance ?? 1,
             match: data.match ?? false,
+            error: data.error ?? undefined,
             warnings: data.warnings ?? undefined,
             idUrl: idEl.src,
             selfieUrl: selfieEl.src,
@@ -231,6 +250,12 @@ export function BatchMatcher({ detectionModel, provider, serverUrl, threshold, o
       setProgress(i + 1);
     }
 
+    batchResults.sort((a, b) => {
+      const na = parseInt(a.code, 10);
+      const nb = parseInt(b.code, 10);
+      if (!isNaN(na) && !isNaN(nb)) return na - nb;
+      return a.code.localeCompare(b.code);
+    });
     setResults(batchResults);
     setProcessing(false);
   }, [entries, detectionModel, threshold, provider, serverUrl]);
@@ -268,7 +293,8 @@ export function BatchMatcher({ detectionModel, provider, serverUrl, threshold, o
         Label can be: <strong style={{ color: '#22c55e' }}>ID</strong> or{' '}
         <strong style={{ color: '#3b82f6' }}>Selfie</strong> / Face / Photo<br />
         Example: <code style={{ background: '#0f172a', padding: '1px 6px', borderRadius: 4 }}>1_ID_Kevin.jpg</code> +
-        <code style={{ background: '#0f172a', padding: '1px 6px', borderRadius: 4 }}>1_Selfie_Kevin.jpg</code>
+        <code style={{ background: '#0f172a', padding: '1px 6px', borderRadius: 4 }}>1_Selfie_Kevin.jpg</code><br />
+        <span style={{ color: '#f59e0b' }}>Tip:</span> Use well-lit, front-facing, blur-free photos with similar orientation for best results.
       </div>
 
       {entries.length === 0 ? (
@@ -461,9 +487,22 @@ export function BatchMatcher({ detectionModel, provider, serverUrl, threshold, o
               <tr style={{ color: '#64748b', textAlign: 'left' }}>
                 {showPhotos && <th style={{ padding: '4px 6px' }}>ID Photo</th>}
                 {showPhotos && <th style={{ padding: '4px 6px' }}>Selfie</th>}
-                <th style={{ padding: '4px 6px' }}>Code</th>
-                <th style={{ padding: '4px 6px' }}>Name</th>
-                <th style={{ padding: '4px 6px', textAlign: 'right' }}>Similarity</th>
+                {['code', 'name', 'similarity'].map((col) => (
+                  <th
+                    key={col}
+                    onClick={() => handleSort(col)}
+                    style={{
+                      padding: '4px 6px',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      textAlign: col === 'similarity' ? 'right' : 'left',
+                      color: sortBy === col ? '#e2e8f0' : undefined,
+                    }}
+                  >
+                    {col.charAt(0).toUpperCase() + col.slice(1)}
+                    {sortBy === col && (sortDir === 'asc' ? ' \u25B2' : ' \u25BC')}
+                  </th>
+                ))}
                 <th style={{ padding: '4px 6px', textAlign: 'center' }}>Match</th>
                 <th style={{ padding: '4px 6px' }}>Error</th>
                 <th style={{ padding: '4px 6px', textAlign: 'center' }}>Action</th>
@@ -471,7 +510,7 @@ export function BatchMatcher({ detectionModel, provider, serverUrl, threshold, o
               </tr>
             </thead>
             <tbody>
-              {results.map((r, i) => (
+              {sorted.map((r, i) => (
                 <tr
                   key={i}
                   style={{

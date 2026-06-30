@@ -2,9 +2,53 @@ import React, { useState, useCallback } from 'react';
 
 type CsvRow = Record<string, string>;
 
+function SortTh({ col, label, align, sortBy, sortDir, onSort }: {
+  col: string; label: string; align?: string;
+  sortBy: string; sortDir: string; onSort: (col: string) => void;
+}) {
+  return (
+    <th
+      onClick={() => onSort(col)}
+      style={{
+        padding: '4px 6px',
+        cursor: 'pointer',
+        userSelect: 'none',
+        textAlign: (align || 'left') as any,
+        color: sortBy === col ? '#e2e8f0' : undefined,
+      }}
+    >
+      {label}
+      {sortBy === col && (sortDir === 'asc' ? ' \u25B2' : ' \u25BC')}
+    </th>
+  );
+}
+
 function fileNameFromPath(path: string): string {
   const parts = path.replace(/\\/g, '/').split('/');
   return parts[parts.length - 1] || path;
+}
+
+function RotatableImage({ src, alt, onError }: { src: string; alt: string; onError: () => void }) {
+  const [rot, setRot] = React.useState(0);
+  const [flipH, setFlipH] = React.useState(false);
+  const [flipV, setFlipV] = React.useState(false);
+  return (
+    <>
+      <img
+        src={src}
+        alt={alt}
+        style={{ width: '100%', maxHeight: 300, objectFit: 'contain', borderRadius: 8, transform: `rotate(${rot}deg) scaleX(${flipH ? -1 : 1}) scaleY(${flipV ? -1 : 1})`, transition: 'transform 0.2s' }}
+        onError={onError}
+      />
+      <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+        <button onClick={() => setRot((r) => ((r + 90) % 360 + 360) % 360)} style={{ padding: '2px 8px', fontSize: 10, border: '1px solid #334155', borderRadius: 4, cursor: 'pointer', background: '#1e293b', color: '#cbd5e1', lineHeight: 1.6 }} title="Rotate 90° CW">↻ 90°</button>
+        <button onClick={() => setRot((r) => ((r - 90) % 360 + 360) % 360)} style={{ padding: '2px 8px', fontSize: 10, border: '1px solid #334155', borderRadius: 4, cursor: 'pointer', background: '#1e293b', color: '#cbd5e1', lineHeight: 1.6 }} title="Rotate 90° CCW">↺ 90°</button>
+        <button onClick={() => setFlipH((f) => !f)} style={{ padding: '2px 8px', fontSize: 10, border: '1px solid #334155', borderRadius: 4, cursor: 'pointer', background: '#1e293b', color: '#cbd5e1', lineHeight: 1.6 }} title="Flip horizontal">⇔</button>
+        <button onClick={() => setFlipV((f) => !f)} style={{ padding: '2px 8px', fontSize: 10, border: '1px solid #334155', borderRadius: 4, cursor: 'pointer', background: '#1e293b', color: '#cbd5e1', lineHeight: 1.6 }} title="Flip vertical">⇕</button>
+        <button onClick={() => { setRot(0); setFlipH(false); setFlipV(false); }} style={{ padding: '2px 8px', fontSize: 10, border: '1px solid #475569', borderRadius: 4, cursor: 'pointer', background: '#1e293b', color: '#94a3b8', lineHeight: 1.6 }} title="Reset">Reset</button>
+      </div>
+    </>
+  );
 }
 
 export function CsvViewer() {
@@ -13,6 +57,25 @@ export function CsvViewer() {
   const [showPhotos, setShowPhotos] = useState(true);
   const [comparePair, setComparePair] = useState<CsvRow | null>(null);
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = useState<string>('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const handleSort = (col: string) => {
+    setSortDir((d) => (sortBy === col ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+    setSortBy(col);
+  };
+
+  const sorted = [...rows].sort((a, b) => {
+    if (!sortBy) return 0;
+    let va: any = a[sortBy];
+    let vb: any = b[sortBy];
+    const na = parseFloat(va), nb = parseFloat(vb);
+    if (!isNaN(na) && !isNaN(nb)) { va = na; vb = nb; }
+    if (typeof va === 'string') va = va.toLowerCase();
+    if (typeof vb === 'string') vb = vb.toLowerCase();
+    if (va == null) va = '';
+    if (vb == null) vb = '';
+    return (va < vb ? -1 : va > vb ? 1 : 0) * (sortDir === 'asc' ? 1 : -1);
+  });
 
   const hasCol = (name: string) => headers.some((h) => h.toLowerCase() === name.toLowerCase());
   const col = (name: string) => headers.find((h) => h.toLowerCase() === name.toLowerCase()) || '';
@@ -225,16 +288,16 @@ export function CsvViewer() {
                   <tr style={{ color: '#64748b', textAlign: 'left' }}>
                     {hasPhotos && showPhotos && idPathCol && <th style={{ padding: '4px 6px' }}>ID Photo</th>}
                     {hasPhotos && showPhotos && selfiePathCol && <th style={{ padding: '4px 6px' }}>Selfie</th>}
-                    {codeCol && <th style={{ padding: '4px 6px' }}>Code</th>}
-                    {similarityCol && <th style={{ padding: '4px 6px', textAlign: 'right' }}>Similarity</th>}
-                    {distanceCol && <th style={{ padding: '4px 6px', textAlign: 'right' }}>Distance</th>}
+                    {codeCol && <SortTh col={codeCol} label="Code" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />}
+                    {similarityCol && <SortTh col={similarityCol} label="Similarity" align="right" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />}
+                    {distanceCol && <SortTh col={distanceCol} label="Distance" align="right" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />}
                     {decisionCol && <th style={{ padding: '4px 6px', textAlign: 'center' }}>Match</th>}
                     {errorCol && <th style={{ padding: '4px 6px' }}>Error</th>}
                     {hasPhotos && idPathCol && selfiePathCol && <th style={{ padding: '4px 6px', textAlign: 'center' }}>Action</th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row, i) => (
+                  {sorted.map((row, i) => (
                     <tr key={i} style={{ borderTop: '1px solid #334155', color: decisionColor(row) }}>
                       {hasPhotos && showPhotos && idPathCol && <ImgCell path={row[idPathCol]} label="ID" name={idNameCol ? row[idNameCol] : undefined} />}
                       {hasPhotos && showPhotos && selfiePathCol && <ImgCell path={row[selfiePathCol]} label="Selfie" name={selfieNameCol ? row[selfieNameCol] : undefined} />}
@@ -304,10 +367,10 @@ export function CsvViewer() {
             </div>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
               {[
-                { label: 'ID Photo', color: '#22c55e', path: comparePair[idPathCol], name: idNameCol ? comparePair[idNameCol] : '' },
-                { label: 'Selfie', color: '#3b82f6', path: comparePair[selfiePathCol], name: selfieNameCol ? comparePair[selfieNameCol] : '' },
+                { label: 'ID Photo', key: 'id', color: '#22c55e', path: comparePair[idPathCol], name: idNameCol ? comparePair[idNameCol] : '' },
+                { label: 'Selfie', key: 'selfie', color: '#3b82f6', path: comparePair[selfiePathCol], name: selfieNameCol ? comparePair[selfieNameCol] : '' },
               ].map((side) => (
-                <div key={side.label} style={{ flex: 1, textAlign: 'center' }}>
+                <div key={side.key} style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <div style={{ color: side.color, fontSize: 11, marginBottom: 4, fontWeight: 600 }}>{side.label}</div>
                   {side.name && <div style={{ color: '#94a3b8', fontSize: 10, marginBottom: 4 }}>{side.name}</div>}
                   {isBroken(side.path) ? (
@@ -315,12 +378,7 @@ export function CsvViewer() {
                       {fileNameFromPath(side.path)}
                     </div>
                   ) : (
-                    <img
-                      src={normalisePath(side.path)}
-                      alt={side.label}
-                      style={{ width: '100%', maxHeight: 400, objectFit: 'contain', borderRadius: 8 }}
-                      onError={() => markBroken(side.path)}
-                    />
+                    <RotatableImage src={normalisePath(side.path)} alt={side.label} onError={() => markBroken(side.path)} />
                   )}
                 </div>
               ))}

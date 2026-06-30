@@ -47,6 +47,7 @@ export default function App() {
   const [serverUrl, setServerUrl] = useState('https://kvega-cps221-face-match.hf.space');
   const [mode, setMode] = useState<'single' | 'batch' | 'csv'>('single');
   const [showInfo, setShowInfo] = useState(false);
+  const [showTips, setShowTips] = useState(true);
 
   useEffect(() => {
     async function loadModels() {
@@ -104,6 +105,8 @@ export default function App() {
           similarity: data.similarity ?? 0,
           match: data.match ?? false,
           threshold: data.threshold ?? 0.6,
+          error: data.error ?? undefined,
+          warnings: data.warnings ?? undefined,
         });
         setMatching(false);
         return;
@@ -296,10 +299,10 @@ export default function App() {
               onChange={(e) => setProvider(e.target.value as Provider)}
               style={{ width: '100%', padding: '6px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 13 }}
             >
-              <option value="local">face-api.js (browser)</option>
               <option value="insightface">InsightFace (server)</option>
               <option value="rekognition">AWS Rekognition (cloud)</option>
               <option value="megamatcher">Megamatcher (server)</option>
+              <option value="local">face-api.js (browser)</option>
             </select>
           </div>
 
@@ -335,66 +338,19 @@ export default function App() {
           <div>
             <label style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>THRESHOLD</label>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-              {/* face-api.js uses distance < threshold, so lower = stricter */}
-              {/* Server providers use similarity >= threshold, so higher = stricter */}
-              {{
-                local: (
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
-                    <span style={{ color: '#94a3b8', fontSize: 11, textAlign: 'right', flex: 1 }}>
-                      <strong>Strict</strong><br /><span style={{ fontSize: 9, color: '#64748b' }}>Fewer</span>
-                    </span>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <input type="range" min="0.5" max="0.9" step="0.05" value={threshold} onChange={(e) => setThreshold(parseFloat(e.target.value))} style={{ width: 90 }} />
-                      <span style={{ color: '#e2e8f0', fontSize: 13, fontWeight: 600 }}>{threshold.toFixed(2)}</span>
-                    </div>
-                    <span style={{ color: '#94a3b8', fontSize: 11, textAlign: 'left', flex: 1 }}>
-                      <strong>Lenient</strong><br /><span style={{ fontSize: 9, color: '#64748b' }}>More</span>
-                    </span>
-                  </label>
-                ),
-                insightface: (
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
-                    <span style={{ color: '#94a3b8', fontSize: 11, textAlign: 'right', flex: 1 }}>
-                      <strong>Lenient</strong><br /><span style={{ fontSize: 9, color: '#64748b' }}>More</span>
-                    </span>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <input type="range" min="0.5" max="0.9" step="0.05" value={threshold} onChange={(e) => setThreshold(parseFloat(e.target.value))} style={{ width: 90 }} />
-                      <span style={{ color: '#e2e8f0', fontSize: 13, fontWeight: 600 }}>{threshold.toFixed(2)}</span>
-                    </div>
-                    <span style={{ color: '#94a3b8', fontSize: 11, textAlign: 'left', flex: 1 }}>
-                      <strong>Strict</strong><br /><span style={{ fontSize: 9, color: '#64748b' }}>Fewer</span>
-                    </span>
-                  </label>
-                ),
-                rekognition: (
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
-                    <span style={{ color: '#94a3b8', fontSize: 11, textAlign: 'right', flex: 1 }}>
-                      <strong>Lenient</strong><br /><span style={{ fontSize: 9, color: '#64748b' }}>More</span>
-                    </span>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <input type="range" min="0.5" max="0.9" step="0.05" value={threshold} onChange={(e) => setThreshold(parseFloat(e.target.value))} style={{ width: 90 }} />
-                      <span style={{ color: '#e2e8f0', fontSize: 13, fontWeight: 600 }}>{threshold.toFixed(2)}</span>
-                    </div>
-                    <span style={{ color: '#94a3b8', fontSize: 11, textAlign: 'left', flex: 1 }}>
-                      <strong>Strict</strong><br /><span style={{ fontSize: 9, color: '#64748b' }}>Fewer</span>
-                    </span>
-                  </label>
-                ),
-                megamatcher: (
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
-                    <span style={{ color: '#94a3b8', fontSize: 11, textAlign: 'right', flex: 1 }}>
-                      <strong>Lenient</strong><br /><span style={{ fontSize: 9, color: '#64748b' }}>More</span>
-                    </span>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <input type="range" min="0.5" max="0.9" step="0.05" value={threshold} onChange={(e) => setThreshold(parseFloat(e.target.value))} style={{ width: 90 }} />
-                      <span style={{ color: '#e2e8f0', fontSize: 13, fontWeight: 600 }}>{threshold.toFixed(2)}</span>
-                    </div>
-                    <span style={{ color: '#94a3b8', fontSize: 11, textAlign: 'left', flex: 1 }}>
-                      <strong>Strict</strong><br /><span style={{ fontSize: 9, color: '#64748b' }}>Fewer</span>
-                    </span>
-                  </label>
-                ),
-              }[provider]}
+              {/* All providers: lower threshold = stricter, higher threshold = more lenient */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
+                <span style={{ color: '#94a3b8', fontSize: 11, textAlign: 'right', flex: 1 }}>
+                  <strong>Strict</strong><br /><span style={{ fontSize: 9, color: '#64748b' }}>Fewer</span>
+                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <input type="range" min="0.5" max="0.9" step="0.05" value={threshold} onChange={(e) => setThreshold(parseFloat(e.target.value))} style={{ width: 90 }} />
+                  <span style={{ color: '#e2e8f0', fontSize: 13, fontWeight: 600 }}>{threshold.toFixed(2)}</span>
+                </div>
+                <span style={{ color: '#94a3b8', fontSize: 11, textAlign: 'left', flex: 1 }}>
+                  <strong>Lenient</strong><br /><span style={{ fontSize: 9, color: '#64748b' }}>More</span>
+                </span>
+              </label>
               <div style={{ display: 'flex', alignItems: 'center', height: 6, width: '100%', borderRadius: 3, background: 'linear-gradient(to right, #ef4444, #eab308, #22c55e)', position: 'relative' }}>
                 <div style={{ position: 'absolute', left: `${((threshold - 0.5) / 0.4) * 100}%`, transform: 'translateX(-50%)', width: 10, height: 10, borderRadius: '50%', background: '#e2e8f0', border: '2px solid #0f172a', transition: 'left 0.15s' }} />
               </div>
@@ -454,11 +410,28 @@ export default function App() {
                 2. App creates a unique <strong style={{ color: '#e2e8f0' }}>faceprint</strong> for each<br />
                 3. Measures the <strong style={{ color: '#e2e8f0' }}>distance</strong> between them<br />
                 4. <strong style={{ color: '#e2e8f0' }}>Smaller distance</strong> = same person<br /><br />
-                {provider === 'local' ? (
-                  <>Move toward <strong style={{ color: '#22c55e' }}>Same person</strong> (lower distance) for fewer false matches. Move toward <strong style={{ color: '#ef4444' }}>Different</strong> (higher distance) to accept more matches.</>
-                ) : (
-                  <>Move toward <strong style={{ color: '#22c55e' }}>Same person</strong> (higher similarity) for fewer false matches. Move toward <strong style={{ color: '#ef4444' }}>Different</strong> (lower similarity) to accept more matches.</>
-                )}
+                <strong style={{ color: '#ef4444' }}>Strict</strong> (lower threshold) = fewer matches, reduces false accepts. <strong style={{ color: '#22c55e' }}>Lenient</strong> (higher threshold) = more matches, reduces false rejects.
+              </div>
+            )}
+          </div>
+
+          {/* Tips (collapsible) */}
+          <div style={{ borderTop: '1px solid #334155', paddingTop: 10 }}>
+            <button
+              onClick={() => setShowTips(!showTips)}
+              style={{ width: '100%', textAlign: 'left', padding: '2px 0', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', background: 'transparent', color: '#94a3b8' }}
+            >
+              <span style={{ color: '#f59e0b' }}>{showTips ? '\u25BC' : '\u25B6'} TIPS FOR BEST RESULTS</span>
+            </button>
+            {showTips && (
+              <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.8, marginTop: 6, paddingLeft: 4 }}>
+                <div><span style={{ color: '#22c55e' }}>&#10003;</span> Good lighting, face clearly visible</div>
+                <div><span style={{ color: '#22c55e' }}>&#10003;</span> Straight orientation, not tilted</div>
+                <div><span style={{ color: '#22c55e' }}>&#10003;</span> Similar pose in both photos</div>
+                <div><span style={{ color: '#22c55e' }}>&#10003;</span> No blur, shadows, or obstructions</div>
+                <div><span style={{ color: '#22c55e' }}>&#10003;</span> No sunglasses, masks, or extreme angles</div>
+                <div><span style={{ color: '#22c55e' }}>&#10003;</span> Image at least 300px / 100KB</div>
+                <div style={{ marginTop: 4, color: '#64748b', fontSize: 10 }}>Small or compressed images degrade accuracy.</div>
               </div>
             )}
           </div>

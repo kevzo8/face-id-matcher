@@ -3,6 +3,9 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 type ImageData = {
   url: string;
   element: HTMLImageElement;
+  width: number;
+  height: number;
+  size: number;
 } | null;
 
 interface ImageCaptureProps {
@@ -22,6 +25,7 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
   const [error, setError] = useState<string | null>(null);
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [selectedCamera, setSelectedCamera] = useState<string>('');
+  const [imgTransform, setImgTransform] = useState({ rotate: 0, flipH: false, flipV: false });
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -141,24 +145,27 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
     ctx.drawImage(video, 0, 0);
     const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
     stopCamera();
-    processImage(dataUrl);
+    processImage(dataUrl, 0);
   }, [stopCamera, facingMode]);
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const fileSize = file.size;
     const reader = new FileReader();
     reader.onload = () => {
-      processImage(reader.result as string);
+      processImage(reader.result as string, fileSize);
     };
     reader.readAsDataURL(file);
   }, []);
 
-  const processImage = useCallback((dataUrl: string) => {
+  const processImage = useCallback((dataUrl: string, fileSize?: number) => {
     const img = new Image();
     img.onload = () => {
-      onCapture({ url: dataUrl, element: img });
+      const size = fileSize != null ? fileSize : Math.round(dataUrl.length * 0.75);
+      onCapture({ url: dataUrl, element: img, width: img.naturalWidth, height: img.naturalHeight, size });
       setMode('preview');
+      setImgTransform({ rotate: 0, flipH: false, flipV: false });
     };
     img.src = dataUrl;
   }, [onCapture]);
@@ -167,6 +174,7 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
     onCapture(null);
     setMode('idle');
     setError(null);
+    setImgTransform({ rotate: 0, flipH: false, flipV: false });
   }, [onCapture]);
 
   useEffect(() => {
@@ -193,6 +201,11 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
       <polyline points="20 6 9 17 4 12" />
     </svg>
   );
+
+  const btnStyle: React.CSSProperties = {
+    padding: '2px 8px', fontSize: 10, border: '1px solid #334155', borderRadius: 4,
+    cursor: 'pointer', background: '#1e293b', color: '#cbd5e1', lineHeight: 1.6,
+  };
 
   return (
     <div
@@ -447,8 +460,20 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
             <img
               src={image.url}
               alt={title}
-              style={{ width: '100%', display: 'block', maxHeight: 'min(220px, 50vh)', objectFit: 'contain' }}
+              style={{
+                width: '100%', display: 'block', maxHeight: 'min(220px, 50vh)', objectFit: 'contain',
+                transform: `rotate(${imgTransform.rotate}deg) scaleX(${imgTransform.flipH ? -1 : 1}) scaleY(${imgTransform.flipV ? -1 : 1})`,
+                transition: 'transform 0.2s',
+              }}
             />
+          </div>
+          {/* Transform buttons */}
+          <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
+            <button onClick={() => setImgTransform((p) => ({ ...p, rotate: ((p.rotate + 90) % 360 + 360) % 360 }))} style={btnStyle} title="Rotate 90° CW">↻ 90°</button>
+            <button onClick={() => setImgTransform((p) => ({ ...p, rotate: ((p.rotate - 90) % 360 + 360) % 360 }))} style={btnStyle} title="Rotate 90° CCW">↺ 90°</button>
+            <button onClick={() => setImgTransform((p) => ({ ...p, flipH: !p.flipH }))} style={btnStyle} title="Flip horizontal">⇔</button>
+            <button onClick={() => setImgTransform((p) => ({ ...p, flipV: !p.flipV }))} style={btnStyle} title="Flip vertical">⇕</button>
+            <button onClick={() => setImgTransform({ rotate: 0, flipH: false, flipV: false })} style={{ ...btnStyle, color: '#94a3b8', borderColor: '#475569' }} title="Reset">Reset</button>
           </div>
           {/* Status badge */}
           <div
@@ -456,7 +481,7 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              marginTop: 8,
+              marginTop: 4,
               padding: '4px 12px',
               borderRadius: 20,
               background: `${accentColor}22`,
@@ -467,6 +492,17 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
           >
             {checkSvg}
             {icon === 'card' ? 'ID photo captured' : 'Selfie captured'}
+          </div>
+          {/* Metadata */}
+          <div style={{ marginTop: 6, fontSize: 10, color: '#64748b', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <span>{image.width} &times; {image.height}px</span>
+            <span>{image.size > 1048576 ? (image.size / 1048576).toFixed(1) + ' MB' : (image.size / 1024).toFixed(0) + ' KB'}</span>
+            {(image.width < 300 || image.height < 300) && (
+              <span style={{ color: '#f59e0b' }}>Too small &mdash; may fail face detection</span>
+            )}
+            {image.size > 0 && image.size < 102400 && (
+              <span style={{ color: '#f59e0b' }}>Under 100KB &mdash; may fail face detection</span>
+            )}
           </div>
           <button
             onClick={handleRetake}
