@@ -3,6 +3,7 @@ AWS Rekognition face matching provider.
 Requires AWS credentials configured via `aws configure` or env vars.
 """
 
+import os
 import boto3
 import base64
 
@@ -10,7 +11,9 @@ from .base import BaseProvider, MatchResult
 
 
 class RekognitionProvider(BaseProvider):
-    def __init__(self, region: str = "ap-southeast-1"):
+    def __init__(self, region: str | None = None):
+        if region is None:
+            region = os.environ.get("AWS_DEFAULT_REGION", "ap-southeast-1")
         self.client = boto3.client("rekognition", region_name=region)
 
     def compare(self, id_path: str, selfie_path: str, threshold: float) -> MatchResult:
