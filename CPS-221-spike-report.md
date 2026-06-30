@@ -538,7 +538,21 @@ Values below are **InsightFace cosine similarity** (0 = different, 1 = identical
 
 - **Megamatcher** has highest scores on high-res portrait images (often 100%) but completely fails on 45% of the dataset (landscape 800px). On images it can process, it's reliable (1 false negative).
 - **InsightFace** is the most consistent free option — only 3/40 errors (all Paolo — face undetectable even by Rekognition) and 2 false negatives (Miia 25%, Rayanne 19%). All cross-person pairs correctly rejected.
-- **Face++** performs well with auto-rotation (fixed 3/7 failures) but is resolution-sensitive. Paolo at 2000px scores 61.4% vs 0% at 800px, confirming resolution is the limiting factor. Cross-person scores are notably higher (max 62.8%) than other providers.
+- **Face++** performs well with auto-rotation (fixed 3/7 failures) but is resolution-sensitive. Cross-person scores are notably higher (max 62.8%) than other providers.
+
+**Face++ Failure Analysis (4 false negatives at 800px):**
+
+Testing the 4 Face++ failures at 2000px resolution (using Kaggle originals) reveals the root causes:
+
+| Person | 800px | 2000px Face++ | 2000px InsightFace | Root Cause |
+|--------|-------|---------------|-------------------|------------|
+| **Rayanne** | 0% ❌ | **90.5%** ✅ | N/A | Resolution issue |
+| **Paolo** | 0% ❌ | **61.4%** ✅ | 47.3% ✅ | Resolution issue |
+| **Diego** | 0% ❌ | 0% ❌ | **30.8%** ✅ | Face++ limitation |
+| **Miia** | 0% ❌ | 0% ❌ | 24.7% ❌ | Genuinely difficult case |
+
+**Conclusion:** 2/4 failures are resolution artifacts (fixed at 2000px), 1/4 is a Face++-specific limitation (InsightFace handles it), and 1/4 is a genuinely difficult face that challenges all providers except Rekognition.
+
 - **AWS Rekognition** is flawless on this dataset — 100% accuracy, 0 errors, 0 false positives, 0 false negatives. Similarity scores are uniformly high (98.5%+) with zero sensitivity to orientation or resolution.
 
 ### 8.7 Multi-Provider Comparison (Kaggle — Original Full Resolution)
