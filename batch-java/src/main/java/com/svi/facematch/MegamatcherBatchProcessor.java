@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.*;
  * Batch face matching using the Megamatcher Java SDK.
  * <p>
  * Neurotechnology's MegaMatcher SDK provides high-accuracy 1:1 and 1:N face
- * matching. SVI already owns a license and uses it in production via the
+ * matching. SVI uses Megamatcher in production via the
  * /biometric endpoint in the Payara backend.
  * <p>
  * Required SDK jars (place in lib/):

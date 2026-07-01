@@ -71,7 +71,7 @@ Choose provider at the top:
 
 ### Megamatcher (Neurotechnology SDK)
 
-- **SVI already owns a license** — used in production OWA via `/biometric` endpoint
+- **SVI uses Megamatcher** in production OWA via `/biometric` endpoint
 - Commercial SDK (Java/C++/.NET) — not available in Python
 - **In this POC**: the Python provider detects if the SDK is installed. If not, it falls back to InsightFace so you can still test the workflow.
 - **For production**: integrate directly in Java (Spring Boot) using the SDK — skip Python entirely

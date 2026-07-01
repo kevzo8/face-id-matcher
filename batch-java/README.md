@@ -2,7 +2,7 @@
 
 Batch face matching using the **Megamatcher Java SDK** (Neurotechnology).
 
-SVI already owns a Megamatcher license and uses it in the OWA Payara backend.
+SVI uses Megamatcher in the OWA Payara backend.
 This batch processor performs the same 1:1 face verification from the command line.
 
 ## Prerequisites

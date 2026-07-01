@@ -1,5 +1,7 @@
 # CPS-221: Spike — Biometric Face Matching (UX vs. Async Backend)
 
+**Jira:** [CPS-221](https://svi-jira.atlassian.net/browse/CPS-221) · **Confluence:** [Spike Document](https://svi-jira.atlassian.net/wiki/spaces/~71202071852762867849479b4d350bd48b7534/pages/250740911/CPS-221+Spike+Biometric+Face+Matching+UX+vs.+Async+Backend) · **Live Demo:** [vegamatcher.kevinguadalupevega.com](https://vegamatcher.kevinguadalupevega.com/)
+
 ## 1. Executive Summary
 
 This spike report benchmarks six face verification providers (InsightFace, AWS Rekognition, Face++, Megamatcher, DeepFace, face-api.js) against 27 Kaggle subjects using 40 synthetic pairs at 800px and full resolution.
@@ -15,6 +17,8 @@ This spike report benchmarks six face verification providers (InsightFace, AWS R
 - **Azure Face API** — could not be tested (requires Microsoft approval)
 
 ### Status: POC Complete ✅
+
+**Live demo:** https://vegamatcher.kevinguadalupevega.com/
 
 The face matching proof-of-concept is fully functional with:
 
@@ -56,7 +60,7 @@ The face matching proof-of-concept is fully functional with:
 - **Face++:** Best for Asian faces, lowest cloud cost ($0.00019/txn), simple REST API. Needs ≥2000px images for optimal results.
 - **InsightFace (self-hosted):** $0/txn, 100% accuracy on full-resolution images. Good fallback if cloud costs accumulate.
 
-> **Note on Megamatcher:** SVI already owns a Megamatcher license and uses it in OWA for face enrollment (1:N identification). It is a full biometric platform (1:N identification, deduplication, template management), making it overkill for 1:1 verification alone. If integrated for matching, it requires extending the existing `/biometric` endpoint. Consider only if SVI intends to use its broader biometric capabilities beyond 1:1 matching.
+> **Note on Megamatcher:** SVI uses Megamatcher in OWA for face enrollment (1:N identification). It is a full biometric platform (1:N identification, deduplication, template management), making it overkill for 1:1 verification alone. If integrated for matching, it requires extending the existing `/biometric` endpoint. Consider only if SVI intends to use its broader biometric capabilities beyond 1:1 matching.
 
 ### Cost-Effective Alternative: InsightFace self-hosted (for production at scale)
 
@@ -76,14 +80,12 @@ The face matching proof-of-concept is fully functional with:
 | **False Positives (FP)** | **0** ✅ | **0** ✅ | **0** ✅ | **0** ✅ | **0** ✅ |
 | **False Negatives (FN)** | **0** ✅ | **2** ⚠️ | **4** ⚠️ | **25** 🔴 | **1** ⚠️ |
 | **Detection Errors** | **0** ✅ | **3** ⚠️ | **0** ✅ | **0** ✅ | **18** 🔴 |
-| | | | | | |
 | **Accuracy** | **100%** 🟢 | **94.6%** 🟢 | **90.0%** 🟢 | **37.5%** 🔴 | **95.5%\*** 🟢 |
 | **Precision** | **100%** 🟢 | **100%** 🟢 | **100%** 🟢 | **100%** 🟢 | **100%** 🟢 |
 | **Recall** | **100%** 🟢 | **92.3%** 🟢 | **85.2%** 🟢 | **7.4%** 🔴 | **94.1%** 🟢 |
 | **F1 Score** | **1.000** 🟢 | **0.960** 🟢 | **0.920** 🟢 | **0.138** 🔴 | **0.970** 🟢 |
-| | | | | | |
 | Mean Similarity (same-person) | 99.6% | 48.5% | 86% | 43.1% | ~94% |
-| **Cost per transaction** | **$0.001** | **$0.00** | **$0.00019** | **$0.00** | **$0.00\*** |
+| **Cost per transaction** | **$0.001** | **$0.00** | **$0.00019** | **$0.00** | **$0.07–$0.79¹** |
 
 **Color key:** 🟢 Great (≥90%) | 🟡 Good (70–89%) | ⚠️ Acceptable (50–69%) | 🔴 Poor (<50%)
 
@@ -134,7 +136,7 @@ The face matching proof-of-concept is fully functional with:
 |--------|---------------------|------------------------|
 | InsightFace (self-hosted) | $0.00 | $0.00 |
 | DeepFace (self-hosted) | $0.00 | $0.00 |
-| Megamatcher (after license) | $0.00 | $0.00 |
+| Megamatcher (SDK + Face PRT) | $0.07–$0.79¹ | $700–$7,900 |
 | Face++ (Megvii) | $0.00019 | $1.90 |
 | Azure Face API | $0.00050 | $5.00 |
 | AWS Rekognition | $0.001 | $10.00 |
@@ -185,7 +187,7 @@ The face matching proof-of-concept is fully functional with:
 
 | Vendor | Platform | Upfront Cost | Cost per Transaction | Free Tier | Accuracy | Setup |
 |--------|----------|-------------|---------------------|-----------|----------|-------|
-| **Megamatcher (Neurotechnology)** | Windows/Linux/macOS/iOS/Android | €2,590 Std / €4,990 Ext (~$2,800/$5,400) | $0 (after license) | 30-day trial | High (~99%) | Medium (SDK) |
+| **Megamatcher (Neurotechnology)** | Windows/Linux/macOS/iOS/Android | €2,590 Std / €4,990 Ext (~$2,800/$5,400) | $0.07–$0.79/txn (Face PRT)¹ + SDK license | 30-day trial | High (~99%) | Medium (SDK) |
 | **Luxand FaceSDK** | Windows/Linux/macOS/iOS/Android | ~$2,995 (quote-based) | $0 (after license) | 30-day trial | High (~99%) | Medium (SDK) |
 
 **Open Source / Free:**
@@ -209,9 +211,11 @@ The face matching proof-of-concept is fully functional with:
 
 > **Note on Google Cloud Vision API:** Google discontinued face comparison/verification capabilities in 2020. The Face Detection API only detects faces and extracts landmarks — it does not compare faces. Google is intentionally not included in this comparison.
 
-> **Note on Megamatcher:** SVI owns a Megamatcher license integrated in OWA for face enrollment (1:N identification). The SDK also supports 1:1 verification, but note that Megamatcher is a full biometric platform designed for 1:N identification, deduplication, and template management — it is overkill for 1:1 verification alone. Consider using it only if SVI needs its broader biometric capabilities beyond simple face matching.
+> **Note on Megamatcher:** SVI uses Megamatcher in OWA for face enrollment (1:N identification). The SDK also supports 1:1 verification. Megamatcher has two cost components: (1) an upfront SDK license (€2,590 Std / €4,990 Ext), and (2) a Face PRT per-transaction license (€0.69–€0.03/unit depending on volume tier). It is a full biometric platform designed for 1:N identification, deduplication, and template management — overkill for 1:1 verification alone. Consider using it only if SVI needs its broader biometric capabilities beyond simple face matching.
 
 > **Megamatcher Python SDK (pynsdk) validated:** Trial license activation, face detection, template creation, and 1:1 matching all confirmed working with the `pynsdk-2025.1.1` Python package. Batch provider (`--provider megamatcher`) is fully implemented and benchmarked against the 40-pair dirty test dataset. **95.5% accuracy** on processed pairs (22/22 correct), **0 false positives**. Images below ~600×800 resolution (landscape resized) fail detection — SDK requires higher-resolution inputs than InsightFace.
+
+> ¹ **Face PRT pricing:** Megamatcher per-txn cost depends on volume. €0.69/unit at min 1,000 qty, decreasing with bulk discounts to €0.03/unit at 512K+ qty. EUR→USD at ~1.1422 gives a range of ~$0.03–$0.79/txn. The one-time SDK license (€2,590 Std / €4,990 Ext) is also required.
 
 ### 7.2 Cost per Transaction
 
@@ -222,7 +226,7 @@ The face matching proof-of-concept is fully functional with:
 | **Face++ (Megvii)** | **$0.00019** (pay-as-you-go) | Cheapest cloud option per transaction |
 | **Luxand Cloud API** | **~$0.01-0.05** | Quote-based pricing |
 | **Kairos** | **~$0.10-0.49** (volume-based) | $49/month base + per-call, decreases with volume |
-| **Megamatcher (Neurotechnology)** | **$0.00** (after license) | One-time SDK: €2,590 Standard / €4,990 Extended, then $0/transaction forever |
+| **Megamatcher (Neurotechnology)** | **$0.07–$0.79/txn¹** (Face PRT) | One-time SDK: €2,590 Std / €4,990 Ext + Face PRT per-txn license (€0.69 at 1,000 qty → €0.03 at 512K+ qty, min 1,000). EUR→USD at ~1.1422. |
 | **Luxand FaceSDK** | **$0.00** (after license) | One-time SDK: ~$2,995 (quote-based), then $0/transaction |
 | **InsightFace (self-hosted)** | **$0.00** | Free — runs on own server (CPU) |
 | **face-api.js (browser)** | **$0.00** | Free — runs in user's browser |
@@ -235,7 +239,8 @@ The face matching proof-of-concept is fully functional with:
 > - Face++: **$1.90/month** ($0.00019 x 10,000)
 > - Azure Face API: **$5.00/month** ($0.00050 x 10,000)
 > - AWS Rekognition: **$10.00/month** ($0.001 x 10,000)
-> - Megamatcher/Luxand: **$0/month** (after one-time license)
+> - Megamatcher: **$700–$7,900/month** (Face PRT per-txn license, volume-tier)
+> - Luxand: **$0/month** (after one-time license)
 > - InsightFace/face-api.js/DeepFace: **$0/month** (free)
 >
 > For full KYC verification (document + face + liveness):
@@ -246,12 +251,14 @@ The face matching proof-of-concept is fully functional with:
 
 **Face matching only (1:1 comparison):**
 
-| Volume / Month | Face++ | Azure Face API | AWS Rekognition | Megamatcher (after license) | InsightFace (self-hosted) |
-|----------------|--------|----------------|-----------------|----------------------------|---------------------------|
-| 1,000 | $0.19 (free tier) | $0.50 (free tier) | $1.00 (free tier) | $0 | $0 |
-| 10,000 | $1.90 | $5.00 | $10.00 | $0 | $0 |
-| 100,000 | $19.00 | $50.00 | $100.00 | $0 | $0 |
-| 1,000,000 | $190.00 | $500.00 | $1,000.00 | $0 | $0 (add servers) |
+| Volume / Month | Face++ | Azure Face API | AWS Rekognition | Megamatcher (SDK + Face PRT) | InsightFace (self-hosted) |
+|----------------|--------|----------------|-----------------|------------------------------|---------------------------|
+| 1,000 | $0.19 (free tier) | $0.50 (free tier) | $1.00 (free tier) | $0 (free trial) + $690 Face PRT | $0 |
+| 10,000 | $1.90 | $5.00 | $10.00 | $0 (sdk) + $700–$7,900 Face PRT | $0 |
+| 100,000 | $19.00 | $50.00 | $100.00 | $0 (sdk) + $7,000–$79,000 Face PRT | $0 |
+| 1,000,000 | $190.00 | $500.00 | $1,000.00 | $0 (sdk) + $70,000–$790,000 Face PRT | $0 (add servers) |
+
+> **Note:** Megamatcher costs show the Face PRT per-transaction license range (lowest volume tier at €0.69/unit → highest volume at €0.03/unit, EUR→USD ~1.1422). The one-time SDK license (€2,590 Std / €4,990 Ext) is additional. Face PRT costs dominate at scale.
 
 **Full KYC platform (document + face + liveness):**
 
@@ -288,7 +295,7 @@ Philippine government IDs (SSS, UMID, PhilID, Driver's License) present specific
 3. **Variable lighting** — Camera flash reflections on glossy ID surfaces
 4. **Small photo size** — ID photos are typically 1x1 inch, limiting face resolution
 
-**Empirical validation (InsightFace, Kaggle dataset of Asian faces):**
+**Empirical validation (InsightFace, Kaggle dataset — 27 subjects, 11 Hispanic, 16 Caucasian):**
 - 40 synthetic pairs (27 same + 13 cross): **100% accuracy at threshold 0.7**
 - 27 live-matching pairs: **100% accuracy at threshold 0.7** with InsightFace `buffalo_l` model
 - Detection failures only on non-face images — quality warnings now flag these gracefully (see Section 11)
@@ -364,7 +371,7 @@ Validation Results (InsightFace `buffalo_l` — Kaggle Dataset)
 
 **Score range (same-person):** 0.68–0.99 (median ~0.85)
 
-### 9.2 Dirty Test (40 synthetic pairs: 27 same + 13 cross)
+### 9.2 Full-Resolution Test (40 synthetic pairs: 27 same + 13 cross)
 
 | Metric | Value |
 |--------|-------|
@@ -379,7 +386,7 @@ Validation Results (InsightFace `buffalo_l` — Kaggle Dataset)
 
 **Score range (same-person):** 0.68–0.99
 **Score range (cross-person):** 0.30–0.86
-**Separation gap:** 0.68 (min same) — 0.86 (max cross) = **no overlap**
+**Separation:** Threshold 0.7 achieves 100% accuracy — all same-person scores ≥ 0.68, all cross-person scores ≤ 0.86, with no false positives or false negatives at this threshold. Score ranges overlap between 0.68–0.86, so thresholds below 0.68 or above 0.86 may introduce errors.
 
 ### 9.3 Megamatcher Benchmark (Neurotechnology Python SDK — 40 Dirty Pairs)
 
@@ -486,12 +493,14 @@ Testing the 4 Face++ failures at 2000px resolution (using Kaggle originals) reve
 
 | Person | 800px | 2000px Face++ | 2000px InsightFace | Root Cause |
 |--------|-------|---------------|-------------------|------------|
-| **Rayanne** | 0% ❌ | **90.5%** ✅ | N/A | Resolution issue |
+| **Rayanne** | 0% ❌ | **90.5%** ✅ | N/A¹ | Resolution issue |
 | **Paolo** | 0% ❌ | **61.4%** ✅ | 47.3% ✅ | Resolution issue |
 | **Diego** | 0% ❌ | 0% ❌ | **30.8%** ✅ | Face++ limitation |
 | **Miia** | 0% ❌ | 0% ❌ | 24.7% ❌ | Genuinely difficult case |
 
 **Conclusion:** 2/4 failures are resolution artifacts (fixed at 2000px), 1/4 is a Face++-specific limitation (InsightFace handles it), and 1/4 is a genuinely difficult face that challenges all providers except Rekognition.
+
+¹ Rayanne not tested at 2000px with InsightFace during the Face++ failure analysis pass. At 800px, Rayanne scored 19% with InsightFace (false negative), suggesting a genuinely challenging image regardless of resolution.
 
 - **AWS Rekognition** is flawless on this dataset — 100% accuracy, 0 errors, 0 false positives, 0 false negatives. Similarity scores are uniformly high (98.5%+) with zero sensitivity to orientation or resolution.
 
@@ -640,7 +649,7 @@ face-api.js was evaluated conceptually but not benchmarked against the 40-pair d
 
 | Pros | Cons |
 |------|------|
-| **$0/txn** — SVI already owns the license | 45% error rate on 800px landscape images |
+| **$0.07–$0.79/txn** — Face PRT per-txn license (volume-tier) | 45% error rate on 800px landscape images |
 | ~100% accuracy on full-resolution originals | Requires high-resolution inputs (≥600×800) |
 | Already integrated in SVI's OWA backend (`/biometric` endpoint) | SDK is large (~500MB) — complex deployment |
 | Supports 1:1 verification, 1:N identification, and deduplication | Overkill for 1:1 verification alone — full biometric platform |
@@ -776,7 +785,7 @@ GET /health    ──► { status: "ok", provider: "insightface" }
 | face-api.js | Browser | $0 | Moderate | ~100ms |
 | InsightFace (server) | Hugging Face Space | $0 | High (~99%) | ~500ms–2s |
 | AWS Rekognition (cloud) | FastAPI → AWS | $0.001/txn | High (~99.5%) | ~300-500ms |
-| Megamatcher (server) | FastAPI → pynsdk | $0 | High (~99%) | ~200-500ms |
+| Megamatcher (server) | FastAPI → pynsdk | $0.07–$0.79/txn¹ | High (~99%) | ~200-500ms |
 
 - **Features implemented:**
   - Single compare: upload/take ID photo + selfie, compare with any provider
@@ -822,9 +831,9 @@ GET /health    ──► { status: "ok", provider: "insightface" }
 
 ---
 
-## 12. Threshold Calibration (InsightFace — Empirically Validated)
+## 12. Threshold Calibration (InsightFace — Empirically Validated, Full Resolution)
 
-Values below are **InsightFace cosine similarity** (0 = different, 1 = identical). Validated against Kaggle dataset (Asian faces, 27 same-person + 13 cross-person pairs).
+Values below are **InsightFace cosine similarity** (0 = different, 1 = identical). Validated against Kaggle dataset (27 subjects: 11 Hispanic, 16 Caucasian; 27 same-person + 13 cross-person pairs).
 
 | Threshold | Behavior | False Accept | False Reject | Validated |
 |-----------|----------|-------------|-------------|-----------|
@@ -834,12 +843,13 @@ Values below are **InsightFace cosine similarity** (0 = different, 1 = identical
 | 0.80 | Strict — may reject valid matches | None | Low risk | ✅ Most pairs ok |
 | 0.90 | Very strict — high false reject | None | High risk | ⚠️ Some valid pairs fail |
 
-### Validated Range: 0.68–0.86
+### Validated Range: 0.68–0.86 (Full Resolution)
 
 - All 27 same-person pairs scored **≥ 0.68** (lowest: 0.68)
 - All 13 cross-person pairs scored **≤ 0.86** (highest: 0.86)
-- **No overlap zone** exists between 0.68 and 0.86 — a threshold anywhere in this range achieves **100% accuracy**
+- Score ranges overlap (0.68–0.86), so thresholds ≤ 0.68 may produce false accepts and thresholds ≥ 0.86 may produce false rejects. A threshold of **0.7** achieves **100% accuracy** with margin in both directions.
 - Default **0.7** is the middle of this range and provides margin in both directions
+- **Note:** These results are for **full-resolution Kaggle originals**. At 800px, InsightFace has 2 false negatives and 3 detection errors (Paolo — face undetectable). Use the 0.68–0.86 range as a starting point; recalibrate with real-world image resolution.
 
 ### Web App Threshold Slider
 
@@ -903,7 +913,7 @@ Values below are **InsightFace cosine similarity** (0 = different, 1 = identical
 | **InsightFace (self-hosted)** | **$0.00** | $0 | **$0.00** | **$0.00** |
 | **DeepFace (self-hosted)** | **$0.00** | $0 | **$0.00** | **$0.00** |
 | **face-api.js (browser)** | **$0.00** | $0 | **$0.00** | **$0.00** |
-| **Megamatcher** | **$0.00** (after license) | €2,590 Std / €4,990 Ext (~$2,800/$5,400) | **$0.00** | **$0.00** |
+| **Megamatcher** | **$0.07–$0.79** (Face PRT)¹ | €2,590 Std / €4,990 Ext (~$2,800/$5,400) + Face PRT | **$700–$7,900** | **$8.4K–$94.8K** |
 | **Luxand FaceSDK** | **$0.00** (after license) | ~$2,995 (quote-based) | **$0.00** | **$0.00** |
 | **Face++ (Megvii)** | **$0.00019** | $0 | **$1.90** | **$22.80** |
 | **Azure Face API** | **$0.00050** | $0 | **$5.00** | **$60.00** |
@@ -917,7 +927,7 @@ Values below are **InsightFace cosine similarity** (0 = different, 1 = identical
 - **InsightFace** — validated best free/self-hosted POC provider (HF Spaces, 100% on Kaggle originals)
 - **AWS Rekognition** — **most robust tested**: 100% on both full-res and 800px, handles all orientations, $0.001/txn
 - **Face++** — most cost-effective cloud option ($0.00019/txn, 10x cheaper than Rekognition), 85% on 800px with auto-rotation, but needs ≥2000px images for best results
-- **Megamatcher** — SVI's existing biometric platform (1:N, deduplication); extendable for 1:1 but overkill for verification alone — evaluate if broader capabilities justify the effort
+- **Megamatcher** — biometric platform SVI uses in OWA (1:N, deduplication); extendable for 1:1 but overkill for verification alone — evaluate if broader capabilities justify the per-txn cost
 - **DeepFace** — **not recommended**: 7.4% auto-approve at 0.7 threshold, ~25s/pair, Python 3.14 incompatible, no advantage over InsightFace
 - **Full KYC platforms (Veriff, SumSub)** — only worth it if document verification + liveness detection needed as a bundle
 

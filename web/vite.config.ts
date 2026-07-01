@@ -34,6 +34,12 @@ export default defineConfig({
           res.writeHead(200, { 'Content-Type': contentType, 'Content-Length': content.length });
           res.end(content);
         });
+        server.middlewares.use((req, _res, next) => {
+          if (req.url?.startsWith('/presentation')) {
+            req.url = '/';
+          }
+          next();
+        });
       },
       closeBundle() {
         const src = path.join(samplesDir, 'dirty-pairs');

@@ -54,6 +54,22 @@ export default function App() {
   const [showInfo, setShowInfo] = useState(false);
   const [showTips, setShowTips] = useState(true);
   const [showPresentation, setShowPresentation] = useState(false);
+  const [initialSlide, setInitialSlide] = useState(0);
+
+  useEffect(() => {
+    function handleRoute() {
+      const match = window.location.pathname.match(/^\/presentation\/?(\d+)?$/);
+      if (match) {
+        setShowPresentation(true);
+        setInitialSlide(match[1] ? parseInt(match[1], 10) : 0);
+      } else {
+        setShowPresentation(false);
+      }
+    }
+    handleRoute();
+    window.addEventListener('popstate', handleRoute);
+    return () => window.removeEventListener('popstate', handleRoute);
+  }, []);
 
   useEffect(() => {
     async function loadModels() {
@@ -199,19 +215,19 @@ export default function App() {
   }
 
   if (showPresentation) {
-    return <Presentation onClose={() => setShowPresentation(false)} />;
+    return <Presentation initialSlide={initialSlide} onClose={() => { setShowPresentation(false); window.history.pushState(null, '', '/'); }} />;
   }
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: 16 }}>
       {/* Header */}
       <header style={{ marginBottom: 12, textAlign: 'center', position: 'relative' }}>
-        <div style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: 700, marginBottom: 2 }}>Face ID Matcher</div>
+        <div style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: 700, marginBottom: 2 }}>Face ID Matcher POC</div>
         <p style={{ color: '#94a3b8', fontSize: 13 }}>
-          Compare any two face photos — selfie vs ID, or ID vs ID — with 1:1 face matching
+          Compare any two face photos — selfie vs ID, selfie vs selfie, or ID vs ID — with 1:1 face matching
         </p>
         <button
-          onClick={() => setShowPresentation(true)}
+          onClick={() => { window.history.pushState(null, '', '/presentation/0'); setShowPresentation(true); setInitialSlide(0); }}
           style={{
             position: 'absolute', right: 0, top: 0,
             padding: '6px 14px', fontSize: 12, fontWeight: 600,
