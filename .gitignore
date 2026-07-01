@@ -12,3 +12,6 @@ target/
 
 # Kaggle dataset images (too large for git)
 samples/kaggle/Selfies ID Images dataset/
+
+# DeepFace Python 3.12 venv (separate env, contains TensorFlow + DLLs)
+deepface-env/
