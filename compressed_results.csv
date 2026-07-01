@@ -1,0 +1,41 @@
+applicant_id,name,similarity,distance,decision,error,id_image_path,selfie_image_path
+1,Weslley,60.58,0.3942,auto_approve,,samples/dirty-pairs/1_ID_Weslley.jpg,samples/dirty-pairs/1_Selfie_Weslley.jpg
+10,Gabriel,50.60,0.4940,auto_approve,,samples/dirty-pairs/10_ID_Gabriel.jpg,samples/dirty-pairs/10_Selfie_Gabriel.jpg
+11,Clarissa,45.85,0.5415,auto_approve,,samples/dirty-pairs/11_ID_Clarissa.jpg,samples/dirty-pairs/11_Selfie_Clarissa.jpg
+12,Andrea_Ran,49.70,0.5030,auto_approve,,samples/dirty-pairs/12_ID_Andrea_Ran.jpg,samples/dirty-pairs/12_Selfie_Andrea_Ran.jpg
+13,Paolo,0.00,1.0000,error,No face detected in ID image,samples/dirty-pairs/13_ID_Paolo.jpg,samples/dirty-pairs/13_Selfie_Paolo.jpg
+14,Miia,25.08,0.7492,manual_review,,samples/dirty-pairs/14_ID_Miia.jpg,samples/dirty-pairs/14_Selfie_Miia.jpg
+15,Klara,44.96,0.5504,auto_approve,,samples/dirty-pairs/15_ID_Klara.jpg,samples/dirty-pairs/15_Selfie_Klara.jpg
+16,Diego,30.54,0.6946,auto_approve,,samples/dirty-pairs/16_ID_Diego.jpg,samples/dirty-pairs/16_Selfie_Diego.jpg
+17,Ewa,44.65,0.5535,auto_approve,,samples/dirty-pairs/17_ID_Ewa.jpg,samples/dirty-pairs/17_Selfie_Ewa.jpg
+18,Anna,41.11,0.5889,auto_approve,,samples/dirty-pairs/18_ID_Anna.jpg,samples/dirty-pairs/18_Selfie_Anna.jpg
+19,Kateryna,54.34,0.4566,auto_approve,,samples/dirty-pairs/19_ID_Kateryna.jpg,samples/dirty-pairs/19_Selfie_Kateryna.jpg
+2,Juliana,46.83,0.5317,auto_approve,,samples/dirty-pairs/2_ID_Juliana.jpg,samples/dirty-pairs/2_Selfie_Juliana.jpg
+20,Mykhailo,32.03,0.6797,auto_approve,,samples/dirty-pairs/20_ID_Mykhailo.jpg,samples/dirty-pairs/20_Selfie_Mykhailo.jpg
+21,Vitalijs,56.29,0.4371,auto_approve,,samples/dirty-pairs/21_ID_Vitalijs.jpg,samples/dirty-pairs/21_Selfie_Vitalijs.jpg
+22,Alessandro,51.25,0.4875,auto_approve,,samples/dirty-pairs/22_ID_Alessandro.jpg,samples/dirty-pairs/22_Selfie_Alessandro.jpg
+23,Mark,45.03,0.5497,auto_approve,,samples/dirty-pairs/23_ID_Mark.jpg,samples/dirty-pairs/23_Selfie_Mark.jpg
+24,Massimiliano,67.40,0.3260,auto_approve,,samples/dirty-pairs/24_ID_Massimiliano.jpg,samples/dirty-pairs/24_Selfie_Massimiliano.jpg
+25,Kasia,53.24,0.4676,auto_approve,,samples/dirty-pairs/25_ID_Kasia.jpg,samples/dirty-pairs/25_Selfie_Kasia.jpg
+26,Anastasia,56.65,0.4335,auto_approve,,samples/dirty-pairs/26_ID_Anastasia.jpg,samples/dirty-pairs/26_Selfie_Anastasia.jpg
+27,Valeriia,53.41,0.4659,auto_approve,,samples/dirty-pairs/27_ID_Valeriia.jpg,samples/dirty-pairs/27_Selfie_Valeriia.jpg
+28,Weslley_vs_Alessandro,0.00,1.0192,manual_review,,samples/dirty-pairs/28_ID_Weslley.jpg,samples/dirty-pairs/28_Selfie_Alessandro.jpg
+29,Juliana_vs_Fernanda,2.46,0.9754,manual_review,,samples/dirty-pairs/29_ID_Juliana.jpg,samples/dirty-pairs/29_Selfie_Fernanda.jpg
+3,Luis,46.09,0.5391,auto_approve,,samples/dirty-pairs/3_ID_Luis.jpg,samples/dirty-pairs/3_Selfie_Luis.jpg
+30,Luis_vs_Weslley,7.27,0.9273,manual_review,,samples/dirty-pairs/30_ID_Luis.jpg,samples/dirty-pairs/30_Selfie_Weslley.jpg
+31,Rayanne_vs_Andrea_Ran,4.39,0.9561,manual_review,,samples/dirty-pairs/31_ID_Rayanne.jpg,samples/dirty-pairs/31_Selfie_Andrea_Ran.jpg
+32,Fernanda_vs_Gabriel,0.72,0.9928,manual_review,,samples/dirty-pairs/32_ID_Fernanda.jpg,samples/dirty-pairs/32_Selfie_Gabriel.jpg
+33,Daiane_vs_Paolo,0.00,1.0000,error,No face detected in selfie image,samples/dirty-pairs/33_ID_Daiane.jpg,samples/dirty-pairs/33_Selfie_Paolo.jpg
+34,Alejandra_vs_Matheus,9.57,0.9043,manual_review,,samples/dirty-pairs/34_ID_Alejandra.jpg,samples/dirty-pairs/34_Selfie_Matheus.jpg
+35,Matheus_vs_Daiane,0.00,1.0574,manual_review,,samples/dirty-pairs/35_ID_Matheus.jpg,samples/dirty-pairs/35_Selfie_Daiane.jpg
+36,Bruno_vs_Valeriia,2.40,0.9760,manual_review,,samples/dirty-pairs/36_ID_Bruno.jpg,samples/dirty-pairs/36_Selfie_Valeriia.jpg
+37,Gabriel_vs_Rayanne,0.00,1.0818,manual_review,,samples/dirty-pairs/37_ID_Gabriel.jpg,samples/dirty-pairs/37_Selfie_Rayanne.jpg
+38,Clarissa_vs_Massimiliano,0.00,1.0234,manual_review,,samples/dirty-pairs/38_ID_Clarissa.jpg,samples/dirty-pairs/38_Selfie_Massimiliano.jpg
+39,Andrea_Ran_vs_Luis,0.00,1.0067,manual_review,,samples/dirty-pairs/39_ID_Andrea_Ran.jpg,samples/dirty-pairs/39_Selfie_Luis.jpg
+4,Rayanne,18.90,0.8110,manual_review,,samples/dirty-pairs/4_ID_Rayanne.jpg,samples/dirty-pairs/4_Selfie_Rayanne.jpg
+40,Paolo_vs_Juliana,0.00,1.0000,error,No face detected in ID image,samples/dirty-pairs/40_ID_Paolo.jpg,samples/dirty-pairs/40_Selfie_Juliana.jpg
+5,Fernanda,53.39,0.4661,auto_approve,,samples/dirty-pairs/5_ID_Fernanda.jpg,samples/dirty-pairs/5_Selfie_Fernanda.jpg
+6,Daiane,35.12,0.6488,auto_approve,,samples/dirty-pairs/6_ID_Daiane.jpg,samples/dirty-pairs/6_Selfie_Daiane.jpg
+7,Alejandra,50.45,0.4955,auto_approve,,samples/dirty-pairs/7_ID_Alejandra.jpg,samples/dirty-pairs/7_Selfie_Alejandra.jpg
+8,Matheus,58.11,0.4189,auto_approve,,samples/dirty-pairs/8_ID_Matheus.jpg,samples/dirty-pairs/8_Selfie_Matheus.jpg
+9,Bruno,46.32,0.5368,auto_approve,,samples/dirty-pairs/9_ID_Bruno.jpg,samples/dirty-pairs/9_Selfie_Bruno.jpg

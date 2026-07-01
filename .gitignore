@@ -15,3 +15,10 @@ samples/kaggle/Selfies ID Images dataset/
 
 # DeepFace Python 3.12 venv (separate env, contains TensorFlow + DLLs)
 deepface-env/
+
+# InsightFace compiled libraries (7.6GB ONNX models + DLLs)
+batch/lib/
+
+# Sample images (may contain PII)
+samples/dirty-pairs/41_ID_Paolo.jpg
+samples/dirty-pairs/41_Photo_Paolo.jpg

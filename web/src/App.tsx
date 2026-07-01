@@ -4,6 +4,7 @@ import { ImageCapture } from './components/ImageCapture';
 import { MatchResult } from './components/MatchResult';
 import { BatchMatcher } from './components/BatchMatcher';
 import { CsvViewer } from './components/CsvViewer';
+import Presentation from './components/Presentation';
 
 type ImageData = {
   url: string;
@@ -47,11 +48,12 @@ export default function App() {
   } | null>(null);
   const [threshold, setThreshold] = useState(0.7);
   const [detectionModel, setDetectionModel] = useState<DetectionModel>('accurate');
-  const [provider, setProvider] = useState<Provider>('insightface');
+  const [provider, setProvider] = useState<Provider>('rekognition');
   const [serverUrl, setServerUrl] = useState('https://face-id-matcher.onrender.com');
   const [mode, setMode] = useState<'single' | 'batch' | 'csv'>('single');
   const [showInfo, setShowInfo] = useState(false);
   const [showTips, setShowTips] = useState(true);
+  const [showPresentation, setShowPresentation] = useState(false);
 
   useEffect(() => {
     async function loadModels() {
@@ -196,14 +198,30 @@ export default function App() {
     );
   }
 
+  if (showPresentation) {
+    return <Presentation onClose={() => setShowPresentation(false)} />;
+  }
+
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: 16 }}>
       {/* Header */}
-      <header style={{ marginBottom: 12, textAlign: 'center' }}>
+      <header style={{ marginBottom: 12, textAlign: 'center', position: 'relative' }}>
         <div style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: 700, marginBottom: 2 }}>Face ID Matcher</div>
         <p style={{ color: '#94a3b8', fontSize: 13 }}>
           Compare any two face photos — selfie vs ID, or ID vs ID — with 1:1 face matching
         </p>
+        <button
+          onClick={() => setShowPresentation(true)}
+          style={{
+            position: 'absolute', right: 0, top: 0,
+            padding: '6px 14px', fontSize: 12, fontWeight: 600,
+            background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+            color: '#fff', border: 'none', borderRadius: 6,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4 }}><polygon points="5 3 19 12 5 21 5 3" /></svg> Present
+        </button>
       </header>
 
       {/* Mode tabs */}
@@ -312,8 +330,8 @@ export default function App() {
               onChange={(e) => setProvider(e.target.value as Provider)}
               style={{ width: '100%', padding: '6px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 13 }}
             >
-              <option value="insightface">InsightFace (server)</option>
               <option value="rekognition">AWS Rekognition (cloud)</option>
+              <option value="insightface">InsightFace (server)</option>
               <option value="faceplusplus">Face++ (cloud)</option>
               <option value="megamatcher">Megamatcher (server)</option>
               <option value="local">face-api.js (browser)</option>
