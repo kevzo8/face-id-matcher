@@ -37,6 +37,7 @@ from providers.insightface_provider import InsightFaceProvider
 from providers.rekognition_provider import RekognitionProvider
 from providers.megamatcher_provider import MegamatcherProvider
 from providers.faceplusplus_provider import FacePlusPlusProvider
+from providers.deepface_provider import DeepFaceProvider
 
 
 def get_provider(name: str):
@@ -48,8 +49,10 @@ def get_provider(name: str):
         return MegamatcherProvider()
     elif name == "faceplusplus":
         return FacePlusPlusProvider()
+    elif name == "deepface":
+        return DeepFaceProvider()
     else:
-        print(f"Unknown provider: {name}. Use 'insightface', 'rekognition', 'megamatcher', or 'faceplusplus'.")
+        print(f"Unknown provider: {name}. Use 'insightface', 'rekognition', 'megamatcher', 'faceplusplus', or 'deepface'.")
         sys.exit(1)
 
 
@@ -83,7 +86,7 @@ def main():
         help="Output CSV file (default: results_<timestamp>.csv)",
     )
     parser.add_argument(
-        "--provider", "-p", default="insightface", choices=["insightface", "rekognition", "megamatcher", "faceplusplus"],
+        "--provider", "-p", default="insightface", choices=["insightface", "rekognition", "megamatcher", "faceplusplus", "deepface"],
         help="Face matching provider (default: insightface — free, local)",
     )
     parser.add_argument(
