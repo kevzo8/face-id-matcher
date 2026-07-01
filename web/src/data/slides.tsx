@@ -264,7 +264,6 @@ const statsTable = (
     </div>
     <div style={{ marginTop: 12, color: '#64748b', fontSize: 13 }}>
       *Megamatcher: 18/40 pairs (45%) failed detection at 800px. Metrics on processable pairs only.<br />
-      All providers had zero false positives — every provider is conservative, favoring no-match over wrong match.<br />
       Detection errors are resolution-specific (not person-specific): retrying at 2000px+ eliminates most failures.<br />
       <strong style={{ color: '#94a3b8' }}>TPR</strong> (True Positive Rate / Recall): % of same-person pairs correctly matched. <strong style={{ color: '#94a3b8' }}>TNR</strong> (True Negative Rate / Specificity): % of cross-person pairs correctly rejected.
     </div>
