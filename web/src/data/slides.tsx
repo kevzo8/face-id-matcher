@@ -365,6 +365,9 @@ export const slides: Slide[] = [
             </div>
           ))}
         </div>
+        <div style={{ marginTop: 12, color: '#64748b', fontSize: 13 }}>
+          Full details summarized at: <a href="https://svi-jira.atlassian.net/wiki/spaces/~71202071852762867849479b4d350bd48b7534/pages/250740911/CPS-221+Spike+Biometric+Face+Matching+UX+vs.+Async+Backend" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Confluence Document — CPS-221: Spike — Biometric Face Matching (UX vs. Async Backend)</a>
+        </div>
       </div>
     ),
   },
