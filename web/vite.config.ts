@@ -48,6 +48,12 @@ export default defineConfig({
           fs.cpSync(src, dest, { recursive: true });
           console.log(`[static-samples] Copied dirty-pairs to ${dest}`);
         }
+        const screenshotSrc = path.join(samplesDir, 'screenshot.png');
+        const screenshotDest = path.resolve(__dirname, 'dist', 'samples', 'screenshot.png');
+        if (fs.existsSync(screenshotSrc) && !fs.existsSync(screenshotDest)) {
+          fs.copyFileSync(screenshotSrc, screenshotDest);
+          console.log(`[static-samples] Copied screenshot.png to ${screenshotDest}`);
+        }
       },
     },
   ],
