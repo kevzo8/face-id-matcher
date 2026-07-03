@@ -309,7 +309,9 @@ export default function Presentation({ initialSlide = 0, onClose }: { initialSli
                       {' · '}
                       <a href="https://svi-jira.atlassian.net/wiki/spaces/~71202071852762867849479b4d350bd48b7534/pages/250740911/CPS-221+Spike+Biometric+Face+Matching+UX+vs.+Async+Backend" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Confluence</a>
                       {' · '}
-                      <a href="https://vegamatcher.kevinguadalupevega.com/" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Live Demo</a>
+                      <a href="https://vegamatcher.kevinguadalupevega.com/" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Live App</a>
+                      {' · '}
+                      <a href="https://screenrec.com/share/irItDuPKEv" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Demo Video</a>
                     </motion.div>
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}

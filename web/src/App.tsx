@@ -262,6 +262,20 @@ export default function App() {
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4 }}><polygon points="5 3 19 12 5 21 5 3" /></svg> Present
           </button>
+          <a
+            href="https://screenrec.com/share/irItDuPKEv"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              padding: '6px 14px', fontSize: 12, fontWeight: 600,
+              background: 'linear-gradient(135deg, #ef4444, #f97316)',
+              color: '#fff', border: 'none', borderRadius: 6,
+              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4,
+              textDecoration: 'none',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4 }}><polygon points="5 3 19 12 5 21 5 3" /></svg> Demo Video
+          </a>
         </div>
         <div style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: 700, marginBottom: 2 }}>Face ID Matcher POC</div>
         <p style={{ color: '#94a3b8', fontSize: 13 }}>

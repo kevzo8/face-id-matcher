@@ -333,6 +333,9 @@ export const slides: Slide[] = [
             Benchmark 5+ face verification providers against a controlled Kaggle dataset to find the most accurate, cost-effective solution for SVI's KYC flow — tested at both 800px compressed and full resolution to simulate real-world conditions.
           </div>
         </motion.div>
+        <div style={{ marginTop: 16, fontSize: 11, color: '#475569', borderTop: '1px solid #334155', paddingTop: 10 }}>
+          <a href="https://svi-jira.atlassian.net/browse/CPS-221" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>CPS-221</a>: SPIKE — Research Biometric Face Matching (UX vs. Async Backend)
+        </div>
       </div>
     ),
   },
@@ -554,6 +557,9 @@ export const slides: Slide[] = [
             ))}
           </div>
         </div>
+        <div style={{ marginTop: 16, fontSize: 11, color: '#475569', borderTop: '1px solid #334155', paddingTop: 10 }}>
+          See demo video: <a href="https://screenrec.com/share/irItDuPKEv" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>https://screenrec.com/share/irItDuPKEv</a>
+        </div>
       </div>
     ),
   },
@@ -613,7 +619,9 @@ export const slides: Slide[] = [
           {' · '}
           <a href="https://svi-jira.atlassian.net/wiki/spaces/~71202071852762867849479b4d350bd48b7534/pages/250740911/CPS-221+Spike+Biometric+Face+Matching+UX+vs.+Async+Backend" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Confluence</a>
           {' · '}
-          <a href="https://vegamatcher.kevinguadalupevega.com/" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Live Demo</a>
+          <a href="https://vegamatcher.kevinguadalupevega.com/" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Live App</a>
+          {' · '}
+          <a href="https://screenrec.com/share/irItDuPKEv" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Demo Video</a>
         </motion.div>
         <motion.div
           initial={{ width: 0 }}
