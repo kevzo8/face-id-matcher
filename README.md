@@ -130,6 +130,37 @@ python batch.py --input pairs.csv --workers 4
 python batch.py --input pairs.csv --output my_results.csv
 ```
 
+### Demo run — Dirty Pairs (40 pairs with Rekognition)
+
+```bash
+cd batch
+python batch.py --input ../samples/dirty-pairs/pairs.csv --provider rekognition --threshold 0.6 --output rekognition_results.csv
+```
+
+Output shows per-pair timing and summary:
+
+```
+  [1/40] PASS  Weslley  similarity=98.2%  (0.8s)
+  [2/40] PASS  Juliana  similarity=95.1%  (0.7s)
+  ...
+============================================================
+  RESULTS
+============================================================
+  Total:          40
+  Auto-Approve:   38  (95.0%)
+  Manual Review:   2  (5.0%)
+  Errors:          0
+============================================================
+  TIMING
+============================================================
+  Total time:     32.4s
+  Avg per pair:   0.81s
+  Throughput:     1.2 pairs/s
+============================================================
+  Output saved:   rekognition_results.csv
+============================================================
+```
+
 ### Input CSV Format
 
 ```csv
