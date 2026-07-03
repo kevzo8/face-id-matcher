@@ -220,6 +220,18 @@ export default function App() {
     setMatching(false);
   }, [idImage, selfieImage, modelsLoaded, threshold, detectionModel, provider, serverUrl]);
 
+  const handleIdCapture = useCallback((data: ImageData) => {
+    setIdImage(data);
+    setIdFaceBox(null);
+    setResult(null);
+  }, []);
+
+  const handleSelfieCapture = useCallback((data: ImageData) => {
+    setSelfieImage(data);
+    setSelfieFaceBox(null);
+    setResult(null);
+  }, []);
+
   const handleReset = () => {
     setIdImage(null);
     setSelfieImage(null);
@@ -260,13 +272,14 @@ export default function App() {
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4 }}><polygon points="5 3 19 12 5 21 5 3" /></svg> Present
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4 }}><polygon points="5 3 19 12 5 21 5 3" /></svg> Present Slides
           </button>
           <a
             href="https://screenrec.com/share/irItDuPKEv"
             target="_blank"
             rel="noopener noreferrer"
             style={{
+              marginLeft: 8,
               padding: '6px 14px', fontSize: 12, fontWeight: 600,
               background: 'linear-gradient(135deg, #ef4444, #f97316)',
               color: '#fff', border: 'none', borderRadius: 6,
@@ -274,7 +287,7 @@ export default function App() {
               textDecoration: 'none',
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4 }}><polygon points="5 3 19 12 5 21 5 3" /></svg> Demo Video
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4 }}><circle cx="12" cy="12" r="10" fill="currentColor"/><circle cx="12" cy="12" r="4" fill="#0f172a"/></svg> Demo Video
           </a>
         </div>
         <div style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: 700, marginBottom: 2 }}>Face ID Matcher POC</div>
@@ -334,7 +347,7 @@ export default function App() {
                 title="1. ID Photo"
                 subtitle="Upload or take a photo of an ID card"
                 image={idImage}
-                onCapture={setIdImage}
+                onCapture={handleIdCapture}
                 facingMode="environment"
                 accentColor="#22c55e"
                 icon="card"
@@ -344,7 +357,7 @@ export default function App() {
                 title="2. Selfie"
                 subtitle="Take a selfie, upload a photo, or use another ID"
                 image={selfieImage}
-                onCapture={setSelfieImage}
+                onCapture={handleSelfieCapture}
                 facingMode="user"
                 accentColor="#3b82f6"
                 icon="person"
