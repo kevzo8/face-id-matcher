@@ -230,7 +230,7 @@ export default function Presentation({ initialSlide = 0, onClose }: { initialSli
           }
         `}</style>
         {/* Content */}
-        <div style={{ flex: 1, overflow: 'hidden', padding: isMobile ? '44px 12px 8px' : '20px 24px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflowY: 'auto' }}>
+        <div style={{ flex: 1, overflow: 'hidden', padding: isMobile ? '52px 12px 8px' : '52px 24px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflowY: 'auto' }}>
           {/* Section indicator */}
           <motion.div
             key={`indicator-${current}`}
