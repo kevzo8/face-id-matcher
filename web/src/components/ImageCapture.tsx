@@ -8,6 +8,8 @@ type ImageData = {
   size: number;
 } | null;
 
+type FaceBox = { x: number; y: number; width: number; height: number; score: number };
+
 interface ImageCaptureProps {
   title: string;
   subtitle: string;
@@ -16,9 +18,10 @@ interface ImageCaptureProps {
   facingMode: 'user' | 'environment';
   accentColor: string;
   icon: 'card' | 'person';
+  faceBox?: FaceBox | null;
 }
 
-export function ImageCapture({ title, subtitle, image, onCapture, facingMode, accentColor, icon }: ImageCaptureProps) {
+export function ImageCapture({ title, subtitle, image, onCapture, facingMode, accentColor, icon, faceBox }: ImageCaptureProps) {
   const [mode, setMode] = useState<'idle' | 'camera' | 'preview'>(
     image ? 'preview' : 'idle',
   );
@@ -28,6 +31,8 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
   const [imgTransform, setImgTransform] = useState({ rotate: 0, flipH: false, flipV: false });
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
+  const imgContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -180,6 +185,51 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
   useEffect(() => {
     return () => stopCamera();
   }, [stopCamera]);
+
+  useEffect(() => {
+    if (!faceBox || !image || !overlayRef.current || !imgContainerRef.current) return;
+    const draw = () => {
+      const canvas = overlayRef.current!;
+      const container = imgContainerRef.current!;
+      const img = container.querySelector('img');
+      if (!img) return;
+      const dw = img.clientWidth;
+      const dh = img.clientHeight;
+      const cw = container.clientWidth;
+      const ch = container.clientHeight;
+      canvas.width = cw;
+      canvas.height = ch;
+      const ctx = canvas.getContext('2d')!;
+      ctx.clearRect(0, 0, cw, ch);
+      const imgAR = image.width / image.height;
+      const boxAR = dw / dh;
+      let rw: number, rh: number, ox: number, oy: number;
+      if (imgAR > boxAR) {
+        rw = dw; rh = dw / imgAR; ox = 0; oy = (dh - rh) / 2;
+      } else {
+        rh = dh; rw = dh * imgAR; ox = (dw - rw) / 2; oy = 0;
+      }
+      const sx = rw / image.width;
+      const sy = rh / image.height;
+      const cx = (cw - dw) / 2 + ox;
+      const cy = (ch - dh) / 2 + oy;
+      const bx = cx + faceBox.x * sx;
+      const by = cy + faceBox.y * sy;
+      const bw = faceBox.width * sx;
+      const bh = faceBox.height * sy;
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(bx, by, bw, bh);
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.1)';
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.fillStyle = '#22c55e';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillText(`${Math.round(faceBox.score * 100)}%`, bx + 3, by - 4);
+    };
+    draw();
+    window.addEventListener('resize', draw);
+    return () => window.removeEventListener('resize', draw);
+  }, [faceBox, image]);
 
   const iconSvg = icon === 'card' ? (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -450,11 +500,13 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
       {mode === 'preview' && image && (
         <div>
           <div
+            ref={imgContainerRef}
             style={{
               borderRadius: 8,
               overflow: 'hidden',
               background: '#0f172a',
               border: `1px solid ${accentColor}44`,
+              position: 'relative',
             }}
           >
             <img
@@ -466,6 +518,12 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
                 transition: 'transform 0.2s',
               }}
             />
+            {faceBox && (
+              <canvas
+                ref={overlayRef}
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+              />
+            )}
           </div>
           {/* Transform buttons */}
           <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>

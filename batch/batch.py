@@ -26,6 +26,7 @@ import argparse
 import csv
 import sys
 import os
+import time
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -151,6 +152,7 @@ def main():
 
     results = []
     completed = 0
+    start_time = time.time()
 
     # Collect extra columns from input (everything except the required + image paths)
     extra_cols = [c for c in (rows[0][0].keys() if rows else [])
@@ -158,11 +160,13 @@ def main():
 
     if args.workers <= 1:
         for (row, id_abs, selfie_abs, id_rel, selfie_rel) in rows:
+            pair_start = time.time()
             result = process_pair(
                 provider, row["applicant_id"],
                 id_abs, selfie_abs,
                 args.threshold,
             )
+            elapsed = time.time() - pair_start
             extra = {c: row.get(c, "") for c in extra_cols}
             results.append((result, extra, id_rel, selfie_rel))
             completed += 1
@@ -170,10 +174,10 @@ def main():
             icon = {"auto_approve": "PASS", "manual_review": "FAIL", "error": "ERR"}[status]
             name_tag = f"  {extra['name']}" if "name" in extra and extra["name"] else ""
             try:
-                print(f"  [{completed}/{total}] {icon}  {result[0]}{name_tag}  similarity={result[1]:.1f}%")
+                print(f"  [{completed}/{total}] {icon}  {result[0]}{name_tag}  similarity={result[1]:.1f}%  ({elapsed:.1f}s)")
             except UnicodeEncodeError:
                 safe_name = extra.get("name", "").encode("ascii", "replace").decode() if "name" in extra else ""
-                print(f"  [{completed}/{total}] {icon}  {result[0]}  {safe_name}  similarity={result[1]:.1f}%")
+                print(f"  [{completed}/{total}] {icon}  {result[0]}  {safe_name}  similarity={result[1]:.1f}%  ({elapsed:.1f}s)")
     else:
         with ThreadPoolExecutor(max_workers=args.workers) as executor:
             futures = {
@@ -185,8 +189,10 @@ def main():
                 for (row, id_abs, selfie_abs, id_rel, selfie_rel) in rows
             }
             for future in as_completed(futures):
+                pair_start = time.time()
                 row, id_rel, selfie_rel = futures[future]
                 result = future.result()
+                elapsed = time.time() - pair_start
                 extra = {c: row.get(c, "") for c in extra_cols}
                 results.append((result, extra, id_rel, selfie_rel))
                 completed += 1
@@ -194,10 +200,10 @@ def main():
                 icon = {"auto_approve": "PASS", "manual_review": "FAIL", "error": "ERR"}[status]
                 name_tag = f"  {extra['name']}" if "name" in extra and extra["name"] else ""
                 try:
-                    print(f"  [{completed}/{total}] {icon}  {result[0]}{name_tag}  similarity={result[1]:.1f}%")
+                    print(f"  [{completed}/{total}] {icon}  {result[0]}{name_tag}  similarity={result[1]:.1f}%  ({elapsed:.1f}s)")
                 except UnicodeEncodeError:
                     safe_name = extra.get("name", "").encode("ascii", "replace").decode() if "name" in extra else ""
-                    print(f"  [{completed}/{total}] {icon}  {result[0]}  {safe_name}  similarity={result[1]:.1f}%")
+                    print(f"  [{completed}/{total}] {icon}  {result[0]}  {safe_name}  similarity={result[1]:.1f}%  ({elapsed:.1f}s)")
 
     results.sort(key=lambda r: r[0][0])
 
@@ -210,6 +216,10 @@ def main():
             writer.writerow([r[0]] + [extra.get(c, "") for c in extra_cols] +
                              [f"{r[1]:.2f}", f"{r[2]:.4f}", r[3], r[4], id_rel, selfie_rel])
 
+    total_elapsed = time.time() - start_time
+    avg = total_elapsed / total if total else 0
+    throughput = total / total_elapsed if total_elapsed else 0
+
     approved = sum(1 for (r, _, _, _) in results if r[3] == "auto_approve")
     review = sum(1 for (r, _, _, _) in results if r[3] == "manual_review")
     errors = sum(1 for (r, _, _, _) in results if r[3] == "error")
@@ -221,6 +231,13 @@ def main():
     print(f"  Auto-Approve:   {approved}  ({approved/total*100:.1f}%)" if total else "")
     print(f"  Manual Review:  {review}  ({review/total*100:.1f}%)" if total else "")
     print(f"  Errors:         {errors}")
+    print(f"{'='*60}")
+    print(f"  TIMING")
+    print(f"{'='*60}")
+    print(f"  Total time:     {total_elapsed:.1f}s")
+    print(f"  Avg per pair:   {avg:.2f}s")
+    print(f"  Throughput:     {throughput:.1f} pairs/s")
+    print(f"{'='*60}")
     print(f"  Output saved:   {args.output}")
     print(f"{'='*60}\n")
 

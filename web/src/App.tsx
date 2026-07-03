@@ -16,6 +16,7 @@ type ImageData = {
 
 type DetectionModel = 'fast' | 'accurate';
 type Provider = 'local' | 'rekognition' | 'megamatcher' | 'insightface' | 'faceplusplus';
+type FaceBox = { x: number; y: number; width: number; height: number; score: number };
 
 function checkOrientation(detection: faceapi.WithFaceLandmarks<{ detection: faceapi.FaceDetection }>): string | null {
   const landmarks = detection.landmarks;
@@ -55,6 +56,8 @@ export default function App() {
   const [showTips, setShowTips] = useState(true);
   const [showPresentation, setShowPresentation] = useState(false);
   const [initialSlide, setInitialSlide] = useState(0);
+  const [idFaceBox, setIdFaceBox] = useState<FaceBox | null>(null);
+  const [selfieFaceBox, setSelfieFaceBox] = useState<FaceBox | null>(null);
 
   useEffect(() => {
     function handleRoute() {
@@ -139,6 +142,23 @@ export default function App() {
           error: data.error ?? undefined,
           warnings: data.warnings ?? undefined,
         });
+
+        const detOpts = detectionModel === 'fast'
+          ? new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.1 })
+          : new faceapi.SsdMobilenetv1Options({ minConfidence: 0.1 });
+        const [idDets, selfDets] = await Promise.all([
+          faceapi.detectAllFaces(idImage.element, detOpts),
+          faceapi.detectAllFaces(selfieImage.element, detOpts),
+        ]);
+        const pickLargest = (dets: faceapi.FaceDetection[]) => {
+          if (!dets.length) return null;
+          return dets.reduce((max, d) => d.box.area > max.box.area ? d : max, dets[0]);
+        };
+        const idDet = pickLargest(idDets);
+        const selfDet = pickLargest(selfDets);
+        if (idDet) setIdFaceBox({ x: idDet.box.x, y: idDet.box.y, width: idDet.box.width, height: idDet.box.height, score: idDet.score });
+        if (selfDet) setSelfieFaceBox({ x: selfDet.box.x, y: selfDet.box.y, width: selfDet.box.width, height: selfDet.box.height, score: selfDet.score });
+
         setMatching(false);
         return;
       }
@@ -148,15 +168,18 @@ export default function App() {
           ? new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.1 })
           : new faceapi.SsdMobilenetv1Options({ minConfidence: 0.1 });
 
-      const idDetection = await faceapi
-        .detectSingleFace(idImage.element, detectorOptions)
-        .withFaceLandmarks()
-        .withFaceDescriptor();
+      const [allIdDetections, allSelfieDetections] = await Promise.all([
+        faceapi.detectAllFaces(idImage.element, detectorOptions).withFaceLandmarks().withFaceDescriptors(),
+        faceapi.detectAllFaces(selfieImage.element, detectorOptions).withFaceLandmarks().withFaceDescriptors(),
+      ]);
 
-      const selfieDetection = await faceapi
-        .detectSingleFace(selfieImage.element, detectorOptions)
-        .withFaceLandmarks()
-        .withFaceDescriptor();
+      const pickLargest = (dets: faceapi.WithFaceDescriptor<faceapi.WithFaceLandmarks<{ detection: faceapi.FaceDetection }>>[]) => {
+        if (!dets.length) return null;
+        return dets.reduce((max, d) => d.detection.box.area > max.detection.box.area ? d : max, dets[0]);
+      };
+
+      const idDetection = pickLargest(allIdDetections);
+      const selfieDetection = pickLargest(allSelfieDetections);
 
       if (!idDetection) {
         setResult({ distance: 1, similarity: 0, match: false, threshold, error: 'No face detected in the ID photo. ID photo might be too small or face might not be clear — make sure to take the photos clearly, with good lighting and face directly facing the camera.' });
@@ -169,6 +192,9 @@ export default function App() {
         setMatching(false);
         return;
       }
+
+      setIdFaceBox({ x: idDetection.detection.box.x, y: idDetection.detection.box.y, width: idDetection.detection.box.width, height: idDetection.detection.box.height, score: idDetection.detection.score });
+      setSelfieFaceBox({ x: selfieDetection.detection.box.x, y: selfieDetection.detection.box.y, width: selfieDetection.detection.box.width, height: selfieDetection.detection.box.height, score: selfieDetection.detection.score });
 
       const idOrient = checkOrientation(idDetection);
       const selfieOrient = checkOrientation(selfieDetection);
@@ -198,6 +224,8 @@ export default function App() {
     setIdImage(null);
     setSelfieImage(null);
     setResult(null);
+    setIdFaceBox(null);
+    setSelfieFaceBox(null);
   };
 
   const step = !idImage && !selfieImage ? 1 : !idImage || !selfieImage ? 2 : 3;
@@ -296,6 +324,7 @@ export default function App() {
                 facingMode="environment"
                 accentColor="#22c55e"
                 icon="card"
+                faceBox={idFaceBox}
               />
               <ImageCapture
                 title="2. Selfie"
@@ -305,6 +334,7 @@ export default function App() {
                 facingMode="user"
                 accentColor="#3b82f6"
                 icon="person"
+                faceBox={selfieFaceBox}
               />
             </div>
 

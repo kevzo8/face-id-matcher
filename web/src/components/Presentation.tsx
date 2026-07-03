@@ -41,19 +41,29 @@ const lightTheme = {
   footerBorder: '#e2e8f0',
 };
 
+const MOBILE_BP = 768;
+
 export default function Presentation({ initialSlide = 0, onClose }: { initialSlide?: number; onClose: () => void }) {
   const [current, setCurrent] = useState(initialSlide);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < MOBILE_BP);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= MOBILE_BP);
   const [dark, setDark] = useState(true);
   const total = slides.length;
   const t = dark ? darkTheme : lightTheme;
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < MOBILE_BP);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const goTo = useCallback((i: number) => {
     if (i >= 0 && i < total) {
       setCurrent(i);
       window.history.replaceState(null, '', `/presentation/${i}`);
+      if (isMobile) setSidebarOpen(false);
     }
-  }, [total]);
+  }, [total, isMobile]);
 
   const next = useCallback(() => goTo(current + 1), [current, goTo]);
   const prev = useCallback(() => goTo(current - 1), [current, goTo]);
@@ -81,12 +91,26 @@ export default function Presentation({ initialSlide = 0, onClose }: { initialSli
     return () => { document.body.style.overflow = ''; };
   }, []);
 
+  const btnStyle: React.CSSProperties = {
+    background: t.sidebarBg, border: `1px solid ${t.border}`,
+    borderRadius: 6, color: t.textSecondary, cursor: 'pointer',
+    padding: '4px 8px', fontSize: 13, whiteSpace: 'nowrap',
+  };
+
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
       display: 'flex', background: t.bg, color: t.text,
       fontFamily: "'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif",
     }}>
+      {/* Mobile overlay backdrop */}
+      {isMobile && sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 199 }}
+        />
+      )}
+
       {/* Left Sidebar */}
       <motion.aside
         animate={{ width: sidebarOpen ? 240 : 0, opacity: sidebarOpen ? 1 : 0 }}
@@ -95,11 +119,17 @@ export default function Presentation({ initialSlide = 0, onClose }: { initialSli
           overflow: 'hidden', flexShrink: 0,
           background: t.sidebarBg, borderRight: `1px solid ${t.border}`,
           display: 'flex', flexDirection: 'column',
+          ...(isMobile ? { position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 200, width: sidebarOpen ? 240 : 0 } : {}),
         }}
       >
-        <div style={{ padding: '18px 16px', borderBottom: `1px solid ${t.border}` }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>Face ID Matcher POC</div>
-          <div style={{ fontSize: 11, color: t.textMuted, marginTop: 2 }}>CPS-221 POC</div>
+        <div style={{ padding: '18px 16px', borderBottom: `1px solid ${t.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>Face ID Matcher POC</div>
+            <div style={{ fontSize: 11, color: t.textMuted, marginTop: 2 }}>CPS-221 POC</div>
+          </div>
+          {isMobile && (
+            <button onClick={() => setSidebarOpen(false)} style={{ ...btnStyle, padding: '2px 6px' }}>✕</button>
+          )}
         </div>
         <div style={{ flex: 1, overflow: 'auto', padding: '6px 0' }}>
           {(() => {
@@ -165,45 +195,25 @@ export default function Presentation({ initialSlide = 0, onClose }: { initialSli
         </div>
       </motion.aside>
 
-      {/* Toggle sidebar button */}
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        style={{
-          position: 'absolute', top: 12,
-          left: sidebarOpen ? 244 : 8,
-          zIndex: 100, background: t.sidebarBg, border: `1px solid ${t.border}`,
-          borderRadius: 6, color: t.textSecondary, cursor: 'pointer',
-          padding: '4px 8px', fontSize: 14, transition: 'left 0.3s',
-        }}
-      >
-        {sidebarOpen ? '◀' : '▶'}
-      </button>
-
-      {/* Theme toggle button */}
-      <button
-        onClick={() => setDark(!dark)}
-        style={{
-          position: 'absolute', top: 12, right: 80, zIndex: 100,
-          background: t.sidebarBg, border: `1px solid ${t.border}`,
-          borderRadius: 6, color: t.textSecondary, cursor: 'pointer',
-          padding: '4px 10px', fontSize: 13,
-        }}
-      >
-        {dark ? '☀ Light' : '🌙 Dark'}
-      </button>
-
-      {/* Close button */}
-      <button
-        onClick={onClose}
-        style={{
-          position: 'absolute', top: 12, right: 12, zIndex: 100,
-          background: t.sidebarBg, border: `1px solid ${t.border}`,
-          borderRadius: 6, color: t.textSecondary, cursor: 'pointer',
-          padding: '4px 10px', fontSize: 13,
-        }}
-      >
-        ✕ Exit
-      </button>
+      {/* Top toolbar */}
+      <div style={{
+        position: 'absolute', top: 8, left: 8, right: 8, zIndex: 100,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        pointerEvents: 'none',
+      }}>
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          style={{ ...btnStyle, pointerEvents: 'auto', marginLeft: sidebarOpen && !isMobile ? 248 : 0, transition: 'margin-left 0.3s' }}
+        >
+          {sidebarOpen ? '◀' : '☰'}
+        </button>
+        <div style={{ display: 'flex', gap: 6, pointerEvents: 'auto' }}>
+          <button onClick={() => setDark(!dark)} style={btnStyle}>
+            {dark ? '☀' : '🌙'}
+          </button>
+          <button onClick={onClose} style={btnStyle}>✕</button>
+        </div>
+      </div>
 
       {/* Main Content Area */}
       <div
@@ -220,14 +230,14 @@ export default function Presentation({ initialSlide = 0, onClose }: { initialSli
           }
         `}</style>
         {/* Content */}
-        <div style={{ flex: 1, overflow: 'hidden', padding: '20px 24px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflowY: 'auto' }}>
+        <div style={{ flex: 1, overflow: 'hidden', padding: isMobile ? '44px 12px 8px' : '20px 24px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflowY: 'auto' }}>
           {/* Section indicator */}
           <motion.div
             key={`indicator-${current}`}
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, paddingLeft: 20 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, paddingLeft: isMobile ? 0 : 20, flexWrap: 'wrap' }}
           >
             <span style={{
               display: 'inline-block', width: 10, height: 10, borderRadius: '50%',
@@ -250,7 +260,7 @@ export default function Presentation({ initialSlide = 0, onClose }: { initialSli
               transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
             >
               {slides[current].id === 'app' ? (
-                <div style={{ textAlign: 'center', paddingTop: '8vh' }}>
+                <div style={{ textAlign: 'center', paddingTop: isMobile ? '2vh' : '8vh' }}>
                   <motion.div
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
@@ -260,10 +270,10 @@ export default function Presentation({ initialSlide = 0, onClose }: { initialSli
                       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
                       <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
                     </svg>
-                    <div style={{ fontSize: 36, fontWeight: 800, background: 'linear-gradient(135deg, #818cf8, #a78bfa, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: 8 }}>
+                    <div style={{ fontSize: isMobile ? 26 : 36, fontWeight: 800, background: 'linear-gradient(135deg, #818cf8, #a78bfa, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: 8 }}>
                       Face ID Matcher POC
                     </div>
-                    <div style={{ fontSize: 18, color: '#94a3b8', marginBottom: 4, fontWeight: 500 }}>
+                    <div style={{ fontSize: isMobile ? 14 : 18, color: '#94a3b8', marginBottom: 4, fontWeight: 500 }}>
                       Biometric Face Matching — CPS-221
                     </div>
                     <div style={{ fontSize: 13, color: '#64748b', marginBottom: 28, letterSpacing: 0.5 }}>
@@ -273,12 +283,12 @@ export default function Presentation({ initialSlide = 0, onClose }: { initialSli
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.4, delay: 0.2 }}
-                      style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 36 }}
+                      style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 36, flexWrap: 'wrap' }}
                     >
-                      <span style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.25), rgba(129,140,248,0.15))', color: '#a5b4fc', padding: '6px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: '1px solid rgba(99,102,241,0.3)' }}>7 Providers</span>
-                      <span style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.25), rgba(74,222,128,0.15))', color: '#86efac', padding: '6px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: '1px solid rgba(34,197,94,0.3)' }}>40 Test Pairs</span>
-                      <span style={{ background: 'linear-gradient(135deg, rgba(234,179,8,0.25), rgba(250,204,21,0.15))', color: '#fde68a', padding: '6px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: '1px solid rgba(234,179,8,0.3)' }}>27 Subjects</span>
-                      <span style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.25), rgba(192,132,252,0.15))', color: '#d8b4fe', padding: '6px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: '1px solid rgba(168,85,247,0.3)' }}>100% Accuracy</span>
+                      <span style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.25), rgba(129,140,248,0.15))', color: '#a5b4fc', padding: '6px 14px', borderRadius: 8, fontSize: isMobile ? 11 : 13, fontWeight: 600, border: '1px solid rgba(99,102,241,0.3)' }}>7 Providers</span>
+                      <span style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.25), rgba(74,222,128,0.15))', color: '#86efac', padding: '6px 14px', borderRadius: 8, fontSize: isMobile ? 11 : 13, fontWeight: 600, border: '1px solid rgba(34,197,94,0.3)' }}>40 Test Pairs</span>
+                      <span style={{ background: 'linear-gradient(135deg, rgba(234,179,8,0.25), rgba(250,204,21,0.15))', color: '#fde68a', padding: '6px 14px', borderRadius: 8, fontSize: isMobile ? 11 : 13, fontWeight: 600, border: '1px solid rgba(234,179,8,0.3)' }}>27 Subjects</span>
+                      <span style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.25), rgba(192,132,252,0.15))', color: '#d8b4fe', padding: '6px 14px', borderRadius: 8, fontSize: isMobile ? 11 : 13, fontWeight: 600, border: '1px solid rgba(168,85,247,0.3)' }}>100% Accuracy</span>
                     </motion.div>
                     <motion.div
                       initial={{ opacity: 0 }}
@@ -313,7 +323,7 @@ export default function Presentation({ initialSlide = 0, onClose }: { initialSli
                       initial={{ opacity: 0, y: 15 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.4, delay: 0.65 }}
-                      style={{ marginTop: 32, display: 'flex', gap: 12, justifyContent: 'center' }}
+                      style={{ marginTop: 32, display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}
                     >
                       <motion.button
                         whileHover={{ scale: 1.05 }}
@@ -344,9 +354,9 @@ export default function Presentation({ initialSlide = 0, onClose }: { initialSli
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.35, delay: 0.05, ease: 'easeOut' }}
                   >
-                    <h2 style={{ fontSize: 28, fontWeight: 700, color: '#e2e8f0', marginBottom: 2, letterSpacing: -0.5 }}>{slides[current].title}</h2>
+                    <h2 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: '#e2e8f0', marginBottom: 2, letterSpacing: -0.5 }}>{slides[current].title}</h2>
                     {slides[current].subtitle && (
-                      <p style={{ fontSize: 16, color: '#64748b', marginBottom: 20, lineHeight: 1.6 }}>{slides[current].subtitle}</p>
+                      <p style={{ fontSize: isMobile ? 13 : 16, color: '#64748b', marginBottom: isMobile ? 12 : 20, lineHeight: 1.6 }}>{slides[current].subtitle}</p>
                     )}
                   </motion.div>
                   <motion.div
@@ -368,9 +378,9 @@ export default function Presentation({ initialSlide = 0, onClose }: { initialSli
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
           style={{
-            borderTop: '1px solid #1e293b', padding: '8px 24px',
+            borderTop: '1px solid #1e293b', padding: isMobile ? '6px 12px' : '8px 24px',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            background: '#0f172a',
+            background: '#0f172a', gap: isMobile ? 8 : 0,
           }}
         >
           <motion.button
@@ -379,32 +389,38 @@ export default function Presentation({ initialSlide = 0, onClose }: { initialSli
             onClick={prev}
             disabled={current === 0}
             style={{
-              padding: '8px 20px', borderRadius: 8, border: '1px solid #334155',
+              padding: isMobile ? '6px 12px' : '8px 20px', borderRadius: 8, border: '1px solid #334155',
               background: '#1e293b',
               color: current === 0 ? '#334155' : '#94a3b8',
               cursor: current === 0 ? 'not-allowed' : 'pointer',
-              fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6,
+              fontSize: isMobile ? 12 : 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6,
               transition: 'all 0.2s',
             }}
           >
-            ← Previous
+            ← {isMobile ? 'Prev' : 'Previous'}
           </motion.button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {slides.map((_, i) => (
-              <motion.div
-                key={i}
-                whileHover={{ scale: i === current ? 1 : 1.5 }}
-                onClick={() => goTo(i)}
-                animate={{
-                  width: i === current ? 24 : 7,
-                  background: i === current ? '#6366f1' : '#334155',
-                }}
-                transition={{ duration: 0.3 }}
-                style={{ height: 7, borderRadius: 4, cursor: 'pointer' }}
-              />
-            ))}
-          </div>
+          {!isMobile && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {slides.map((_, i) => (
+                <motion.div
+                  key={i}
+                  whileHover={{ scale: i === current ? 1 : 1.5 }}
+                  onClick={() => goTo(i)}
+                  animate={{
+                    width: i === current ? 24 : 7,
+                    background: i === current ? '#6366f1' : '#334155',
+                  }}
+                  transition={{ duration: 0.3 }}
+                  style={{ height: 7, borderRadius: 4, cursor: 'pointer' }}
+                />
+              ))}
+            </div>
+          )}
+
+          {isMobile && (
+            <span style={{ fontSize: 11, color: '#64748b' }}>{current + 1}/{total}</span>
+          )}
 
           <motion.button
             whileHover={current < total - 1 ? { scale: 1.05, borderColor: '#6366f1', color: '#e2e8f0' } : {}}
@@ -412,11 +428,11 @@ export default function Presentation({ initialSlide = 0, onClose }: { initialSli
             onClick={next}
             disabled={current === total - 1}
             style={{
-              padding: '8px 20px', borderRadius: 8, border: '1px solid #334155',
+              padding: isMobile ? '6px 12px' : '8px 20px', borderRadius: 8, border: '1px solid #334155',
               background: '#1e293b',
               color: current === total - 1 ? '#334155' : '#94a3b8',
               cursor: current === total - 1 ? 'not-allowed' : 'pointer',
-              fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6,
+              fontSize: isMobile ? 12 : 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6,
               transition: 'all 0.2s',
             }}
           >
