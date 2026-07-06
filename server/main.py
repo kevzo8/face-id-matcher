@@ -109,6 +109,17 @@ class CompareResponse(BaseModel):
     warnings: list[str] | None = None
 
 
+class DetectFacesResponse(BaseModel):
+    face_detected: bool
+    confidence: float
+    eyes_open: bool
+    eyes_open_confidence: float
+    quality_brightness: float
+    quality_sharpness: float
+    score: int
+    error: str | None = None
+
+
 def decode_and_compare(id_data: bytes, selfie_data: bytes, threshold: float, provider_instance=None):
     import tempfile
     with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as id_tmp:
@@ -177,6 +188,54 @@ async def compare_faces(request: Request):
         raise HTTPException(status_code=400, detail="Provide source_image+target_image in JSON body")
 
     raise HTTPException(status_code=400, detail="Unsupported content type")
+
+@app.post("/liveness/detect-faces", response_model=DetectFacesResponse)
+async def detect_faces_liveness(request: Request):
+    body = await request.json()
+    image_b64 = body.get("image")
+    if not image_b64:
+        raise HTTPException(status_code=400, detail="No image provided")
+
+    try:
+        import boto3
+        rekognition = boto3.client("rekognition", region_name=os.environ.get("AWS_DEFAULT_REGION", "ap-southeast-1"))
+        response = rekognition.detect_faces(
+            Image={"Bytes": base64.b64decode(image_b64)},
+            Attributes=["ALL"],
+        )
+
+        if not response["FaceDetails"]:
+            return DetectFacesResponse(
+                face_detected=False, confidence=0, eyes_open=False, eyes_open_confidence=0,
+                quality_brightness=0, quality_sharpness=0, score=0,
+            )
+
+        face = response["FaceDetails"][0]
+        confidence = face.get("Confidence", 0)
+        eyes_open = face.get("EyesOpen", {}).get("Value", False)
+        eyes_open_conf = face.get("EyesOpen", {}).get("Confidence", 0)
+        quality = face.get("Quality", {})
+        brightness = quality.get("Brightness", 0)
+        sharpness = quality.get("Sharpness", 0)
+
+        score = 0
+        if confidence > 90: score += 5
+        if eyes_open and eyes_open_conf > 80: score += 5
+        if brightness > 40: score += 5
+        if sharpness > 40: score += 5
+
+        return DetectFacesResponse(
+            face_detected=True, confidence=confidence, eyes_open=eyes_open,
+            eyes_open_confidence=eyes_open_conf,
+            quality_brightness=brightness, quality_sharpness=sharpness,
+            score=score,
+        )
+    except Exception as e:
+        return DetectFacesResponse(
+            face_detected=False, confidence=0, eyes_open=False, eyes_open_confidence=0,
+            quality_brightness=0, quality_sharpness=0, score=0, error=str(e),
+        )
+
 
 @app.get("/health")
 async def health():

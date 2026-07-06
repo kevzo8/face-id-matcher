@@ -5,6 +5,7 @@ import { MatchResult } from './components/MatchResult';
 import { BatchMatcher } from './components/BatchMatcher';
 import { CsvViewer } from './components/CsvViewer';
 import Presentation from './components/Presentation';
+import LivenessCheck from './components/LivenessCheck';
 
 type ImageData = {
   url: string;
@@ -15,7 +16,9 @@ type ImageData = {
 } | null;
 
 type DetectionModel = 'fast' | 'accurate';
-type Provider = 'local' | 'rekognition' | 'megamatcher' | 'insightface' | 'faceplusplus';
+type IdToFaceProvider = 'local' | 'rekognition' | 'megamatcher' | 'insightface' | 'faceplusplus';
+type OcrProvider = 'bedrock' | 'textract' | 'verihubs' | 'zoloz' | 'tencent' | 'google_docai' | 'mindee' | 'azure_di';
+type LivenessProvider = 'aws_rekognition' | 'aws_detect_faces' | 'faceplusplus' | 'azure_face' | 'hyperverge' | 'didit' | 'iproov' | 'open_face_liveness';
 type FaceBox = { x: number; y: number; width: number; height: number; score: number };
 
 function checkOrientation(detection: faceapi.WithFaceLandmarks<{ detection: faceapi.FaceDetection }>): string | null {
@@ -49,8 +52,13 @@ export default function App() {
   } | null>(null);
   const [threshold, setThreshold] = useState(0.7);
   const [detectionModel, setDetectionModel] = useState<DetectionModel>('accurate');
-  const [provider, setProvider] = useState<Provider>('rekognition');
+  const [idToFaceProvider, setIdToFaceProvider] = useState<IdToFaceProvider>('rekognition');
   const [serverUrl, setServerUrl] = useState('https://face-id-matcher.onrender.com');
+  const [ocrProvider, setOcrProvider] = useState<OcrProvider>('verihubs');
+  const [ocrServerUrl, setOcrServerUrl] = useState('https://face-id-matcher.onrender.com');
+  const [livenessProvider, setLivenessProvider] = useState<LivenessProvider>('open_face_liveness');
+  const [livenessServerUrl, setLivenessServerUrl] = useState('https://face-id-matcher.onrender.com');
+  const [feature, setFeature] = useState<'id_to_face' | 'liveness' | 'ocr'>('id_to_face');
   const [mode, setMode] = useState<'single' | 'batch' | 'csv'>('single');
   const [showInfo, setShowInfo] = useState(false);
   const [showTips, setShowTips] = useState(true);
@@ -58,16 +66,30 @@ export default function App() {
   const [initialSlide, setInitialSlide] = useState(0);
   const [idFaceBox, setIdFaceBox] = useState<FaceBox | null>(null);
   const [selfieFaceBox, setSelfieFaceBox] = useState<FaceBox | null>(null);
+  const [livenessRunning, setLivenessRunning] = useState(false);
+  const [livenessPassed, setLivenessPassed] = useState(false);
+  const [livenessResult, setLivenessResult] = useState<{ pass: boolean; score: number; details: string } | null>(null);
+  const [livenessTestStarted, setLivenessTestStarted] = useState(false);
+  const [livenessTestResult, setLivenessTestResult] = useState<{ pass: boolean; score: number; details: string; recordingUrl?: string } | null>(null);
+  const [livenessTestVideo, setLivenessTestVideo] = useState<HTMLVideoElement | null>(null);
+  const livenessTestVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     function handleRoute() {
-      const match = window.location.pathname.match(/^\/presentation\/?(\d+)?$/);
-      if (match) {
+      const presMatch = window.location.pathname.match(/^\/presentation\/?(\d+)?$/);
+      if (presMatch) {
         setShowPresentation(true);
-        setInitialSlide(match[1] ? parseInt(match[1], 10) : 0);
-      } else {
-        setShowPresentation(false);
+        setInitialSlide(presMatch[1] ? parseInt(presMatch[1], 10) : 0);
+        return;
       }
+      setShowPresentation(false);
+      const routeMap: Record<string, 'id_to_face' | 'liveness' | 'ocr'> = {
+        '/face-id': 'id_to_face',
+        '/liveness': 'liveness',
+        '/ocr': 'ocr',
+      };
+      const feat = routeMap[window.location.pathname];
+      if (feat) setFeature(feat);
     }
     handleRoute();
     window.addEventListener('popstate', handleRoute);
@@ -95,12 +117,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (provider === 'rekognition' || provider === 'faceplusplus') {
+    if (idToFaceProvider === 'rekognition' || idToFaceProvider === 'faceplusplus') {
       setServerUrl('https://face-id-matcher.onrender.com');
-    } else if (provider === 'insightface' || provider === 'megamatcher') {
+    } else if (idToFaceProvider === 'insightface' || idToFaceProvider === 'megamatcher') {
       setServerUrl('https://kvega-cps221-face-match.hf.space');
     }
-  }, [provider]);
+  }, [idToFaceProvider]);
 
   const handleMatch = useCallback(async () => {
     if (!idImage || !selfieImage || !modelsLoaded) return;
@@ -108,7 +130,7 @@ export default function App() {
     setResult(null);
 
     try {
-      if (provider !== 'local') {
+      if (idToFaceProvider !== 'local') {
         const canvas = document.createElement('canvas');
         const toBase64 = (img: HTMLImageElement) => {
           canvas.width = img.naturalWidth;
@@ -124,7 +146,7 @@ export default function App() {
             source_image: toBase64(idImage.element),
             target_image: toBase64(selfieImage.element),
             threshold,
-            provider,
+            provider: idToFaceProvider,
           }),
         });
 
@@ -218,7 +240,7 @@ export default function App() {
       alert(msg);
     }
     setMatching(false);
-  }, [idImage, selfieImage, modelsLoaded, threshold, detectionModel, provider, serverUrl]);
+  }, [idImage, selfieImage, modelsLoaded, threshold, detectionModel, idToFaceProvider, serverUrl]);
 
   const handleIdCapture = useCallback((data: ImageData) => {
     setIdImage(data);
@@ -232,15 +254,21 @@ export default function App() {
     setResult(null);
   }, []);
 
+  const handleLivenessComplete = useCallback((result: { pass: boolean; score: number; details: string }) => {
+    setLivenessResult(result);
+    setLivenessPassed(result.pass);
+    setLivenessRunning(false);
+  }, []);
+
   const handleReset = () => {
     setIdImage(null);
     setSelfieImage(null);
     setResult(null);
     setIdFaceBox(null);
     setSelfieFaceBox(null);
+    setLivenessPassed(false);
+    setLivenessResult(null);
   };
-
-  const step = !idImage && !selfieImage ? 1 : !idImage || !selfieImage ? 2 : 3;
 
   if (loadError) {
     return (
@@ -296,251 +324,403 @@ export default function App() {
         </p>
       </header>
 
-      {/* Mode tabs */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginBottom: 12, flexWrap: 'wrap' }}>
-        {(['single', 'batch', 'csv'] as const).map((m) => (
-          <button
-            key={m}
-            onClick={() => setMode(m)}
-            style={{
-              flex: '1 1 auto',
-              padding: '5px 16px',
-              fontSize: 'clamp(11px, 3vw, 13px)',
-              fontWeight: 600,
-              border: 'none',
-              borderRadius: 6,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              background: mode === m ? '#3b82f6' : '#1e293b',
-              color: mode === m ? '#fff' : '#64748b',
-            }}
-          >
-            {m === 'single' ? '\u2696 Single Compare' : m === 'batch' ? '\u2630 Batch Upload' : '\u2630 View CSV'}
-          </button>
-        ))}
-      </div>
-
       {!modelsLoaded && (
         <p style={{ color: '#f59e0b', textAlign: 'center', marginBottom: 12, fontSize: 13 }}>Loading face recognition models...</p>
       )}
 
-      {/* Two-column layout */}
-      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        {/* === Left: Main content === */}
-        <div style={{ flex: '1 1 0', minWidth: 280 }}>
-          <div style={{ display: mode === 'batch' ? 'block' : 'none' }}>
-            <BatchMatcher
-              detectionModel={detectionModel}
-              provider={provider}
-              serverUrl={serverUrl}
-              threshold={threshold}
-              onBack={() => setMode('single')}
-            />
-          </div>
-          <div style={{ display: mode === 'csv' ? 'block' : 'none' }}>
-            <CsvViewer />
-          </div>
-          <div style={{ display: mode === 'single' ? 'block' : 'none' }}>
-            {/* Capture panels */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12, marginBottom: 12 }}>
-              <ImageCapture
-                title="1. ID Photo"
-                subtitle="Upload or take a photo of an ID card"
-                image={idImage}
-                onCapture={handleIdCapture}
-                facingMode="environment"
-                accentColor="#22c55e"
-                icon="card"
-                faceBox={idFaceBox}
-              />
-              <ImageCapture
-                title="2. Selfie"
-                subtitle="Take a selfie, upload a photo, or use another ID"
-                image={selfieImage}
-                onCapture={handleSelfieCapture}
-                facingMode="user"
-                accentColor="#3b82f6"
-                icon="person"
-                faceBox={selfieFaceBox}
-              />
-            </div>
+      {/* Three-column layout */}
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
 
-            {/* Controls */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
-              <button
-                onClick={handleMatch}
-                disabled={!idImage || !selfieImage || matching || !modelsLoaded}
-                style={{
-                  padding: '10px 28px',
-                  fontSize: 15,
-                  fontWeight: 600,
-                  border: 'none',
-                  borderRadius: 8,
-                  cursor: idImage && selfieImage && !matching && modelsLoaded ? 'pointer' : 'not-allowed',
-                  background: idImage && selfieImage && !matching && modelsLoaded ? '#a855f7' : '#334155',
-                  color: '#fff',
-                }}
-              >
-                {matching ? 'Matching...' : '\u2696 Compare Faces'}
-              </button>
-              <button onClick={handleReset} style={{ padding: '10px 20px', fontSize: 13, border: '1px solid #475569', borderRadius: 8, cursor: 'pointer', background: 'transparent', color: '#94a3b8' }}>
-                Reset
-              </button>
-            </div>
-
-            {/* Result */}
-            {result && <MatchResult result={result} />}
-          </div>
+        {/* === Left: Feature Menu === */}
+        <div style={{ flex: '0 0 130px', background: '#1e293b', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          {([
+            { key: 'id_to_face' as const, label: 'ID to Face', color: '#a855f7', icon: '\u2696' },
+            { key: 'liveness' as const, label: 'Liveness Test', color: '#f97316', icon: '\u25C9' },
+            { key: 'ocr' as const, label: 'OCR & ID Type', color: '#22c55e', icon: '\u2630' },
+          ]).map((f) => (
+            <button
+              key={f.key}
+              onClick={() => { setFeature(f.key); window.history.pushState(null, '', '/' + ({ id_to_face: 'face-id', liveness: 'liveness', ocr: 'ocr' })[f.key]); }}
+              style={{
+                width: '100%', textAlign: 'left', padding: '10px 10px', fontSize: 12, fontWeight: 600,
+                border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                background: feature === f.key ? '#334155' : 'transparent',
+                color: feature === f.key ? f.color : '#64748b',
+                borderLeft: `3px solid ${feature === f.key ? f.color : 'transparent'}`,
+              }}
+            >
+              <span>{f.icon}</span>
+              <span>{f.label}</span>
+            </button>
+          ))}
         </div>
 
-        {/* === Right: Sidebar === */}
-        <div style={{ flex: '0 0 300px', background: '#1e293b', borderRadius: 8, padding: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* === Center: Main content === */}
+        <div style={{ flex: '1 1 0', minWidth: 280 }}>
 
-          {/* Provider */}
-          <div>
-            <label style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>PROVIDER</label>
-            <select
-              value={provider}
-              onChange={(e) => setProvider(e.target.value as Provider)}
-              style={{ width: '100%', padding: '6px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 13 }}
-            >
-              <option value="rekognition">AWS Rekognition (cloud)</option>
-              <option value="insightface">InsightFace (server)</option>
-              <option value="faceplusplus">Face++ (cloud)</option>
-              <option value="megamatcher">Megamatcher (server)</option>
-              <option value="local">face-api.js (browser)</option>
-            </select>
-          </div>
-
-          {/* Detection model (local only) */}
-          {provider === 'local' && (
-            <div>
-              <label style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>DETECTION</label>
-              <select
-                value={detectionModel}
-                onChange={(e) => setDetectionModel(e.target.value as DetectionModel)}
-                style={{ width: '100%', padding: '6px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 13 }}
-              >
-                <option value="accurate">SSD MobileNet (accurate, slower)</option>
-                <option value="fast">TinyFaceDetector (fast, less accurate)</option>
-              </select>
+          {/* ==================== ID TO FACE ==================== */}
+          <div style={{ display: feature === 'id_to_face' ? 'block' : 'none' }}>
+            <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
+              {(['single', 'batch', 'csv'] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  style={{
+                    flex: 1, padding: '5px 12px', fontSize: 12, fontWeight: 600,
+                    border: 'none', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap',
+                    background: mode === m ? '#a855f7' : '#1e293b',
+                    color: mode === m ? '#fff' : '#64748b',
+                  }}
+                >
+                  {m === 'single' ? '\u2696 Single Compare' : m === 'batch' ? '\u2630 Batch' : '\u2630 CSV'}
+                </button>
+              ))}
             </div>
-          )}
 
-          {/* Server URL (server providers) */}
-          {provider !== 'local' && (
-            <div>
-              <label style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>SERVER URL</label>
-              <input
-                type="text"
-                value={serverUrl}
-                onChange={(e) => setServerUrl(e.target.value)}
-                style={{ width: '100%', padding: '6px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 13, boxSizing: 'border-box' }}
+            {mode === 'batch' && (
+              <BatchMatcher
+                detectionModel={detectionModel}
+                provider={idToFaceProvider}
+                serverUrl={serverUrl}
+                threshold={threshold}
+                onBack={() => setMode('single')}
               />
+            )}
+            {mode === 'csv' && <CsvViewer />}
+            {mode === 'single' && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12, marginBottom: 12 }}>
+                  <ImageCapture title="1. ID Photo" subtitle="Upload or take a photo of an ID card" image={idImage} onCapture={handleIdCapture} facingMode="environment" accentColor="#22c55e" icon="card" faceBox={idFaceBox} />
+                  <ImageCapture title="2. Selfie" subtitle="Take a selfie, upload a photo, or use another ID" image={selfieImage} onCapture={handleSelfieCapture} facingMode="user" accentColor="#3b82f6" icon="person" faceBox={selfieFaceBox} />
+                </div>
+
+                {selfieImage && !livenessRunning && !livenessResult && (
+                  <div style={{ textAlign: 'center', marginBottom: 10 }}>
+                    <button onClick={() => { setLivenessRunning(true); setLivenessResult(null); }}
+                      style={{ padding: '8px 20px', fontSize: 13, fontWeight: 600, border: 'none', borderRadius: 6, cursor: 'pointer', background: 'linear-gradient(135deg, #f97316, #ef4444)', color: '#fff' }}>
+                      Start Liveness Check
+                    </button>
+                    <div style={{ color: '#64748b', fontSize: 10, marginTop: 4 }}>Required before face comparison</div>
+                  </div>
+                )}
+                {livenessRunning && (
+                  <div style={{ background: '#1e293b', borderRadius: 8, padding: 12, marginBottom: 10, border: '1px solid #475569' }}>
+                    <LivenessCheck onComplete={handleLivenessComplete} provider={livenessProvider} serverUrl={livenessServerUrl} />
+                  </div>
+                )}
+                {livenessResult && (
+                  <div style={{ textAlign: 'center', marginBottom: 10, padding: '8px 12px', borderRadius: 6,
+                    background: livenessResult.pass ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                    border: `1px solid ${livenessResult.pass ? '#22c55e' : '#ef4444'}` }}>
+                    <div style={{ color: livenessResult.pass ? '#22c55e' : '#ef4444', fontSize: 13, fontWeight: 600 }}>
+                      {livenessResult.pass ? 'Liveness Passed' : 'Liveness Failed'}
+                    </div>
+                    <div style={{ color: '#94a3b8', fontSize: 11, marginTop: 2 }}>Score: {livenessResult.score}/100 &mdash; {livenessResult.details}</div>
+                    {livenessResult.pass && <div style={{ color: '#22c55e', fontSize: 10, marginTop: 2 }}>Face comparison now available</div>}
+                    {!livenessResult.pass && (
+                      <button onClick={() => { setLivenessRunning(true); setLivenessResult(null); }}
+                        style={{ marginTop: 6, padding: '4px 14px', fontSize: 11, fontWeight: 600, border: 'none', borderRadius: 4, cursor: 'pointer', background: '#ef4444', color: '#fff' }}>
+                        Retry Liveness Check
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+                  <button onClick={handleMatch}
+                    disabled={!idImage || !selfieImage || matching || !modelsLoaded || (selfieImage && !livenessPassed)}
+                    style={{ padding: '10px 28px', fontSize: 15, fontWeight: 600, border: 'none', borderRadius: 8,
+                      cursor: idImage && selfieImage && !matching && modelsLoaded && livenessPassed ? 'pointer' : 'not-allowed',
+                      background: idImage && selfieImage && !matching && modelsLoaded && livenessPassed ? '#a855f7' : '#334155', color: '#fff' }}>
+                    {matching ? 'Matching...' : '\u2696 Compare Faces'}
+                  </button>
+                  <button onClick={handleReset} style={{ padding: '10px 20px', fontSize: 13, border: '1px solid #475569', borderRadius: 8, cursor: 'pointer', background: 'transparent', color: '#94a3b8' }}>Reset</button>
+                </div>
+                {result && <MatchResult result={result} />}
+              </>
+            )}
+          </div>
+
+          {/* ==================== LIVENESS ==================== */}
+          <div style={{ display: feature === 'liveness' ? 'block' : 'none' }}>
+            <div style={{ maxWidth: 480, margin: '0 auto' }}>
+              <h3 style={{ color: '#e2e8f0', fontWeight: 600, fontSize: 15, marginBottom: 8, textAlign: 'center' }}>Liveness Detection Test</h3>
+              <div style={{ background: '#1e293b', borderRadius: 6, padding: 12, marginBottom: 12, fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
+                <strong style={{ color: '#e2e8f0', display: 'block', marginBottom: 4 }}>How to test:</strong>
+                <div><span style={{ color: '#22c55e' }}>1.</span> Click <strong>&quot;Start Liveness Check&quot;</strong> to test with your live camera</div>
+                <div><span style={{ color: '#f97316' }}>2.</span> Or <strong>&quot;Upload Video&quot;</strong> to simulate a spoof attempt (recorded face, photo, etc.)</div>
+                <div style={{ marginTop: 4, padding: '6px 8px', background: 'rgba(245,158,11,0.1)', borderRadius: 4, border: '1px solid rgba(245,158,11,0.2)' }}>
+                  <strong style={{ color: '#f59e0b' }}>Spoof test tips:</strong> Record a phone playing a face video, or hold a printed photo up to your camera.
+                </div>
+              </div>
+              <video ref={livenessTestVideoRef} style={{ display: 'none' }} playsInline muted />
+              {!livenessTestStarted && !livenessTestResult && (
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <button onClick={() => setLivenessTestStarted(true)}
+                    style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: 'none', borderRadius: 6, cursor: 'pointer', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff' }}>
+                    Start Liveness Check
+                  </button>
+                  <label style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: '2px dashed #f97316', borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#f97316', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Upload Video (spoof test)
+                    <input type="file" accept="video/*" style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const video = livenessTestVideoRef.current;
+                        if (!video) return;
+                        video.src = URL.createObjectURL(file);
+                        video.load();
+                        video.oncanplay = () => { setLivenessTestVideo(video); setLivenessTestStarted(true); };
+                      }} />
+                  </label>
+                </div>
+              )}
+              {livenessTestStarted && !livenessTestResult && (
+                <div style={{ background: '#1e293b', borderRadius: 8, padding: 16, border: '1px solid #475569', marginTop: 12 }}>
+                  <LivenessCheck onComplete={(r) => { setLivenessTestResult(r as { pass: boolean; score: number; details: string; recordingUrl?: string }); setLivenessTestStarted(false); }} externalVideo={livenessTestVideo} autoStart={true} provider={livenessProvider} serverUrl={livenessServerUrl} />
+                </div>
+              )}
+              {livenessTestResult && (
+                <div style={{ textAlign: 'center', marginTop: 12 }}>
+                  <div style={{ padding: '14px 16px', borderRadius: 8,
+                    background: livenessTestResult.pass ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                    border: `1px solid ${livenessTestResult.pass ? '#22c55e' : '#ef4444'}`, marginBottom: 12 }}>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: livenessTestResult.pass ? '#22c55e' : '#ef4444', marginBottom: 4 }}>
+                      {livenessTestResult.pass ? 'LIVENESS PASSED' : 'LIVENESS FAILED'}
+                    </div>
+                    <div style={{ fontSize: 32, fontWeight: 800, color: '#e2e8f0', marginBottom: 4 }}>{livenessTestResult.score}/100</div>
+                    <div style={{ color: '#94a3b8', fontSize: 12 }}>{livenessTestResult.details}</div>
+                  </div>
+                  {livenessTestResult.recordingUrl && (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Playback</div>
+                      <video src={livenessTestResult.recordingUrl} controls
+                        style={{ width: '100%', maxWidth: 280, borderRadius: 6, display: 'block', margin: '0 auto' }} />
+                    </div>
+                  )}
+                  <button onClick={() => {
+                    if (livenessTestResult.recordingUrl?.startsWith('blob:')) URL.revokeObjectURL(livenessTestResult.recordingUrl);
+                    setLivenessTestStarted(false); setLivenessTestResult(null); setLivenessTestVideo(null);
+                    if (livenessTestVideoRef.current) { livenessTestVideoRef.current.src = ''; livenessTestVideoRef.current.load(); }
+                  }}
+                    style={{ padding: '8px 20px', fontSize: 13, fontWeight: 600, border: '1px solid #475569', borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#e2e8f0' }}>
+                    &#8634; Reset
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ==================== OCR ==================== */}
+          <div style={{ display: feature === 'ocr' ? 'block' : 'none' }}>
+            <div style={{ textAlign: 'center', padding: 40 }}>
+              <h3 style={{ color: '#e2e8f0', fontWeight: 600, fontSize: 15, marginBottom: 8 }}>OCR &amp; Auto-Detect ID Type</h3>
+              <p style={{ color: '#64748b', fontSize: 13 }}>Provider selected in the right sidebar. Implementation coming soon.</p>
+            </div>
+          </div>
+
+        </div>
+
+        {/* === Right: Sidebar (feature-aware) === */}
+        <div style={{ flex: '0 0 260px', background: '#1e293b', borderRadius: 8, padding: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {feature === 'id_to_face' && (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#a855f7' }}>ID TO FACE PROVIDER</div>
+                <select value={idToFaceProvider} onChange={(e) => setIdToFaceProvider(e.target.value as IdToFaceProvider)}
+                  style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12 }}>
+                  <option value="rekognition">AWS Rekognition (cloud)</option>
+                  <option value="insightface">InsightFace (server)</option>
+                  <option value="faceplusplus">Face++ (cloud)</option>
+                  <option value="megamatcher">Megamatcher (server)</option>
+                  <option value="local">face-api.js (browser)</option>
+                </select>
+                {idToFaceProvider === 'local' && (
+                  <select value={detectionModel} onChange={(e) => setDetectionModel(e.target.value as DetectionModel)}
+                    style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12 }}>
+                    <option value="accurate">SSD MobileNet (accurate)</option>
+                    <option value="fast">TinyFaceDetector (fast)</option>
+                  </select>
+                )}
+                {idToFaceProvider !== 'local' && (
+                  <input type="text" value={serverUrl} onChange={(e) => setServerUrl(e.target.value)}
+                    style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box' }} />
+                )}
+                <div style={{ borderTop: '1px solid #334155', paddingTop: 10 }}>
+                  {idToFaceProvider === 'local' && (
+                    <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
+                      <strong style={{ color: '#e2e8f0' }}>face-api.js (browser)</strong><br />
+                      Runs entirely in your browser. No data leaves your PC.<br />
+                      Uses {detectionModel === 'fast' ? 'TinyFaceDetector' : 'SSD MobileNet'} with 128-dim face descriptors.<br />
+                      <em style={{ color: '#64748b' }}>Fast (instant), free, good for quick testing.</em>
+                    </div>
+                  )}
+                  {idToFaceProvider === 'insightface' && (
+                    <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
+                      <strong style={{ color: '#e2e8f0' }}>InsightFace (server)</strong><br />
+                      ONNX-based ArcFace model running on the server. ~95-98% accuracy.<br />
+                      <em style={{ color: '#64748b' }}>Good balance of free quality and speed. Needs server deployment.</em>
+                    </div>
+                  )}
+                  {idToFaceProvider === 'rekognition' && (
+                    <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
+                      <strong style={{ color: '#e2e8f0' }}>AWS Rekognition (cloud)</strong><br />
+                      Amazon's face comparison API. ~99% accuracy. $0.001 per comparison.<br />
+                      <em style={{ color: '#64748b' }}>Reliable, low-cost, but requires AWS credentials.</em>
+                    </div>
+                  )}
+                  {idToFaceProvider === 'megamatcher' && (
+                    <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
+                      <strong style={{ color: '#e2e8f0' }}>Megamatcher (server)</strong><br />
+                      Neurotechnology's commercial SDK. ISO-compliant, high accuracy.<br />
+                      <em style={{ color: '#64748b' }}>Enterprise-grade, needs license and server.</em>
+                    </div>
+                  )}
+                  {idToFaceProvider === 'faceplusplus' && (
+                    <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
+                      <strong style={{ color: '#e2e8f0' }}>Face++ (cloud)</strong><br />
+                      Megvii's face comparison API. $0.00019 per comparison, very cheap.<br />
+                      <em style={{ color: '#64748b' }}>Cost-effective, fully integrated, ~95-97% acc.</em>
+                    </div>
+                  )}
+                </div>
+                <div style={{ borderTop: '1px solid #334155', paddingTop: 10 }}>
+                  <label style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>THRESHOLD</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
+                      <span style={{ color: '#94a3b8', fontSize: 11, textAlign: 'right', flex: 1 }}>
+                        <strong>Strict</strong><br /><span style={{ fontSize: 9, color: '#64748b' }}>Fewer</span>
+                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <input type="range" min="0.5" max="0.9" step="0.05" value={threshold} onChange={(e) => setThreshold(parseFloat(e.target.value))} style={{ width: 90 }} />
+                        <span style={{ color: '#e2e8f0', fontSize: 13, fontWeight: 600 }}>{threshold.toFixed(2)}</span>
+                      </div>
+                      <span style={{ color: '#94a3b8', fontSize: 11, textAlign: 'left', flex: 1 }}>
+                        <strong>Lenient</strong><br /><span style={{ fontSize: 9, color: '#64748b' }}>More</span>
+                      </span>
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', height: 6, width: '100%', borderRadius: 3, background: 'linear-gradient(to right, #ef4444, #eab308, #22c55e)', position: 'relative' }}>
+                      <div style={{ position: 'absolute', left: `${((threshold - 0.5) / 0.4) * 100}%`, transform: 'translateX(-50%)', width: 10, height: 10, borderRadius: '50%', background: '#e2e8f0', border: '2px solid #0f172a', transition: 'left 0.15s' }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: 11, color: '#64748b' }}>
+                      <span style={{ color: '#ef4444' }}>Different</span>
+                      <span style={{ color: '#eab308' }}>Unsure</span>
+                      <span style={{ color: '#22c55e' }}>Same person</span>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
+                    <strong style={{ color: '#ef4444' }}>Strict</strong> (lower threshold) = fewer matches, reduces false accepts. <strong style={{ color: '#22c55e' }}>Lenient</strong> (higher threshold) = more matches, reduces false rejects.
+                  </div>
+                </div>
+              </div>
+              {/* Footer items */}
+              <div style={{ borderTop: '1px solid #334155', paddingTop: 10 }}>
+                <button onClick={() => setShowInfo(!showInfo)}
+                  style={{ width: '100%', textAlign: 'left', padding: '2px 0', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', background: 'transparent', color: '#94a3b8' }}>
+                  {showInfo ? '\u25BC' : '\u25B6'} HOW IT WORKS
+                </button>
+                {showInfo && (
+                  <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6, marginTop: 6 }}>
+                    1. Upload/take two photos (ID + selfie)<br />
+                    2. App creates a unique <strong style={{ color: '#e2e8f0' }}>faceprint</strong> for each<br />
+                    3. Measures the <strong style={{ color: '#e2e8f0' }}>distance</strong> between them<br />
+                    4. <strong style={{ color: '#e2e8f0' }}>Smaller distance</strong> = same person
+                  </div>
+                )}
+              </div>
+              <div style={{ borderTop: '1px solid #334155', paddingTop: 10 }}>
+                <button onClick={() => setShowTips(!showTips)}
+                  style={{ width: '100%', textAlign: 'left', padding: '2px 0', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', background: 'transparent', color: '#94a3b8' }}>
+                  <span style={{ color: '#f59e0b' }}>{showTips ? '\u25BC' : '\u25B6'} TIPS</span>
+                </button>
+                {showTips && (
+                  <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.8, marginTop: 6, paddingLeft: 4 }}>
+                    <div><span style={{ color: '#22c55e' }}>&#10003;</span> Good lighting, face clearly visible</div>
+                    <div><span style={{ color: '#22c55e' }}>&#10003;</span> Straight orientation, not tilted</div>
+                    <div><span style={{ color: '#22c55e' }}>&#10003;</span> Similar pose in both photos</div>
+                    <div><span style={{ color: '#22c55e' }}>&#10003;</span> No blur, shadows, or obstructions</div>
+                    <div><span style={{ color: '#22c55e' }}>&#10003;</span> Image at least 300px / 100KB</div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {feature === 'liveness' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#f97316' }}>LIVENESS PROVIDER</div>
+              <select value={livenessProvider} onChange={(e) => setLivenessProvider(e.target.value as LivenessProvider)}
+                style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12 }}>
+                <option value="aws_detect_faces">AWS DetectFaces (server)</option>
+                <option value="aws_rekognition">AWS Rekog Liveness KVS (later)</option>
+                <option value="faceplusplus">Face++ Liveness</option>
+                <option value="azure_face">Azure Face Liveness</option>
+                <option value="hyperverge">HyperVerge</option>
+                <option value="didit">Didit</option>
+                <option value="iproov">iProov</option>
+                <option value="open_face_liveness">open-face-liveness (browser)</option>
+              </select>
+              {livenessProvider !== 'open_face_liveness' && (
+                <>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1 }}>Server URL</div>
+                  <input type="text" value={livenessServerUrl} onChange={(e) => setLivenessServerUrl(e.target.value)}
+                    style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box' }} />
+                </>
+              )}
+              <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.5 }}>
+                {livenessProvider === 'aws_detect_faces' && <><strong style={{ color: '#94a3b8' }}>AWS DetectFaces</strong> &mdash; $0.001/check, face attributes, NOT true liveness.</>}
+                {livenessProvider === 'aws_rekognition' && <><strong style={{ color: '#94a3b8' }}>AWS Rekog Liveness</strong> &mdash; iBeta L1+L2, ~$0.015/check. Requires KVS + WebSocket setup.</>}
+                {livenessProvider === 'faceplusplus' && <><strong style={{ color: '#94a3b8' }}>Face++</strong> &mdash; $0.00019/check, cheapest cloud.</>}
+                {livenessProvider === 'azure_face' && <><strong style={{ color: '#94a3b8' }}>Azure Face</strong> &mdash; $0.015/check, 30K free/mo.</>}
+                {livenessProvider === 'hyperverge' && <><strong style={{ color: '#94a3b8' }}>HyperVerge</strong> &mdash; ISO 30107-3 L2.</>}
+                {livenessProvider === 'didit' && <><strong style={{ color: '#94a3b8' }}>Didit</strong> &mdash; iBeta L1, 500 free/mo.</>}
+                {livenessProvider === 'iproov' && <><strong style={{ color: '#94a3b8' }}>iProov</strong> &mdash; Govt-grade, iBeta L2.</>}
+                {livenessProvider === 'open_face_liveness' && <><strong style={{ color: '#94a3b8' }}>open-face-liveness</strong> &mdash; Browser-only, $0, MIT.</>}
+              </div>
+              <hr style={{ border: 'none', borderTop: '1px solid #334155', margin: '4px 0' }} />
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#ef4444' }}>WHY LIVENESS FAILS</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.7 }}>
+                <div><span style={{ color: '#ef4444' }}>&#10007;</span> Static photo / printed face &mdash; no micro-movements</div>
+                <div><span style={{ color: '#ef4444' }}>&#10007;</span> Video replay on another screen &mdash; screen artifacts, no texture</div>
+                <div><span style={{ color: '#ef4444' }}>&#10007;</span> Deepfake / real-time face swap &mdash; frame boundary mismatch</div>
+                <div><span style={{ color: '#ef4444' }}>&#10007;</span> Low-res / compressed image &mdash; below 80px face width</div>
+                <div><span style={{ color: '#ef4444' }}>&#10007;</span> No face detected &mdash; occluded, too dark, or no camera</div>
+                <div><span style={{ color: '#ef4444' }}>&#10007;</span> Frozen / static feed &mdash; frame-to-frame delta is zero</div>
+              </div>
             </div>
           )}
 
-          {/* Threshold */}
-          <div>
-            <label style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>THRESHOLD</label>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-              {/* All providers: lower threshold = stricter, higher threshold = more lenient */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
-                <span style={{ color: '#94a3b8', fontSize: 11, textAlign: 'right', flex: 1 }}>
-                  <strong>Strict</strong><br /><span style={{ fontSize: 9, color: '#64748b' }}>Fewer</span>
-                </span>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <input type="range" min="0.5" max="0.9" step="0.05" value={threshold} onChange={(e) => setThreshold(parseFloat(e.target.value))} style={{ width: 90 }} />
-                  <span style={{ color: '#e2e8f0', fontSize: 13, fontWeight: 600 }}>{threshold.toFixed(2)}</span>
-                </div>
-                <span style={{ color: '#94a3b8', fontSize: 11, textAlign: 'left', flex: 1 }}>
-                  <strong>Lenient</strong><br /><span style={{ fontSize: 9, color: '#64748b' }}>More</span>
-                </span>
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', height: 6, width: '100%', borderRadius: 3, background: 'linear-gradient(to right, #ef4444, #eab308, #22c55e)', position: 'relative' }}>
-                <div style={{ position: 'absolute', left: `${((threshold - 0.5) / 0.4) * 100}%`, transform: 'translateX(-50%)', width: 10, height: 10, borderRadius: '50%', background: '#e2e8f0', border: '2px solid #0f172a', transition: 'left 0.15s' }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: 11, color: '#64748b' }}>
-                <span style={{ color: '#ef4444' }}>Different</span>
-                <span style={{ color: '#eab308' }}>Unsure</span>
-                <span style={{ color: '#22c55e' }}>Same person</span>
+          {feature === 'ocr' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#22c55e' }}>OCR PROVIDER</div>
+              <select value={ocrProvider} onChange={(e) => setOcrProvider(e.target.value as OcrProvider)}
+                style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12 }}>
+                <option value="verihubs">Verihubs OCR (PH IDs)</option>
+                <option value="bedrock">Amazon Bedrock Claude</option>
+                <option value="textract">AWS Textract</option>
+                <option value="zoloz">ZOLOZ eKYC</option>
+                <option value="tencent">Tencent Cloud OCR</option>
+                <option value="google_docai">Google Document AI</option>
+                <option value="mindee">Mindee International OCR</option>
+                <option value="azure_di">Azure Document Intelligence</option>
+              </select>
+              <input type="text" value={ocrServerUrl} onChange={(e) => setOcrServerUrl(e.target.value)}
+                style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box' }} />
+              <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.5 }}>
+                {ocrProvider === 'verihubs' && <><strong style={{ color: '#94a3b8' }}>Verihubs</strong> &mdash; 9+ PH IDs, auto-detect.</>}
+                {ocrProvider === 'bedrock' && <><strong style={{ color: '#94a3b8' }}>Bedrock Claude</strong> &mdash; any ID via prompt.</>}
+                {ocrProvider === 'textract' && <><strong style={{ color: '#94a3b8' }}>Textract</strong> &mdash; AWS OCR, limited PH support.</>}
+                {ocrProvider === 'zoloz' && <><strong style={{ color: '#94a3b8' }}>ZOLOZ</strong> &mdash; Full eKYC, 11+ PH IDs.</>}
+                {ocrProvider === 'tencent' && <><strong style={{ color: '#94a3b8' }}>Tencent</strong> &mdash; Separate APIs per PH ID.</>}
+                {ocrProvider === 'google_docai' && <><strong style={{ color: '#94a3b8' }}>Google Doc AI</strong> &mdash; Custom PH extractor.</>}
+                {ocrProvider === 'mindee' && <><strong style={{ color: '#94a3b8' }}>Mindee</strong> &mdash; International ID OCR.</>}
+                {ocrProvider === 'azure_di' && <><strong style={{ color: '#94a3b8' }}>Azure DI</strong> &mdash; Fast custom model training.</>}
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Provider explanation */}
-          <div style={{ borderTop: '1px solid #334155', paddingTop: 10 }}>
-            {provider === 'local' && (
-              <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
-                <strong style={{ color: '#e2e8f0' }}>face-api.js (browser)</strong><br />
-                Runs entirely in your browser. No data leaves your PC.<br />
-                Uses {detectionModel === 'fast' ? 'TinyFaceDetector' : 'SSD MobileNet'} with 128-dim face descriptors.<br />
-                <em style={{ color: '#64748b' }}>Fast (instant), free, good for quick testing.</em>
-              </div>
-            )}
-            {provider === 'insightface' && (
-              <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
-                <strong style={{ color: '#e2e8f0' }}>InsightFace (server)</strong><br />
-                ONNX-based face matching. <strong>High accuracy (~95-98%)</strong>.<br />
-                <em style={{ color: '#f59e0b' }}>Slower on HF Spaces (CPU, cold starts).<br />
-                Run locally + ngrok for faster results.</em>
-              </div>
-            )}
-            {provider === 'rekognition' && (
-              <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
-                <strong style={{ color: '#e2e8f0' }}>AWS Rekognition (cloud)</strong><br />
-                Amazon's cloud API. Highest accuracy (~99%).<br />
-                <em style={{ color: '#64748b' }}>Costs $0.001 per comparison. Requires AWS credentials.</em>
-              </div>
-            )}
-            {provider === 'megamatcher' && (
-              <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
-                <strong style={{ color: '#e2e8f0' }}>Megamatcher (server)</strong><br />
-                Licensed SDK from Neurotechnology. Already paid for by SVI.<br />
-                <em style={{ color: '#64748b' }}>Zero marginal cost. Needs SDK jars in batch-java/lib/.</em>
-              </div>
-            )}
-          </div>
-
-          {/* How it works (collapsible) */}
-          <div style={{ borderTop: '1px solid #334155', paddingTop: 10 }}>
-            <button
-              onClick={() => setShowInfo(!showInfo)}
-              style={{ width: '100%', textAlign: 'left', padding: '2px 0', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', background: 'transparent', color: '#94a3b8' }}
-            >
-              {showInfo ? '\u25BC' : '\u25B6'} HOW IT WORKS
-            </button>
-            {showInfo && (
-              <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6, marginTop: 6 }}>
-                1. Upload/take two photos (ID + selfie)<br />
-                2. App creates a unique <strong style={{ color: '#e2e8f0' }}>faceprint</strong> for each<br />
-                3. Measures the <strong style={{ color: '#e2e8f0' }}>distance</strong> between them<br />
-                4. <strong style={{ color: '#e2e8f0' }}>Smaller distance</strong> = same person<br /><br />
-                <strong style={{ color: '#ef4444' }}>Strict</strong> (lower threshold) = fewer matches, reduces false accepts. <strong style={{ color: '#22c55e' }}>Lenient</strong> (higher threshold) = more matches, reduces false rejects.
-              </div>
-            )}
-          </div>
-
-          {/* Tips (collapsible) */}
-          <div style={{ borderTop: '1px solid #334155', paddingTop: 10 }}>
-            <button
-              onClick={() => setShowTips(!showTips)}
-              style={{ width: '100%', textAlign: 'left', padding: '2px 0', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', background: 'transparent', color: '#94a3b8' }}
-            >
-              <span style={{ color: '#f59e0b' }}>{showTips ? '\u25BC' : '\u25B6'} TIPS FOR BEST RESULTS</span>
-            </button>
-            {showTips && (
-              <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.8, marginTop: 6, paddingLeft: 4 }}>
-                <div><span style={{ color: '#22c55e' }}>&#10003;</span> Good lighting, face clearly visible</div>
-                <div><span style={{ color: '#22c55e' }}>&#10003;</span> Straight orientation, not tilted</div>
-                <div><span style={{ color: '#22c55e' }}>&#10003;</span> Similar pose in both photos</div>
-                <div><span style={{ color: '#22c55e' }}>&#10003;</span> No blur, shadows, or obstructions</div>
-                <div><span style={{ color: '#22c55e' }}>&#10003;</span> No sunglasses, masks, or extreme angles</div>
-                <div><span style={{ color: '#22c55e' }}>&#10003;</span> Image at least 300px / 100KB</div>
-                <div style={{ marginTop: 4, color: '#64748b', fontSize: 10 }}>Small or compressed images degrade accuracy.</div>
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </div>

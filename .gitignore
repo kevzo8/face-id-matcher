@@ -22,3 +22,14 @@ batch/lib/
 # Sample images (may contain PII)
 samples/dirty-pairs/41_ID_Paolo.jpg
 samples/dirty-pairs/41_Photo_Paolo.jpg
+
+# Generated result CSVs (timestamped)
+results_*.csv
+batch/results_*.csv
+
+# Sample exports
+samples/hq/
+samples/results/
+
+# Vercel deploy output
+web/.vercel
