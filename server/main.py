@@ -35,6 +35,7 @@ from pydantic import BaseModel
 
 providers = {}
 default_provider = None
+liveness_passive = None
 
 
 @asynccontextmanager
@@ -85,6 +86,15 @@ async def lifespan(app: FastAPI):
         # Use first available provider as default
         default_provider = next(iter(providers.values()))
     
+    # Initialize passive liveness provider (MiniFASNet)
+    global liveness_passive
+    try:
+        from providers.liveness_passive import LivenessPassiveProvider
+        liveness_passive = LivenessPassiveProvider()
+        print("LivenessPassiveProvider initialized")
+    except Exception as e:
+        print(f"LivenessPassiveProvider not available: {e}")
+
     print(f"Available providers: {list(providers.keys())}")
     yield
 
@@ -235,6 +245,39 @@ async def detect_faces_liveness(request: Request):
             face_detected=False, confidence=0, eyes_open=False, eyes_open_confidence=0,
             quality_brightness=0, quality_sharpness=0, score=0, error=str(e),
         )
+
+
+class PassiveLivenessResponse(BaseModel):
+    is_real: bool
+    confidence: float
+    score: int
+    error: str | None = None
+
+
+@app.post("/liveness/passive", response_model=PassiveLivenessResponse)
+async def passive_liveness(request: Request):
+    global liveness_passive
+    if liveness_passive is None:
+        return PassiveLivenessResponse(is_real=False, confidence=0, score=0, error="Passive liveness not available")
+
+    body = await request.json()
+    image_b64 = body.get("image")
+    bbox = body.get("bbox")  # optional: [x, y, w, h] relative to image dimensions
+
+    if not image_b64:
+        raise HTTPException(status_code=400, detail="No image provided")
+
+    try:
+        image_bytes = base64.b64decode(image_b64)
+        result = liveness_passive.predict(image_bytes, bbox)
+        return PassiveLivenessResponse(
+            is_real=result.get("is_real", False),
+            confidence=result.get("confidence", 0),
+            score=result.get("score", 0),
+            error=result.get("error"),
+        )
+    except Exception as e:
+        return PassiveLivenessResponse(is_real=False, confidence=0, score=0, error=str(e))
 
 
 @app.get("/health")

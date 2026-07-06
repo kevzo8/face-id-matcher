@@ -6,6 +6,7 @@ import { BatchMatcher } from './components/BatchMatcher';
 import { CsvViewer } from './components/CsvViewer';
 import Presentation from './components/Presentation';
 import LivenessCheck from './components/LivenessCheck';
+import PassiveLivenessCheck from './components/PassiveLivenessCheck';
 
 type ImageData = {
   url: string;
@@ -18,7 +19,7 @@ type ImageData = {
 type DetectionModel = 'fast' | 'accurate';
 type IdToFaceProvider = 'local' | 'rekognition' | 'megamatcher' | 'insightface' | 'faceplusplus';
 type OcrProvider = 'bedrock' | 'textract' | 'verihubs' | 'zoloz' | 'tencent' | 'google_docai' | 'mindee' | 'azure_di';
-type LivenessProvider = 'aws_rekognition' | 'aws_detect_faces' | 'faceplusplus' | 'azure_face' | 'hyperverge' | 'didit' | 'iproov' | 'open_face_liveness';
+type LivenessProvider = 'aws_rekognition' | 'aws_detect_faces' | 'faceplusplus' | 'azure_face' | 'hyperverge' | 'didit' | 'iproov' | 'open_face_liveness' | 'passive_liveness';
 type FaceBox = { x: number; y: number; width: number; height: number; score: number };
 
 function checkOrientation(detection: faceapi.WithFaceLandmarks<{ detection: faceapi.FaceDetection }>): string | null {
@@ -72,6 +73,8 @@ export default function App() {
   const [livenessTestStarted, setLivenessTestStarted] = useState(false);
   const [livenessTestResult, setLivenessTestResult] = useState<{ pass: boolean; score: number; details: string; recordingUrl?: string } | null>(null);
   const [livenessTestVideo, setLivenessTestVideo] = useState<HTMLVideoElement | null>(null);
+  const [livenessTestMode, setLivenessTestMode] = useState<'active' | 'passive' | 'upload' | null>(null);
+  const [passiveLivenessResult, setPassiveLivenessResult] = useState<{ is_real: boolean; confidence: number; score: number } | null>(null);
   const livenessTestVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -445,40 +448,54 @@ export default function App() {
           <div style={{ display: feature === 'liveness' ? 'block' : 'none' }}>
             <div style={{ maxWidth: 480, margin: '0 auto' }}>
               <h3 style={{ color: '#e2e8f0', fontWeight: 600, fontSize: 15, marginBottom: 8, textAlign: 'center' }}>Liveness Detection Test</h3>
-              <div style={{ background: '#1e293b', borderRadius: 6, padding: 12, marginBottom: 12, fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
-                <strong style={{ color: '#e2e8f0', display: 'block', marginBottom: 4 }}>How to test:</strong>
-                <div><span style={{ color: '#22c55e' }}>1.</span> Click <strong>&quot;Start Liveness Check&quot;</strong> to test with your live camera</div>
-                <div><span style={{ color: '#f97316' }}>2.</span> Or <strong>&quot;Upload Video&quot;</strong> to simulate a spoof attempt (recorded face, photo, etc.)</div>
-                <div style={{ marginTop: 4, padding: '6px 8px', background: 'rgba(245,158,11,0.1)', borderRadius: 4, border: '1px solid rgba(245,158,11,0.2)' }}>
-                  <strong style={{ color: '#f59e0b' }}>Spoof test tips:</strong> Record a phone playing a face video, or hold a printed photo up to your camera.
-                </div>
-              </div>
               <video ref={livenessTestVideoRef} style={{ display: 'none' }} playsInline muted />
-              {!livenessTestStarted && !livenessTestResult && (
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  <button onClick={() => setLivenessTestStarted(true)}
-                    style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: 'none', borderRadius: 6, cursor: 'pointer', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff' }}>
-                    Start Liveness Check
-                  </button>
-                  <label style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: '2px dashed #f97316', borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#f97316', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    Upload Video (spoof test)
-                    <input type="file" accept="video/*" style={{ display: 'none' }}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const video = livenessTestVideoRef.current;
-                        if (!video) return;
-                        video.src = URL.createObjectURL(file);
-                        video.load();
-                        video.oncanplay = () => { setLivenessTestVideo(video); setLivenessTestStarted(true); };
-                      }} />
-                  </label>
+              {!livenessTestStarted && !livenessTestResult && !livenessTestMode && (
+                <>
+                  <div style={{ background: '#1e293b', borderRadius: 6, padding: 12, marginBottom: 12, fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
+                    <strong style={{ color: '#e2e8f0', display: 'block', marginBottom: 4 }}>Choose a test type:</strong>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+                    <button onClick={() => setLivenessTestMode('active')}
+                      style={{ width: '100%', maxWidth: 320, padding: '12px 20px', fontSize: 14, fontWeight: 600, border: 'none', borderRadius: 8, cursor: 'pointer', background: 'linear-gradient(135deg, #a855f7, #7c3aed)', color: '#fff', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 20 }}>&#9654;</span>
+                      <span><strong>Active Liveness</strong><br /><span style={{ fontSize: 11, opacity: 0.8 }}>Challenge-response: follow on-screen prompts</span></span>
+                    </button>
+                    <button onClick={() => setLivenessTestMode('passive')}
+                      style={{ width: '100%', maxWidth: 320, padding: '12px 20px', fontSize: 14, fontWeight: 600, border: 'none', borderRadius: 8, cursor: 'pointer', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 20 }}>&#9725;</span>
+                      <span><strong>Passive Liveness</strong><br /><span style={{ fontSize: 11, opacity: 0.8 }}>Snap & detect — no action needed, server-side ONNX</span></span>
+                    </button>
+                    <label style={{ width: '100%', maxWidth: 320, padding: '12px 20px', fontSize: 14, fontWeight: 600, border: '2px dashed #f97316', borderRadius: 8, cursor: 'pointer', background: 'transparent', color: '#f97316', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, boxSizing: 'border-box' }}>
+                      <span style={{ fontSize: 20 }}>&#128247;</span>
+                      <span><strong>Upload Video</strong><br /><span style={{ fontSize: 11, opacity: 0.8 }}>Test with a recorded video or photo</span></span>
+                      <input type="file" accept="video/*" style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setLivenessTestMode('upload');
+                          const video = livenessTestVideoRef.current;
+                          if (!video) return;
+                          video.src = URL.createObjectURL(file);
+                          video.load();
+                          video.oncanplay = () => { setLivenessTestVideo(video); setLivenessTestStarted(true); };
+                        }} />
+                    </label>
+                  </div>
+                </>
+              )}
+              {livenessTestMode === 'active' && !livenessTestResult && (
+                <div style={{ background: '#1e293b', borderRadius: 8, padding: 16, border: '1px solid #475569', marginTop: 12 }}>
+                  <LivenessCheck onComplete={(r) => { setLivenessTestResult(r as { pass: boolean; score: number; details: string; recordingUrl?: string }); setLivenessTestStarted(false); setLivenessTestMode(null); }} autoStart={true} provider={livenessProvider} serverUrl={livenessServerUrl} />
                 </div>
               )}
-              {livenessTestStarted && !livenessTestResult && (
+              {livenessTestMode === 'passive' && !passiveLivenessResult && (
+                <div style={{ background: '#1e293b', borderRadius: 8, padding: 16, border: '1px solid #3b82f6', marginTop: 12 }}>
+                  <PassiveLivenessCheck serverUrl={livenessServerUrl} onComplete={(r) => { setPassiveLivenessResult(r); setLivenessTestMode(null); }} />
+                </div>
+              )}
+              {livenessTestStarted && !livenessTestResult && livenessTestMode === 'upload' && (
                 <div style={{ background: '#1e293b', borderRadius: 8, padding: 16, border: '1px solid #475569', marginTop: 12 }}>
-                  <LivenessCheck onComplete={(r) => { setLivenessTestResult(r as { pass: boolean; score: number; details: string; recordingUrl?: string }); setLivenessTestStarted(false); }} externalVideo={livenessTestVideo} autoStart={true} provider={livenessProvider} serverUrl={livenessServerUrl} />
+                  <LivenessCheck onComplete={(r) => { setLivenessTestResult(r as { pass: boolean; score: number; details: string; recordingUrl?: string }); setLivenessTestStarted(false); setLivenessTestMode(null); }} externalVideo={livenessTestVideo} autoStart={true} provider={livenessProvider} serverUrl={livenessServerUrl} />
                 </div>
               )}
               {livenessTestResult && (
@@ -501,9 +518,26 @@ export default function App() {
                   )}
                   <button onClick={() => {
                     if (livenessTestResult.recordingUrl?.startsWith('blob:')) URL.revokeObjectURL(livenessTestResult.recordingUrl);
-                    setLivenessTestStarted(false); setLivenessTestResult(null); setLivenessTestVideo(null);
+                    setLivenessTestStarted(false); setLivenessTestResult(null); setLivenessTestVideo(null); setLivenessTestMode(null);
                     if (livenessTestVideoRef.current) { livenessTestVideoRef.current.src = ''; livenessTestVideoRef.current.load(); }
                   }}
+                    style={{ padding: '8px 20px', fontSize: 13, fontWeight: 600, border: '1px solid #475569', borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#e2e8f0' }}>
+                    &#8634; Reset
+                  </button>
+                </div>
+              )}
+              {passiveLivenessResult && (
+                <div style={{ textAlign: 'center', marginTop: 12 }}>
+                  <div style={{ padding: '14px 16px', borderRadius: 8,
+                    background: passiveLivenessResult.is_real ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                    border: `1px solid ${passiveLivenessResult.is_real ? '#22c55e' : '#ef4444'}`, marginBottom: 12 }}>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: passiveLivenessResult.is_real ? '#22c55e' : '#ef4444', marginBottom: 4 }}>
+                      {passiveLivenessResult.is_real ? 'PASSIVE LIVENESS PASSED' : 'PASSIVE LIVENESS FAILED'}
+                    </div>
+                    <div style={{ fontSize: 32, fontWeight: 800, color: '#e2e8f0', marginBottom: 4 }}>{Math.round(passiveLivenessResult.confidence * 100)}%</div>
+                    <div style={{ color: '#94a3b8', fontSize: 12 }}>Score: {passiveLivenessResult.score}/20 &mdash; {passiveLivenessResult.is_real ? 'Real face detected' : 'Spoof detected'}</div>
+                  </div>
+                  <button onClick={() => { setPassiveLivenessResult(null); setLivenessTestMode(null); }}
                     style={{ padding: '8px 20px', fontSize: 13, fontWeight: 600, border: '1px solid #475569', borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#e2e8f0' }}>
                     &#8634; Reset
                   </button>
@@ -660,6 +694,7 @@ export default function App() {
                 <option value="hyperverge">HyperVerge</option>
                 <option value="didit">Didit</option>
                 <option value="iproov">iProov</option>
+                <option value="passive_liveness">MiniFASNet Passive Liveness (server)</option>
                 <option value="open_face_liveness">open-face-liveness (browser)</option>
               </select>
               {livenessProvider !== 'open_face_liveness' && (
@@ -677,6 +712,7 @@ export default function App() {
                 {livenessProvider === 'hyperverge' && <><strong style={{ color: '#94a3b8' }}>HyperVerge</strong> &mdash; ISO 30107-3 L2.</>}
                 {livenessProvider === 'didit' && <><strong style={{ color: '#94a3b8' }}>Didit</strong> &mdash; iBeta L1, 500 free/mo.</>}
                 {livenessProvider === 'iproov' && <><strong style={{ color: '#94a3b8' }}>iProov</strong> &mdash; Govt-grade, iBeta L2.</>}
+                {livenessProvider === 'passive_liveness' && <><strong style={{ color: '#94a3b8' }}>MiniFASNet Passive</strong> &mdash; ONNX anti-spoofing, $0/check, server-based.</>}
                 {livenessProvider === 'open_face_liveness' && <><strong style={{ color: '#94a3b8' }}>open-face-liveness</strong> &mdash; Browser-only, $0, MIT.</>}
               </div>
               <hr style={{ border: 'none', borderTop: '1px solid #334155', margin: '4px 0' }} />

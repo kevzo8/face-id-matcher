@@ -11,7 +11,9 @@ RUN python -m pip install --no-cache-dir \
         python-multipart>=0.0.20 \
         boto3>=1.36.0 \
         requests>=2.31.0 \
-        Pillow>=10.0.0
+        Pillow>=10.0.0 \
+        onnxruntime>=1.21.0 \
+        numpy>=1.26.0
 
 EXPOSE 10000
 
