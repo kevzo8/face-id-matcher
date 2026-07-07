@@ -17,6 +17,8 @@ interface LivenessCheckProps {
   obServerUrl?: string;
 }
 
+const LIVENESS_PASS_THRESHOLD = 75; // 0-100, raised for production
+
 function eyeAspectRatio(landmarks: faceapi.Point[]): number {
   if (landmarks.length < 8) return 0;
   const v1 = distance(landmarks[1], landmarks[5]);
@@ -459,7 +461,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       }
 
       score += backendScore;
-      const pass = score >= 55;
+      const pass = score >= LIVENESS_PASS_THRESHOLD;
       const details = reasons.join(', ');
 
       runningRef.current = false;
