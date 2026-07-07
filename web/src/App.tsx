@@ -505,7 +505,7 @@ export default function App() {
                     background: livenessTestResult.pass ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
                     border: `1px solid ${livenessTestResult.pass ? '#22c55e' : '#ef4444'}`, marginBottom: 12 }}>
                     <div style={{ fontSize: 20, fontWeight: 700, color: livenessTestResult.pass ? '#22c55e' : '#ef4444', marginBottom: 4 }}>
-                      {livenessTestResult.pass ? 'LIVENESS PASSED' : 'LIVENESS FAILED'}
+                      {livenessTestResult.pass ? 'ACTIVE LIVENESS PASSED' : 'ACTIVE LIVENESS FAILED'}
                     </div>
                     <div style={{ fontSize: 32, fontWeight: 800, color: '#e2e8f0', marginBottom: 4 }}>{livenessTestResult.score}/100</div>
                     <div style={{ color: '#94a3b8', fontSize: 12 }}>{livenessTestResult.details}</div>

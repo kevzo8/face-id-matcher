@@ -18,7 +18,7 @@ interface LivenessCheckProps {
   obServerUrl?: string;
 }
 
-const LIVENESS_PASS_THRESHOLD = 75; // 0-100, raised for production
+const LIVENESS_PASS_THRESHOLD = 70; // 0-100
 
 function eyeAspectRatio(landmarks: faceapi.Point[]): number {
   if (landmarks.length < 8) return 0;
@@ -219,13 +219,12 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
         const canvas = canvasRef.current;
 
         if (det && canvas) {
+          const ctx = canvas.getContext('2d');
+          if (ctx) ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           const box = det.detection.box;
           const faceW = faceWidth(det.landmarks);
           const ear = eyeAspectRatio(det.landmarks.getLeftEye());
           faceSizesRef.current.push(faceW);
-
-          const ctx = canvas.getContext('2d');
-          if (ctx) ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
           // Blink detection via EAR state transitions
           if (ear < 0.2) {
