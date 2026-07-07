@@ -35,8 +35,8 @@ export default defineConfig({
           res.end(content);
         });
         server.middlewares.use((req, _res, next) => {
-          if (req.url?.startsWith('/presentation')) {
-            req.url = '/';
+          if (req.url && (/^\/(face-id|presentation|live|liveness|ocr)(\/|$)/.test(req.url) || req.url === '/')) {
+            if (req.url !== '/') req.url = '/';
           }
           next();
         });
