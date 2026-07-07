@@ -59,7 +59,7 @@ export default function App() {
   const [ocrServerUrl, setOcrServerUrl] = useState('https://face-id-matcher.onrender.com');
   const [livenessProvider, setLivenessProvider] = useState<LivenessProvider>('open_face_liveness');
   const [livenessServerUrl, setLivenessServerUrl] = useState('https://face-id-matcher.onrender.com');
-  const [obServerUrl, setObServerUrl] = useState('http://localhost:8000');
+  const [obServerUrl, setObServerUrl] = useState('https://openbiometrics.onrender.com');
   const [feature, setFeature] = useState<'id_to_face' | 'liveness' | 'ocr'>('id_to_face');
   const [mode, setMode] = useState<'single' | 'batch' | 'csv'>('single');
   const [showInfo, setShowInfo] = useState(false);
