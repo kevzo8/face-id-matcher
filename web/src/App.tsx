@@ -72,7 +72,7 @@ export default function App() {
   const [livenessPassed, setLivenessPassed] = useState(false);
   const [livenessResult, setLivenessResult] = useState<{ pass: boolean; score: number; details: string } | null>(null);
   const [livenessTestStarted, setLivenessTestStarted] = useState(false);
-  const [livenessTestResult, setLivenessTestResult] = useState<{ pass: boolean; score: number; details: string; recordingUrl?: string } | null>(null);
+  const [livenessTestResult, setLivenessTestResult] = useState<{ pass: boolean; score: number; details: string; recordingUrl?: string; breakdown?: { label: string; pts: number }[] } | null>(null);
   const [livenessTestVideo, setLivenessTestVideo] = useState<HTMLVideoElement | null>(null);
   const [livenessTestMode, setLivenessTestMode] = useState<'active' | 'passive' | 'upload' | null>(null);
   const [passiveLivenessResult, setPassiveLivenessResult] = useState<{ is_real: boolean; confidence: number; score: number } | null>(null);
@@ -509,6 +509,17 @@ export default function App() {
                     </div>
                     <div style={{ fontSize: 32, fontWeight: 800, color: '#e2e8f0', marginBottom: 4 }}>{livenessTestResult.score}/100</div>
                     <div style={{ color: '#94a3b8', fontSize: 12 }}>{livenessTestResult.details}</div>
+                    {livenessTestResult.breakdown && (
+                      <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left' }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Score Breakdown</div>
+                        {livenessTestResult.breakdown.map((b, i) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '2px 6px', background: 'rgba(0,0,0,0.15)', borderRadius: 3 }}>
+                            <span>{b.label}</span>
+                            <span style={{ fontWeight: 600, color: b.pts > 0 ? '#4ade80' : '#f87171' }}>{b.pts > 0 ? '+' : ''}{b.pts}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   {livenessTestResult.recordingUrl && (
                     <div style={{ marginBottom: 12 }}>

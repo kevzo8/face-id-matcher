@@ -6,6 +6,7 @@ interface LivenessResult {
   score: number;
   details: string;
   recordingUrl?: string;
+  breakdown?: { label: string; pts: number }[];
 }
 
 interface LivenessCheckProps {
@@ -365,61 +366,67 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
 
       let score = 0;
       const reasons: string[] = [];
+      const breakdown: { label: string; pts: number }[] = [];
 
       // Face size (up to 20 pts, continuous)
+      let sizePts = 0;
       if (avgFaceSize >= MIN_FACE_WIDTH) {
-        const sizeScore = Math.min(20, 12 + (avgFaceSize - MIN_FACE_WIDTH) / 5);
-        score += Math.round(sizeScore * 10) / 10;
+        sizePts = Math.round(Math.min(20, 12 + (avgFaceSize - MIN_FACE_WIDTH) / 5) * 10) / 10;
         reasons.push('face visible');
       } else if (avgFaceSize > 0) {
-        const sizeScore = Math.max(0, (avgFaceSize / MIN_FACE_WIDTH) * 12);
-        score += Math.round(sizeScore * 10) / 10;
+        sizePts = Math.round(Math.max(0, (avgFaceSize / MIN_FACE_WIDTH) * 12) * 10) / 10;
         reasons.push('face small');
       } else {
         reasons.push('face too small');
       }
+      score += sizePts;
+      breakdown.push({ label: 'Face Size', pts: sizePts });
 
       // Texture variance (up to 20 pts, continuous)
+      let texPts = 0;
       if (avgTexture > TEXTURE_VARIANCE_THRESHOLD) {
-        const texScore = Math.min(20, 12 + (avgTexture - TEXTURE_VARIANCE_THRESHOLD) * 40);
-        score += Math.round(texScore * 10) / 10;
+        texPts = Math.round(Math.min(20, 12 + (avgTexture - TEXTURE_VARIANCE_THRESHOLD) * 40) * 10) / 10;
         reasons.push('face texture detected');
       } else if (avgTexture > 0) {
-        const texScore = (avgTexture / TEXTURE_VARIANCE_THRESHOLD) * 12;
-        score += Math.round(texScore * 10) / 10;
+        texPts = Math.round((avgTexture / TEXTURE_VARIANCE_THRESHOLD) * 12 * 10) / 10;
         reasons.push('low face texture');
       } else {
         reasons.push('no face texture');
       }
+      score += texPts;
+      breakdown.push({ label: 'Texture', pts: texPts });
 
       // Frame-to-frame change (up to 20 pts, continuous)
+      let motionPts = 0;
       if (avgDelta > FRAME_DELTA_THRESHOLD) {
-        const motionScore = Math.min(20, 12 + (avgDelta - FRAME_DELTA_THRESHOLD) * 30);
-        score += Math.round(motionScore * 10) / 10;
+        motionPts = Math.round(Math.min(20, 12 + (avgDelta - FRAME_DELTA_THRESHOLD) * 30) * 10) / 10;
         reasons.push('natural motion');
       } else if (avgDelta > 0) {
-        const motionScore = (avgDelta / FRAME_DELTA_THRESHOLD) * 12;
-        score += Math.round(motionScore * 10) / 10;
+        motionPts = Math.round((avgDelta / FRAME_DELTA_THRESHOLD) * 12 * 10) / 10;
         reasons.push('limited motion');
       } else {
         reasons.push('no motion');
       }
+      score += motionPts;
+      breakdown.push({ label: 'Motion', pts: motionPts });
 
       // Challenge-response (up to 30 pts, 15 per challenge)
-      if (challengeScoreRef.current >= 15) {
-        reasons.push(`${challengeScoreRef.current}pts challenges`);
-      }
-      score += challengeScoreRef.current;
+      const chalPts = challengeScoreRef.current;
+      if (chalPts > 0) reasons.push(`${chalPts}pts challenges`);
+      score += chalPts;
+      breakdown.push({ label: 'Challenges', pts: chalPts });
 
       // Blink bonus (up to 10 pts, continuous)
+      let blinkPts = 0;
       if (blinkCountRef.current >= 2) {
-        const blinkScore = Math.min(10, 6 + (blinkCountRef.current - 2) * 2);
-        score += blinkScore;
+        blinkPts = Math.min(10, 6 + (blinkCountRef.current - 2) * 2);
         reasons.push(`${blinkCountRef.current} blinks`);
       } else if (blinkCountRef.current >= 1) {
-        score += 3 + blinkCountRef.current * 2;
+        blinkPts = 3 + blinkCountRef.current * 2;
         reasons.push(`${blinkCountRef.current} blink`);
       }
+      score += blinkPts;
+      breakdown.push({ label: 'Blinks', pts: blinkPts });
 
       let backendScore = 0;
       if (provider === 'openbiometrics' && serverUrl && canvasRef.current) {
@@ -479,6 +486,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       }
 
       score += backendScore;
+      if (backendScore > 0) breakdown.push({ label: provider === 'openbiometrics' ? 'OpenBiometrics' : 'Backend', pts: backendScore });
       const pass = score >= LIVENESS_PASS_THRESHOLD;
       const details = reasons.join(', ');
 
@@ -493,7 +501,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
         recordingUrl = URL.createObjectURL(blob);
       }
       if (externalVideo) { video.pause(); }
-      onComplete({ pass, score, details, recordingUrl });
+      onComplete({ pass, score, details, recordingUrl, breakdown });
     }
 
     rafRef.current = requestAnimationFrame(checkFrame);
