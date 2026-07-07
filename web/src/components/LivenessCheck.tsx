@@ -366,28 +366,43 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       let score = 0;
       const reasons: string[] = [];
 
-      // Face size (20 pts)
+      // Face size (up to 20 pts, continuous)
       if (avgFaceSize >= MIN_FACE_WIDTH) {
-        score += 20;
+        const sizeScore = Math.min(20, 12 + (avgFaceSize - MIN_FACE_WIDTH) / 5);
+        score += Math.round(sizeScore * 10) / 10;
         reasons.push('face visible');
+      } else if (avgFaceSize > 0) {
+        const sizeScore = Math.max(0, (avgFaceSize / MIN_FACE_WIDTH) * 12);
+        score += Math.round(sizeScore * 10) / 10;
+        reasons.push('face small');
       } else {
         reasons.push('face too small');
       }
 
-      // Texture variance (20 pts)
+      // Texture variance (up to 20 pts, continuous)
       if (avgTexture > TEXTURE_VARIANCE_THRESHOLD) {
-        score += 20;
+        const texScore = Math.min(20, 12 + (avgTexture - TEXTURE_VARIANCE_THRESHOLD) * 40);
+        score += Math.round(texScore * 10) / 10;
         reasons.push('face texture detected');
-      } else {
+      } else if (avgTexture > 0) {
+        const texScore = (avgTexture / TEXTURE_VARIANCE_THRESHOLD) * 12;
+        score += Math.round(texScore * 10) / 10;
         reasons.push('low face texture');
+      } else {
+        reasons.push('no face texture');
       }
 
-      // Frame-to-frame change (20 pts)
+      // Frame-to-frame change (up to 20 pts, continuous)
       if (avgDelta > FRAME_DELTA_THRESHOLD) {
-        score += 20;
+        const motionScore = Math.min(20, 12 + (avgDelta - FRAME_DELTA_THRESHOLD) * 30);
+        score += Math.round(motionScore * 10) / 10;
         reasons.push('natural motion');
+      } else if (avgDelta > 0) {
+        const motionScore = (avgDelta / FRAME_DELTA_THRESHOLD) * 12;
+        score += Math.round(motionScore * 10) / 10;
+        reasons.push('limited motion');
       } else {
-        reasons.push('limited frame change');
+        reasons.push('no motion');
       }
 
       // Challenge-response (up to 30 pts, 15 per challenge)
@@ -396,13 +411,14 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       }
       score += challengeScoreRef.current;
 
-      // Blink bonus (10 pts)
+      // Blink bonus (up to 10 pts, continuous)
       if (blinkCountRef.current >= 2) {
-        score += 10;
+        const blinkScore = Math.min(10, 6 + (blinkCountRef.current - 2) * 2);
+        score += blinkScore;
         reasons.push(`${blinkCountRef.current} blinks`);
       } else if (blinkCountRef.current >= 1) {
-        score += 5;
-        reasons.push('1 blink');
+        score += 3 + blinkCountRef.current * 2;
+        reasons.push(`${blinkCountRef.current} blink`);
       }
 
       let backendScore = 0;
@@ -419,13 +435,15 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
               body: JSON.stringify({ image: b64, ob_url: obServerUrl || 'http://localhost:8000' }),
             });
             const data = await res.json();
-            if (data.score > 0) {
+            if (data.error && data.error.includes('No face')) {
+              reasons.push('OB:no face');
+            } else if (data.score > 0 || data.confidence > 0) {
               backendScore = data.score;
-              reasons.push(`OB:${data.score}pts`);
+              reasons.push(`OB:${typeof data.score === 'number' ? data.score.toFixed(1) : data.score}pts`);
               if (data.is_live) reasons.push('live');
               if (data.confidence) reasons.push(`conf:${Math.round(data.confidence * 100)}%`);
             } else {
-              reasons.push('OB:no face');
+              reasons.push('OB:face detected');
             }
           } catch {
             reasons.push('OB:error');

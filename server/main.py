@@ -307,21 +307,30 @@ async def openbiometrics_liveness(request: Request):
             return OpenBiometricsResponse(is_live=False, confidence=0, score=0, error="No face detected")
 
         face = data["faces"][0]
-        liveness = face.get("liveness", {})
-        is_live = liveness.get("is_live", False)
-        confidence = liveness.get("score", 0)
-        score = min(int(confidence * 20), 20)
+        det = face.get("detection", {})
+        det_confidence = det.get("confidence", 0)
+
+        liveness = face.get("liveness")
+        if liveness:
+            is_live = liveness.get("is_live", False)
+            liv_score = liveness.get("score", 0)
+        else:
+            is_live = det_confidence > 0.5
+            liv_score = det_confidence
+
+        score = round(liv_score * 20, 1)
 
         quality = face.get("quality", {})
         if quality.get("is_acceptable"):
-            score += 5
+            score += 3
         if quality.get("sharpness", 0) > 30:
-            score += 5
+            score += 2
+        score = min(max(score, 0), 20)
 
         return OpenBiometricsResponse(
             is_live=is_live,
-            confidence=confidence,
-            score=score,
+            confidence=liv_score,
+            score=int(score) if score == int(score) else score,
         )
     except Exception as e:
         return OpenBiometricsResponse(is_live=False, confidence=0, score=0, error=str(e))
