@@ -14,6 +14,7 @@ interface LivenessCheckProps {
   autoStart?: boolean;
   provider?: string;
   serverUrl?: string;
+  obServerUrl?: string;
 }
 
 function eyeAspectRatio(landmarks: faceapi.Point[]): number {
@@ -88,7 +89,7 @@ const CHALLENGE_LABELS: Record<Challenge, string> = {
   look_down: 'Look down toward the floor',
 };
 
-export default function LivenessCheck({ onComplete, externalVideo, autoStart = true, provider, serverUrl }: LivenessCheckProps) {
+export default function LivenessCheck({ onComplete, externalVideo, autoStart = true, provider, serverUrl, obServerUrl }: LivenessCheckProps) {
   const [status, setStatus] = useState(externalVideo ? 'Analyzing video...' : 'Starting camera...');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -403,7 +404,32 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       }
 
       let backendScore = 0;
-      if (provider === 'aws_detect_faces' && serverUrl && canvasRef.current) {
+      if (provider === 'openbiometrics' && serverUrl && canvasRef.current) {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (ctx && video) {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const b64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+          try {
+            const res = await fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/openbiometrics`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ image: b64, ob_url: obServerUrl || 'http://localhost:8000' }),
+            });
+            const data = await res.json();
+            if (data.score > 0) {
+              backendScore = data.score;
+              reasons.push(`OB:${data.score}pts`);
+              if (data.is_live) reasons.push('live');
+              if (data.confidence) reasons.push(`conf:${Math.round(data.confidence * 100)}%`);
+            } else {
+              reasons.push('OB:no face');
+            }
+          } catch {
+            reasons.push('OB:error');
+          }
+        }
+      } else if (provider === 'aws_detect_faces' && serverUrl && canvasRef.current) {
         const canvas = canvasRef.current;
         // Draw the latest video frame onto canvas if not already there
         const ctx = canvas.getContext('2d');

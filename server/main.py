@@ -23,6 +23,7 @@ import io
 import json
 import os
 import sys
+import requests as http_requests
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -278,6 +279,52 @@ async def passive_liveness(request: Request):
         )
     except Exception as e:
         return PassiveLivenessResponse(is_real=False, confidence=0, score=0, error=str(e))
+
+
+class OpenBiometricsResponse(BaseModel):
+    is_live: bool
+    confidence: float
+    score: int
+    error: str | None = None
+
+
+@app.post("/liveness/openbiometrics", response_model=OpenBiometricsResponse)
+async def openbiometrics_liveness(request: Request):
+    body = await request.json()
+    image_b64 = body.get("image")
+    ob_url = body.get("ob_url", "http://localhost:8000")
+
+    if not image_b64:
+        raise HTTPException(status_code=400, detail="No image provided")
+
+    try:
+        image_bytes = base64.b64decode(image_b64)
+        files = {"image": ("frame.jpg", image_bytes, "image/jpeg")}
+        resp = http_requests.post(f"{ob_url.rstrip('/')}/api/v1/detect", files=files, timeout=10)
+        data = resp.json()
+
+        if not data.get("faces"):
+            return OpenBiometricsResponse(is_live=False, confidence=0, score=0, error="No face detected")
+
+        face = data["faces"][0]
+        liveness = face.get("liveness", {})
+        is_live = liveness.get("is_live", False)
+        confidence = liveness.get("score", 0)
+        score = min(int(confidence * 20), 20)
+
+        quality = face.get("quality", {})
+        if quality.get("is_acceptable"):
+            score += 5
+        if quality.get("sharpness", 0) > 30:
+            score += 5
+
+        return OpenBiometricsResponse(
+            is_live=is_live,
+            confidence=confidence,
+            score=score,
+        )
+    except Exception as e:
+        return OpenBiometricsResponse(is_live=False, confidence=0, score=0, error=str(e))
 
 
 @app.get("/health")

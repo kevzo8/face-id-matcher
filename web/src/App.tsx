@@ -19,7 +19,7 @@ type ImageData = {
 type DetectionModel = 'fast' | 'accurate';
 type IdToFaceProvider = 'local' | 'rekognition' | 'megamatcher' | 'insightface' | 'faceplusplus';
 type OcrProvider = 'bedrock' | 'textract' | 'verihubs' | 'zoloz' | 'tencent' | 'google_docai' | 'mindee' | 'azure_di';
-type LivenessProvider = 'aws_rekognition' | 'aws_detect_faces' | 'faceplusplus' | 'azure_face' | 'hyperverge' | 'didit' | 'iproov' | 'open_face_liveness' | 'passive_liveness';
+type LivenessProvider = 'aws_rekognition' | 'aws_detect_faces' | 'faceplusplus' | 'azure_face' | 'hyperverge' | 'didit' | 'iproov' | 'open_face_liveness' | 'passive_liveness' | 'openbiometrics';
 type FaceBox = { x: number; y: number; width: number; height: number; score: number };
 
 function checkOrientation(detection: faceapi.WithFaceLandmarks<{ detection: faceapi.FaceDetection }>): string | null {
@@ -59,6 +59,7 @@ export default function App() {
   const [ocrServerUrl, setOcrServerUrl] = useState('https://face-id-matcher.onrender.com');
   const [livenessProvider, setLivenessProvider] = useState<LivenessProvider>('open_face_liveness');
   const [livenessServerUrl, setLivenessServerUrl] = useState('https://face-id-matcher.onrender.com');
+  const [obServerUrl, setObServerUrl] = useState('http://localhost:8000');
   const [feature, setFeature] = useState<'id_to_face' | 'liveness' | 'ocr'>('id_to_face');
   const [mode, setMode] = useState<'single' | 'batch' | 'csv'>('single');
   const [showInfo, setShowInfo] = useState(false);
@@ -485,7 +486,7 @@ export default function App() {
               )}
               {livenessTestMode === 'active' && !livenessTestResult && (
                 <div style={{ background: '#1e293b', borderRadius: 8, padding: 16, border: '1px solid #475569', marginTop: 12 }}>
-                  <LivenessCheck onComplete={(r) => { setLivenessTestResult(r as { pass: boolean; score: number; details: string; recordingUrl?: string }); setLivenessTestStarted(false); setLivenessTestMode(null); }} autoStart={true} provider={livenessProvider} serverUrl={livenessServerUrl} />
+                  <LivenessCheck onComplete={(r) => { setLivenessTestResult(r as { pass: boolean; score: number; details: string; recordingUrl?: string }); setLivenessTestStarted(false); setLivenessTestMode(null); }} autoStart={true} provider={livenessProvider} serverUrl={livenessServerUrl} obServerUrl={obServerUrl} />
                 </div>
               )}
               {livenessTestMode === 'passive' && !passiveLivenessResult && (
@@ -495,7 +496,7 @@ export default function App() {
               )}
               {livenessTestStarted && !livenessTestResult && livenessTestMode === 'upload' && (
                 <div style={{ background: '#1e293b', borderRadius: 8, padding: 16, border: '1px solid #475569', marginTop: 12 }}>
-                  <LivenessCheck onComplete={(r) => { setLivenessTestResult(r as { pass: boolean; score: number; details: string; recordingUrl?: string }); setLivenessTestStarted(false); setLivenessTestMode(null); }} externalVideo={livenessTestVideo} autoStart={true} provider={livenessProvider} serverUrl={livenessServerUrl} />
+                  <LivenessCheck onComplete={(r) => { setLivenessTestResult(r as { pass: boolean; score: number; details: string; recordingUrl?: string }); setLivenessTestStarted(false); setLivenessTestMode(null); }} externalVideo={livenessTestVideo} autoStart={true} provider={livenessProvider} serverUrl={livenessServerUrl} obServerUrl={obServerUrl} />
                 </div>
               )}
               {livenessTestResult && (
@@ -695,12 +696,20 @@ export default function App() {
                 <option value="didit">Didit</option>
                 <option value="iproov">iProov</option>
                 <option value="passive_liveness">MiniFASNet Passive Liveness (server)</option>
+                <option value="openbiometrics">OpenBiometrics (server)</option>
                 <option value="open_face_liveness">open-face-liveness (browser)</option>
               </select>
               {livenessProvider !== 'open_face_liveness' && (
                 <>
                   <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1 }}>Server URL</div>
                   <input type="text" value={livenessServerUrl} onChange={(e) => setLivenessServerUrl(e.target.value)}
+                    style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box' }} />
+                </>
+              )}
+              {livenessProvider === 'openbiometrics' && (
+                <>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginTop: 4 }}>OpenBiometrics URL</div>
+                  <input type="text" value={obServerUrl} onChange={(e) => setObServerUrl(e.target.value)}
                     style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box' }} />
                 </>
               )}
@@ -714,6 +723,7 @@ export default function App() {
                 {livenessProvider === 'iproov' && <><strong style={{ color: '#94a3b8' }}>iProov</strong> &mdash; Govt-grade, iBeta L2.</>}
                 {livenessProvider === 'passive_liveness' && <><strong style={{ color: '#94a3b8' }}>MiniFASNet Passive</strong> &mdash; ONNX anti-spoofing, $0/check, server-based.</>}
                 {livenessProvider === 'open_face_liveness' && <><strong style={{ color: '#94a3b8' }}>open-face-liveness</strong> &mdash; Browser-only, $0, MIT.</>}
+                {livenessProvider === 'openbiometrics' && <><strong style={{ color: '#94a3b8' }}>OpenBiometrics</strong> &mdash; Self-hosted platform, MiniFASNet passive + 6 active presets, $0.</>}
               </div>
               <hr style={{ border: 'none', borderTop: '1px solid #334155', margin: '4px 0' }} />
               <div style={{ fontSize: 11, fontWeight: 700, color: '#ef4444' }}>WHY LIVENESS FAILS</div>
