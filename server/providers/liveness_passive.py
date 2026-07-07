@@ -21,7 +21,7 @@ class LivenessPassiveProvider:
         self.session = None
         self.input_name = "input"
         self.output_name = "output"
-        self.input_size = (128, 128)  # (width, height)
+        self.input_size = (80, 80)  # (width, height) — model expects 80x80
         self.scale = 2.7
         self._load()
 
@@ -78,10 +78,16 @@ class LivenessPassiveProvider:
             img_array = np.expand_dims(img_array, axis=0)  # NCHW
 
             outputs = self.session.run([self.output_name], {self.input_name: img_array})
-            raw_score = float(outputs[0].flatten()[0])
+            out = outputs[0].flatten()
+            # Model outputs 3 values: [real_score, spoof1_score, spoof2_score]
+            # Higher first value = more likely real
+            raw_score = float(out[0])
+            spoof_score = float(max(out[1], out[2])) if len(out) >= 3 else 0
 
-            # sigmoid to get 0-1 confidence
-            confidence = 1.0 / (1.0 + np.exp(-raw_score).item())
+            # softmax over real vs max(spoof)
+            exp_real = np.exp(raw_score)
+            exp_spoof = np.exp(spoof_score)
+            confidence = exp_real / (exp_real + exp_spoof)
             is_real = confidence > 0.5
 
             # Map to 0-20 score
