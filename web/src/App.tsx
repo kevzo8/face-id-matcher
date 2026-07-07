@@ -75,7 +75,7 @@ export default function App() {
   const [livenessTestResult, setLivenessTestResult] = useState<{ pass: boolean; score: number; details: string; recordingUrl?: string; breakdown?: { label: string; pts: number }[] } | null>(null);
   const [livenessTestVideo, setLivenessTestVideo] = useState<HTMLVideoElement | null>(null);
   const [livenessTestMode, setLivenessTestMode] = useState<'active' | 'passive' | 'upload' | null>(null);
-  const [passiveLivenessResult, setPassiveLivenessResult] = useState<{ is_real: boolean; confidence: number; score: number } | null>(null);
+  const [passiveLivenessResult, setPassiveLivenessResult] = useState<{ is_real: boolean; confidence: number; score: number; snapshotUrl?: string } | null>(null);
   const livenessTestVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -414,13 +414,13 @@ export default function App() {
                 )}
                 {livenessResult && (
                   <div style={{ textAlign: 'center', marginBottom: 10, padding: '8px 12px', borderRadius: 6,
-                    background: livenessResult.pass ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                    background: livenessResult.pass ? '#064e3b' : '#450a0a',
                     border: `1px solid ${livenessResult.pass ? '#22c55e' : '#ef4444'}` }}>
-                    <div style={{ color: livenessResult.pass ? '#22c55e' : '#ef4444', fontSize: 13, fontWeight: 600 }}>
+                    <div style={{ color: livenessResult.pass ? '#86efac' : '#fca5a5', fontSize: 13, fontWeight: 600 }}>
                       {livenessResult.pass ? 'Liveness Passed' : 'Liveness Failed'}
                     </div>
-                    <div style={{ color: '#94a3b8', fontSize: 11, marginTop: 2 }}>Score: {livenessResult.score}/100 &mdash; {livenessResult.details}</div>
-                    {livenessResult.pass && <div style={{ color: '#22c55e', fontSize: 10, marginTop: 2 }}>Face comparison now available</div>}
+                    <div style={{ color: livenessResult.pass ? '#86efac' : '#fca5a5', fontSize: 11, marginTop: 2 }}>Score: {livenessResult.score}/100 &mdash; {livenessResult.details}</div>
+                    {livenessResult.pass && <div style={{ color: '#86efac', fontSize: 10, marginTop: 2 }}>Face comparison now available</div>}
                     {!livenessResult.pass && (
                       <button onClick={() => { setLivenessRunning(true); setLivenessResult(null); }}
                         style={{ marginTop: 6, padding: '4px 14px', fontSize: 11, fontWeight: 600, border: 'none', borderRadius: 4, cursor: 'pointer', background: '#ef4444', color: '#fff' }}>
@@ -461,7 +461,7 @@ export default function App() {
                       <span style={{ fontSize: 20 }}>&#9654;</span>
                       <span><strong>Active Liveness</strong><br /><span style={{ fontSize: 11, opacity: 0.8 }}>Challenge-response: follow on-screen prompts</span></span>
                     </button>
-                    <button onClick={() => setLivenessTestMode('passive')}
+                    <button onClick={() => { setPassiveLivenessResult(null); setLivenessTestMode('passive'); }}
                       style={{ width: '100%', maxWidth: 320, padding: '12px 20px', fontSize: 14, fontWeight: 600, border: 'none', borderRadius: 8, cursor: 'pointer', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ fontSize: 20 }}>&#9725;</span>
                       <span><strong>Passive Liveness</strong><br /><span style={{ fontSize: 11, opacity: 0.8 }}>Snap & detect — no action needed, server-side ONNX</span></span>
@@ -502,20 +502,20 @@ export default function App() {
               {livenessTestResult && (
                 <div style={{ textAlign: 'center', marginTop: 12 }}>
                   <div style={{ padding: '14px 16px', borderRadius: 8,
-                    background: livenessTestResult.pass ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                    background: livenessTestResult.pass ? '#064e3b' : '#450a0a',
                     border: `1px solid ${livenessTestResult.pass ? '#22c55e' : '#ef4444'}`, marginBottom: 12 }}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: livenessTestResult.pass ? '#22c55e' : '#ef4444', marginBottom: 4 }}>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: livenessTestResult.pass ? '#86efac' : '#fca5a5', marginBottom: 4 }}>
                       {livenessTestResult.pass ? 'ACTIVE LIVENESS PASSED' : 'ACTIVE LIVENESS FAILED'}
                     </div>
-                    <div style={{ fontSize: 32, fontWeight: 800, color: '#e2e8f0', marginBottom: 4 }}>{livenessTestResult.score}/100</div>
-                    <div style={{ color: '#94a3b8', fontSize: 12 }}>{livenessTestResult.details}</div>
+                    <div style={{ fontSize: 32, fontWeight: 800, color: livenessTestResult.pass ? '#bbf7d0' : '#fecaca', marginBottom: 4 }}>{livenessTestResult.score}/100</div>
+                    <div style={{ color: livenessTestResult.pass ? '#86efac' : '#fca5a5', fontSize: 12 }}>{livenessTestResult.details}</div>
                     {livenessTestResult.breakdown && (
                       <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left' }}>
                         <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Score Breakdown</div>
                         {livenessTestResult.breakdown.map((b, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '2px 6px', background: 'rgba(0,0,0,0.15)', borderRadius: 3 }}>
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '2px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3 }}>
                             <span>{b.label}</span>
-                            <span style={{ fontWeight: 600, color: b.pts > 0 ? '#4ade80' : '#f87171' }}>{b.pts > 0 ? '+' : ''}{b.pts}</span>
+                            <span style={{ fontWeight: 600, color: b.pts > 0 ? '#86efac' : '#fca5a5' }}>{b.pts > 0 ? '+' : ''}{b.pts}</span>
                           </div>
                         ))}
                       </div>
@@ -540,14 +540,24 @@ export default function App() {
               )}
               {passiveLivenessResult && (
                 <div style={{ textAlign: 'center', marginTop: 12 }}>
+                  {passiveLivenessResult.snapshotUrl && (
+                    <div style={{ marginBottom: 12 }}>
+                      <img src={passiveLivenessResult.snapshotUrl} alt="Captured face"
+                        style={{ width: 160, height: 160, borderRadius: 8, objectFit: 'cover', border: '2px solid #475569' }} />
+                    </div>
+                  )}
                   <div style={{ padding: '14px 16px', borderRadius: 8,
-                    background: passiveLivenessResult.is_real ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                    background: passiveLivenessResult.is_real ? '#064e3b' : '#450a0a',
                     border: `1px solid ${passiveLivenessResult.is_real ? '#22c55e' : '#ef4444'}`, marginBottom: 12 }}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: passiveLivenessResult.is_real ? '#22c55e' : '#ef4444', marginBottom: 4 }}>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: passiveLivenessResult.is_real ? '#86efac' : '#fca5a5', marginBottom: 4 }}>
                       {passiveLivenessResult.is_real ? 'PASSIVE LIVENESS PASSED' : 'PASSIVE LIVENESS FAILED'}
                     </div>
-                    <div style={{ fontSize: 32, fontWeight: 800, color: '#e2e8f0', marginBottom: 4 }}>{Math.round(passiveLivenessResult.confidence * 100)}%</div>
-                    <div style={{ color: '#94a3b8', fontSize: 12 }}>Score: {passiveLivenessResult.score}/20 &mdash; {passiveLivenessResult.is_real ? 'Real face detected' : 'Spoof detected'}</div>
+                    <div style={{ fontSize: 32, fontWeight: 800, color: passiveLivenessResult.is_real ? '#bbf7d0' : '#fecaca', marginBottom: 4 }}>
+                      {Math.round(passiveLivenessResult.confidence * 100)}%
+                    </div>
+                    <div style={{ color: passiveLivenessResult.is_real ? '#86efac' : '#fca5a5', fontSize: 12 }}>
+                      Score: {passiveLivenessResult.score}/20 &mdash; {passiveLivenessResult.is_real ? 'Real face detected' : 'Spoof detected'}
+                    </div>
                   </div>
                   <button onClick={() => { setPassiveLivenessResult(null); setLivenessTestMode(null); }}
                     style={{ padding: '8px 20px', fontSize: 13, fontWeight: 600, border: '1px solid #475569', borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#e2e8f0' }}>

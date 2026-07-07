@@ -6,6 +6,7 @@ interface PassiveResult {
   confidence: number;
   score: number;
   error?: string;
+  snapshotUrl?: string;
 }
 
 interface Props {
@@ -54,10 +55,13 @@ export default function PassiveLivenessCheck({ onComplete, serverUrl }: Props) {
             const ctx = canvas.getContext('2d');
             if (!ctx) continue;
 
-            // Draw current frame
+            // Draw current frame (full canvas for backend, face crop for snapshot)
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Crop face region with padding
+            // Send full frame to backend (it uses bbox to crop with 2.7x scale)
+            const fullB64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+
+            // Crop face for local snapshot display
             const box = det.detection.box;
             const pad = 0.5;
             const fx = Math.max(0, Math.floor(box.x - box.width * pad));
@@ -66,16 +70,14 @@ export default function PassiveLivenessCheck({ onComplete, serverUrl }: Props) {
             const fh = Math.min(canvas.height - fy, Math.ceil(box.height * (1 + pad * 2)));
             const faceData = ctx.getImageData(fx, fy, fw, fh);
 
-            // Create a temporary canvas for the face crop
             const tmpCanvas = document.createElement('canvas');
             tmpCanvas.width = fw;
             tmpCanvas.height = fh;
             const tmpCtx = tmpCanvas.getContext('2d');
             if (!tmpCtx) continue;
             tmpCtx.putImageData(faceData, 0, 0);
+            const snapshotUrl = tmpCanvas.toDataURL('image/jpeg', 0.7);
 
-            // Send to backend as JPEG
-            const b64 = tmpCanvas.toDataURL('image/jpeg', 0.9).split(',')[1];
             const bbox = [box.x / canvas.width, box.y / canvas.height, box.width / canvas.width, box.height / canvas.height];
 
             setStatus('Analyzing...');
@@ -87,10 +89,10 @@ export default function PassiveLivenessCheck({ onComplete, serverUrl }: Props) {
             const res = await fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/passive`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ image: b64, bbox }),
+              body: JSON.stringify({ image: fullB64, bbox }),
             });
             const data: PassiveResult = await res.json();
-            onComplete(data);
+            onComplete({ ...data, snapshotUrl });
             return;
           }
         }
