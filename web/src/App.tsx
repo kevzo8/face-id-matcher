@@ -19,7 +19,7 @@ type ImageData = {
 type DetectionModel = 'fast' | 'accurate';
 type IdToFaceProvider = 'local' | 'rekognition' | 'megamatcher' | 'insightface' | 'faceplusplus';
 type OcrProvider = 'bedrock' | 'textract' | 'verihubs' | 'zoloz' | 'tencent' | 'google_docai' | 'mindee' | 'azure_di';
-type LivenessProvider = 'aws_rekognition' | 'aws_detect_faces' | 'faceplusplus' | 'azure_face' | 'hyperverge' | 'didit' | 'iproov' | 'open_face_liveness' | 'passive_liveness' | 'openbiometrics';
+type LivenessProvider = 'aws_rekognition' | 'aws_detect_faces' | 'faceplusplus' | 'azure_face' | 'hyperverge' | 'didit' | 'iproov' | 'open_face_liveness' | 'openbiometrics';
 type FaceBox = { x: number; y: number; width: number; height: number; score: number };
 
 function checkOrientation(detection: faceapi.WithFaceLandmarks<{ detection: faceapi.FaceDetection }>): string | null {
@@ -64,6 +64,8 @@ export default function App() {
   const [mode, setMode] = useState<'single' | 'batch' | 'csv'>('single');
   const [showInfo, setShowInfo] = useState(false);
   const [showTips, setShowTips] = useState(true);
+  const [showLivenessHow, setShowLivenessHow] = useState(true);
+  const [showLivenessFails, setShowLivenessFails] = useState(true);
   const [showPresentation, setShowPresentation] = useState(false);
   const [initialSlide, setInitialSlide] = useState(0);
   const [idFaceBox, setIdFaceBox] = useState<FaceBox | null>(null);
@@ -718,7 +720,7 @@ export default function App() {
               <div style={{ borderTop: '1px solid #334155', paddingTop: 10 }}>
                 <button onClick={() => setShowInfo(!showInfo)}
                   style={{ width: '100%', textAlign: 'left', padding: '2px 0', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', background: 'transparent', color: '#94a3b8' }}>
-                  {showInfo ? '\u25BC' : '\u25B6'} HOW IT WORKS
+                  <span style={{ color: '#f59e0b' }}>{showInfo ? '\u25BC' : '\u25B6'} HOW IT WORKS</span>
                 </button>
                 {showInfo && (
                   <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6, marginTop: 6 }}>
@@ -749,9 +751,12 @@ export default function App() {
 
           {feature === 'liveness' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#f97316' }}>LIVENESS PROVIDER</div>
+
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa' }}>ACTIVE LIVENESS PROVIDER</div>
+              <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Used when you click "Active Liveness"</div>
               <select value={livenessProvider} onChange={(e) => setLivenessProvider(e.target.value as LivenessProvider)}
                 style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12 }}>
+                <option value="open_face_liveness">open-face-liveness (browser)</option>
                 <option value="aws_detect_faces">AWS DetectFaces (server)</option>
                 <option value="aws_rekognition">AWS Rekog Liveness KVS (later)</option>
                 <option value="faceplusplus">Face++ Liveness</option>
@@ -759,9 +764,7 @@ export default function App() {
                 <option value="hyperverge">HyperVerge</option>
                 <option value="didit">Didit</option>
                 <option value="iproov">iProov</option>
-                <option value="passive_liveness">MiniFASNet Passive Liveness (server)</option>
                 <option value="openbiometrics">OpenBiometrics (server)</option>
-                <option value="open_face_liveness">open-face-liveness (browser)</option>
               </select>
               {livenessProvider !== 'open_face_liveness' && (
                 <>
@@ -778,6 +781,7 @@ export default function App() {
                 </>
               )}
               <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.5 }}>
+                {livenessProvider === 'open_face_liveness' && <><strong style={{ color: '#94a3b8' }}>open-face-liveness</strong> &mdash; Browser-only, $0, MIT. Uses face-api.js for blink detection (EAR) &amp; head-turn challenges entirely in-browser. No server call.</>}
                 {livenessProvider === 'aws_detect_faces' && <><strong style={{ color: '#94a3b8' }}>AWS DetectFaces</strong> &mdash; $0.001/check, face attributes, NOT true liveness.</>}
                 {livenessProvider === 'aws_rekognition' && <><strong style={{ color: '#94a3b8' }}>AWS Rekog Liveness</strong> &mdash; iBeta L1+L2, ~$0.015/check. Requires KVS + WebSocket setup.</>}
                 {livenessProvider === 'faceplusplus' && <><strong style={{ color: '#94a3b8' }}>Face++</strong> &mdash; $0.00019/check, cheapest cloud.</>}
@@ -785,26 +789,47 @@ export default function App() {
                 {livenessProvider === 'hyperverge' && <><strong style={{ color: '#94a3b8' }}>HyperVerge</strong> &mdash; ISO 30107-3 L2.</>}
                 {livenessProvider === 'didit' && <><strong style={{ color: '#94a3b8' }}>Didit</strong> &mdash; iBeta L1, 500 free/mo.</>}
                 {livenessProvider === 'iproov' && <><strong style={{ color: '#94a3b8' }}>iProov</strong> &mdash; Govt-grade, iBeta L2.</>}
-                {livenessProvider === 'passive_liveness' && <><strong style={{ color: '#94a3b8' }}>MiniFASNet Passive</strong> &mdash; ONNX anti-spoofing, $0/check, server-based.</>}
-                {livenessProvider === 'open_face_liveness' && <><strong style={{ color: '#94a3b8' }}>open-face-liveness</strong> &mdash; Browser-only, $0, MIT.</>}
                 {livenessProvider === 'openbiometrics' && <><strong style={{ color: '#94a3b8' }}>OpenBiometrics</strong> &mdash; Self-hosted platform, MiniFASNet passive + 6 active presets, $0.</>}
               </div>
+
               <hr style={{ border: 'none', borderTop: '1px solid #334155', margin: '4px 0' }} />
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', marginBottom: 4 }}>HOW LIVENESS DETECTION WORKS</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.6, marginBottom: 8 }}>
-                <strong style={{ color: '#a78bfa' }}>Active</strong>: Tracks blinks &amp; head motion (turn left/right, look up/down). Scores: face size, texture, motion, challenges, blinks. Threshold: 70/100.<br />
-                <strong style={{ color: '#4ade80' }}>Passive</strong>: Single-frame analysis of sharpness, edges, color depth, tonal range &amp; frequency to detect printed photos / replays. Score: 0–20.
+
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#4ade80' }}>PASSIVE LIVENESS</div>
+              <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Always uses heuristic analysis on the backend</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>
+                Captures one frame &rarr; sends to <strong style={{ color: '#e2e8f0' }}>/liveness/passive</strong> &rarr; analyzes sharpness (Laplacian variance), edges (gradient), color depth (channel variance), tonal range (histogram spread), &amp; detail (FFT frequency ratio). Built from scratch — original MiniFASNet ONNX model was broken (identical output for any input), rewrote as pure numpy/PIL heuristics. Needs backend for compute-intensive operations unavailable in-browser. Score 0–20, threshold: <strong style={{ color: '#4ade80' }}>&gt;6</strong> (<strong style={{ color: '#4ade80' }}>&gt;30%</strong>).
               </div>
+
               <hr style={{ border: 'none', borderTop: '1px solid #334155', margin: '4px 0' }} />
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#ef4444' }}>WHY LIVENESS FAILS</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.7 }}>
-                <div><span style={{ color: '#ef4444' }}>&#10007;</span> Static photo / printed face &mdash; no micro-movements</div>
-                <div><span style={{ color: '#ef4444' }}>&#10007;</span> Video replay on another screen &mdash; screen artifacts, no texture</div>
-                <div><span style={{ color: '#ef4444' }}>&#10007;</span> Deepfake / real-time face swap &mdash; frame boundary mismatch</div>
-                <div><span style={{ color: '#ef4444' }}>&#10007;</span> Low-res / compressed image &mdash; below 80px face width</div>
-                <div><span style={{ color: '#ef4444' }}>&#10007;</span> No face detected &mdash; occluded, too dark, or no camera</div>
-                <div><span style={{ color: '#ef4444' }}>&#10007;</span> Frozen / static feed &mdash; frame-to-frame delta is zero</div>
-              </div>
+
+              <button onClick={() => setShowLivenessHow(!showLivenessHow)}
+                style={{ width: '100%', textAlign: 'left', padding: '2px 0', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', background: 'transparent', color: '#94a3b8' }}>
+                <span style={{ color: '#f59e0b' }}>{showLivenessHow ? '\u25BC' : '\u25B6'} HOW LIVENESS DETECTION WORKS</span>
+              </button>
+              {showLivenessHow && (
+                <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.6, marginBottom: 8, marginTop: 4 }}>
+                  <strong style={{ color: '#a78bfa' }}>Active</strong>: Tracks blinks &amp; head motion (turn left/right, look up/down). Scores: face size, texture, motion, challenges, blinks. Threshold: <strong style={{ color: '#f59e0b' }}>70/100</strong>.<br />
+                  <strong style={{ color: '#4ade80' }}>Passive</strong>: Single-frame heuristic analysis of sharpness, edges, color depth, tonal range &amp; frequency. Score: 0–20. Confidence = score/20. Threshold: <strong style={{ color: '#4ade80' }}>score &gt; 6</strong> (<strong style={{ color: '#4ade80' }}>&gt;30%</strong>).
+                </div>
+              )}
+
+              <hr style={{ border: 'none', borderTop: '1px solid #334155', margin: '4px 0' }} />
+
+              <button onClick={() => setShowLivenessFails(!showLivenessFails)}
+                style={{ width: '100%', textAlign: 'left', padding: '2px 0', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', background: 'transparent', color: '#94a3b8' }}>
+                <span style={{ color: '#ef4444' }}>{showLivenessFails ? '\u25BC' : '\u25B6'} WHY LIVENESS FAILS</span>
+              </button>
+              {showLivenessFails && (
+                <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.7, marginTop: 4 }}>
+                  <div><span style={{ color: '#ef4444' }}>&#10007;</span> Static photo / printed face &mdash; no micro-movements</div>
+                  <div><span style={{ color: '#ef4444' }}>&#10007;</span> Video replay on another screen &mdash; screen artifacts, no texture</div>
+                  <div><span style={{ color: '#ef4444' }}>&#10007;</span> Deepfake / real-time face swap &mdash; frame boundary mismatch</div>
+                  <div><span style={{ color: '#ef4444' }}>&#10007;</span> Low-res / compressed image &mdash; below 80px face width</div>
+                  <div><span style={{ color: '#ef4444' }}>&#10007;</span> No face detected &mdash; occluded, too dark, or no camera</div>
+                  <div><span style={{ color: '#ef4444' }}>&#10007;</span> Frozen / static feed &mdash; frame-to-frame delta is zero</div>
+                </div>
+              )}
+
             </div>
           )}
 

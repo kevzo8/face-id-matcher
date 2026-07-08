@@ -27,7 +27,8 @@
 5. [Comparison Matrix](#5-comparison-matrix)
 6. [Integration into Existing App](#6-integration-into-existing-app)
 7. [POC Plan](#7-poc-plan)
-8. [References](#8-references)
+8. [POC Implementation Progress](#8-poc-implementation-progress)
+9. [References](#9-references)
 
 ---
 
@@ -477,7 +478,75 @@ const handleLivenessResult = (score: number) => {
 
 ---
 
-## 8. References
+## 8. POC Implementation Progress
+
+**Status:** Active development — passive and active liveness implemented in the face-id-matcher POC
+
+### 8.1 What Was Built
+
+| Component | File(s) | Description |
+|-----------|---------|-------------|
+| **Active Liveness (browser)** | `web/src/components/LivenessCheck.tsx` | face-api.js blink detection (EAR), head-turn challenges (left/right/up/down), continuous scoring (face size, texture, motion, blinks, challenges). Threshold: 70/100. |
+| **Passive Liveness (server)** | `server/providers/liveness_passive.py` | Heuristic analysis — Laplacian variance, edge gradients, color channel variance, histogram spread, FFT frequency ratio. Score 0–20, threshold: >6 (>30%). |
+| **Passive Liveness (frontend)** | `web/src/components/PassiveLivenessCheck.tsx` | Camera capture → `detectAllFaces` → closest-to-center face → draw bounding box snapshot → send full frame + bbox to backend. |
+| **OpenBiometrics integration** | `server/main.py` | Proxy `/liveness/openbiometrics` endpoint → POST multipart to OpenBiometrics `/api/v1/detect` → return liveness + quality. |
+| **Presentation slides** | `web/src/components/Presentation.tsx`, `web/src/data/slides.tsx` | Feature-routed presentations at `/face-id/presentation/{slide}`, `/liveness/presentation/{slide}`, `/ocr/presentation/{slide}`. |
+| **Sidebar info** | `web/src/App.tsx` | Per-feature right sidebar with provider selection, descriptions, How It Works, and Why It Fails sections. |
+
+### 8.2 Key Findings
+
+| Finding | Detail |
+|---------|--------|
+| **MiniFASNet ONNX model is broken** | The model produces identical logits (`[-3.6, -0.8, +4.4]`) for any input image — biases dominate, no discrimination between real and spoof. Cannot be used for passive liveness. |
+| **Heuristic replacement built** | Rewrote passive liveness using pure numpy/PIL heuristics (Laplacian variance, edge strength, color variance, histogram spread, FFT ratio). No model file needed — runs on CPU. |
+| **Scoring alignment** | Original had 3 different formulas for confidence, score, and breakdown — user sees contradictory numbers. Fixed: breakdown ×4 each (max 20), score = sum of breakdown, confidence = score/20. All three now aligned. |
+| **detectSingleFace limitation** | Active liveness used `detectSingleFace` which picks highest-confidence face — wrong person when multiple faces in frame. Fixed to `detectAllFaces` + closest-to-center Manhattan distance. |
+| **Render import issue** | Backend at `face-id-matcher.onrender.com` runs `uvicorn server.main:app` from `/app`, so `from providers.liveness_passive` fails. Added fallback: `try: from providers... except: from server.providers...`. |
+
+### 8.3 Implemented Providers
+
+| Provider | Type | Cost | Status |
+|----------|------|------|--------|
+| **open-face-liveness** (default) | Browser (face-api.js) | $0, MIT | ✅ Active: blink + head-turn |
+| **Passive Liveness** | Server (numpy/PIL) | $0 + compute | ✅ Passive: heuristic analysis |
+| **OpenBiometrics** | Self-hosted server | $0 + hosting | ✅ Active + Passive proxied |
+| **AWS DetectFaces** | Cloud REST | $0.001/check | ✅ Wired (face attributes only — not true liveness) |
+| **AWS Rekognition Liveness** | Cloud KVS | ~$0.015/check | 🔧 Not yet implemented (requires KVS + WebSocket) |
+| **Face++** | Cloud REST | $0.00019/check | 🔧 Not yet implemented |
+| **Azure Face** | Cloud REST | $0.015/check | 🔧 Not yet implemented |
+| **HyperVerge** | Cloud REST | Tiered | 🔧 Not yet implemented |
+| **Didit** | Cloud REST | $0.10/check | 🔧 Not yet implemented |
+| **iProov** | Cloud + SDK | Enterprise | 🔧 Not yet implemented |
+
+### 8.4 Scoring Details
+
+**Active Liveness (0–100):**
+- Face size (>100px): 0–20 pts
+- Texture variance (>20): 0–20 pts
+- Frame motion delta (>0.8): 0–20 pts
+- Blinks: 3/5/7/10 pts depending on count
+- Challenges passed (2 randomly selected from left/right/up/down): 15 pts each
+- Threshold: 70/100
+
+**Passive Liveness (0–20):**
+- Sharpness (Laplacian variance): 0–4 pts
+- Edges (gradient strength): 0–4 pts
+- Color Depth (channel variance): 0–4 pts
+- Tonal Range (histogram spread): 0–4 pts
+- Detail (FFT low/high frequency ratio): 0–4 pts
+- Threshold: >6 (>30% confidence)
+
+### 8.5 Deployment
+
+| Service | URL | Type |
+|---------|-----|------|
+| Frontend | `vegamatcher.kevinguadalupevega.com` | Vercel (auto-deploy from master) |
+| Backend API | `face-id-matcher.onrender.com` | Render (Docker, free tier — spins down after inactivity, ~50s cold start) |
+| OpenBiometrics | `openbiometrics.onrender.com` | Render (Docker, free tier, fork: `kevzo8/openbiometrics`) |
+
+---
+
+## 9. References
 
 - [AWS Rekognition Face Liveness Docs](https://docs.aws.amazon.com/rekognition/latest/dg/face-liveness.html)
 - [AWS Amplify UI React Liveness](https://ui.docs.amplify.aws/react/connected-components/liveness)
@@ -491,7 +560,7 @@ const handleLivenessResult = (score: number) => {
 
 ---
 
-## 9. Unified KYC Architecture (CPS-220 + CPS-221 + CPS-222)
+## 10. Unified KYC Architecture (CPS-220 + CPS-221 + CPS-222)
 
 All three spikes compose into a single onboarding flow within the same application:
 
