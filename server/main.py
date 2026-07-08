@@ -87,12 +87,19 @@ async def lifespan(app: FastAPI):
         # Use first available provider as default
         default_provider = next(iter(providers.values()))
     
-    # Initialize passive liveness provider (MiniFASNet)
+    # Initialize passive liveness provider
     global liveness_passive
     try:
         from providers.liveness_passive import LivenessPassiveProvider
         liveness_passive = LivenessPassiveProvider()
         print("LivenessPassiveProvider initialized")
+    except ModuleNotFoundError:
+        try:
+            from server.providers.liveness_passive import LivenessPassiveProvider
+            liveness_passive = LivenessPassiveProvider()
+            print("LivenessPassiveProvider initialized (server.providers)")
+        except Exception as e:
+            print(f"LivenessPassiveProvider not available: {e}")
     except Exception as e:
         print(f"LivenessPassiveProvider not available: {e}")
 
@@ -257,15 +264,15 @@ class PassiveLivenessResponse(BaseModel):
     breakdown: list[dict] | None = None
 
 
-@app.post("/liveness/passive", response_model=PassiveLivenessResponse)
+@app.post("/liveness/passive")
 async def passive_liveness(request: Request):
     global liveness_passive
     if liveness_passive is None:
-        return PassiveLivenessResponse(is_real=False, confidence=0, score=0, error="Passive liveness not available")
+        return {"is_real": False, "confidence": 0, "score": 0, "details": "Passive liveness provider not loaded", "error": "Passive liveness not initialized"}
 
     body = await request.json()
     image_b64 = body.get("image")
-    bbox = body.get("bbox")  # optional: [x, y, w, h] relative to image dimensions
+    bbox = body.get("bbox")
 
     if not image_b64:
         raise HTTPException(status_code=400, detail="No image provided")
@@ -273,14 +280,7 @@ async def passive_liveness(request: Request):
     try:
         image_bytes = base64.b64decode(image_b64)
         result = liveness_passive.predict(image_bytes, bbox)
-        return PassiveLivenessResponse(
-            is_real=result.get("is_real", False),
-            confidence=result.get("confidence", 0),
-            score=result.get("score", 0),
-            error=result.get("error"),
-            details=result.get("details"),
-            breakdown=result.get("breakdown"),
-        )
+        return result
     except Exception as e:
         return PassiveLivenessResponse(is_real=False, confidence=0, score=0, error=str(e))
 

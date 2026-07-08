@@ -75,7 +75,7 @@ export default function App() {
   const [livenessTestResult, setLivenessTestResult] = useState<{ pass: boolean; score: number; details: string; recordingUrl?: string; breakdown?: { label: string; pts: number }[] } | null>(null);
   const [livenessTestVideo, setLivenessTestVideo] = useState<HTMLVideoElement | null>(null);
   const [livenessTestMode, setLivenessTestMode] = useState<'active' | 'passive' | 'upload' | null>(null);
-  const [passiveLivenessResult, setPassiveLivenessResult] = useState<{ is_real: boolean; confidence: number; score: number; snapshotUrl?: string; details?: string; breakdown?: { label: string; pts: number }[] } | null>(null);
+  const [passiveLivenessResult, setPassiveLivenessResult] = useState<{ is_real: boolean; confidence: number; score: number; snapshotUrl?: string; details?: string; error?: string; breakdown?: { label: string; pts: number }[] } | null>(null);
   const livenessTestVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -554,7 +554,7 @@ export default function App() {
                       {Math.round(passiveLivenessResult.confidence * 100)}%
                     </div>
                     <div style={{ color: passiveLivenessResult.is_real ? '#86efac' : '#fca5a5', fontSize: 12 }}>
-                      Score: {passiveLivenessResult.score}/20 &mdash; {passiveLivenessResult.details || (passiveLivenessResult.is_real ? 'Real face detected' : 'Spoof detected')}
+                      Score: {passiveLivenessResult.score}/20 &mdash; {passiveLivenessResult.details || passiveLivenessResult.error || (passiveLivenessResult.is_real ? 'Real face detected' : 'Spoof detected')}
                     </div>
                     {passiveLivenessResult.breakdown && (
                       <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left' }}>
