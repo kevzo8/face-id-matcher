@@ -77,8 +77,8 @@ type Challenge = typeof CHALLENGE_POOL[number];
 const COLLECT_FRAMES = 20;
 const CHALLENGE_FRAMES = 15;
 const MIN_FACE_WIDTH = 80;
-const TEXTURE_VARIANCE_THRESHOLD = 50;
-const FRAME_DELTA_THRESHOLD = 3;
+const TEXTURE_VARIANCE_THRESHOLD = 20;
+const FRAME_DELTA_THRESHOLD = 0.8;
 
 function pickChallenges(count: number): Challenge[] {
   const shuffled = [...CHALLENGE_POOL].sort(() => Math.random() - 0.5);

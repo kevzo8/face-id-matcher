@@ -456,15 +456,15 @@ export default function App() {
                     <strong style={{ color: '#e2e8f0', display: 'block', marginBottom: 4 }}>Choose a test type:</strong>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
-                    <button onClick={() => setLivenessTestMode('active')}
-                      style={{ width: '100%', maxWidth: 320, padding: '12px 20px', fontSize: 14, fontWeight: 600, border: 'none', borderRadius: 8, cursor: 'pointer', background: 'linear-gradient(135deg, #a855f7, #7c3aed)', color: '#fff', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10 }}>
+                     <button onClick={() => { setLivenessTestResult(null); setPassiveLivenessResult(null); setLivenessTestMode('active'); }}
+                      style={{ width: '100%', maxWidth: 320, padding: '12px 20px', fontSize: 14, fontWeight: 600, border: 'none', borderRadius: 8, cursor: 'pointer', background: 'linear-gradient(135deg, #581c87, #7c3aed)', color: '#e9d5ff', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ fontSize: 20 }}>&#9654;</span>
-                      <span><strong>Active Liveness</strong><br /><span style={{ fontSize: 11, opacity: 0.8 }}>Challenge-response: follow on-screen prompts</span></span>
+                      <span><strong>Active Liveness</strong><br /><span style={{ fontSize: 11, opacity: 0.7 }}>Challenge-response: follow on-screen prompts</span></span>
                     </button>
-                    <button onClick={() => { setPassiveLivenessResult(null); setLivenessTestMode('passive'); }}
-                      style={{ width: '100%', maxWidth: 320, padding: '12px 20px', fontSize: 14, fontWeight: 600, border: 'none', borderRadius: 8, cursor: 'pointer', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <button onClick={() => { setLivenessTestResult(null); setPassiveLivenessResult(null); setLivenessTestMode('passive'); }}
+                      style={{ width: '100%', maxWidth: 320, padding: '12px 20px', fontSize: 14, fontWeight: 600, border: 'none', borderRadius: 8, cursor: 'pointer', background: 'linear-gradient(135deg, #14532d, #16a34a)', color: '#bbf7d0', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ fontSize: 20 }}>&#9725;</span>
-                      <span><strong>Passive Liveness</strong><br /><span style={{ fontSize: 11, opacity: 0.8 }}>Snap & detect — no action needed, server-side ONNX</span></span>
+                      <span><strong>Passive Liveness</strong><br /><span style={{ fontSize: 11, opacity: 0.7 }}>Snap & detect — no action needed, server-side ONNX</span></span>
                     </button>
                     <label style={{ width: '100%', maxWidth: 320, padding: '12px 20px', fontSize: 14, fontWeight: 600, border: '2px dashed #f97316', borderRadius: 8, cursor: 'pointer', background: 'transparent', color: '#f97316', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, boxSizing: 'border-box' }}>
                       <span style={{ fontSize: 20 }}>&#128247;</span>
