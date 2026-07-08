@@ -64,8 +64,8 @@ export default function App() {
   const [mode, setMode] = useState<'single' | 'batch' | 'csv'>('single');
   const [showInfo, setShowInfo] = useState(false);
   const [showTips, setShowTips] = useState(true);
-  const [showLivenessHow, setShowLivenessHow] = useState(true);
-  const [showLivenessFails, setShowLivenessFails] = useState(true);
+  const [showLivenessHow, setShowLivenessHow] = useState(false);
+  const [showLivenessFails, setShowLivenessFails] = useState(false);
   const [showPresentation, setShowPresentation] = useState(false);
   const [initialSlide, setInitialSlide] = useState(0);
   const [idFaceBox, setIdFaceBox] = useState<FaceBox | null>(null);
