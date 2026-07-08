@@ -78,6 +78,7 @@ export default function App() {
   const [livenessTestVideo, setLivenessTestVideo] = useState<HTMLVideoElement | null>(null);
   const [livenessTestMode, setLivenessTestMode] = useState<'active' | 'passive' | 'upload' | null>(null);
   const [passiveLivenessResult, setPassiveLivenessResult] = useState<{ is_real: boolean; confidence: number; score: number; snapshotUrl?: string; details?: string; error?: string; breakdown?: { label: string; pts: number }[] } | null>(null);
+  const [passiveLivenessProvider, setPassiveLivenessProvider] = useState<'faceplusplus' | 'aws' | 'heuristic'>('faceplusplus');
   const livenessTestVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -525,7 +526,15 @@ export default function App() {
               )}
               {livenessTestMode === 'passive' && !passiveLivenessResult && (
                 <div style={{ background: '#1e293b', borderRadius: 8, padding: 16, border: '1px solid #3b82f6', marginTop: 12 }}>
-                  <PassiveLivenessCheck serverUrl={livenessServerUrl} onComplete={(r) => { setPassiveLivenessResult(r); setLivenessTestMode(null); }} />
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ fontSize: 12, color: '#94a3b8', marginRight: 8 }}>Passive Provider:</label>
+                    <select value={passiveLivenessProvider} onChange={(e) => setPassiveLivenessProvider(e.target.value as any)} style={{ padding: '6px 8px', background: '#0f172a', color: '#e2e8f0', border: '1px solid #475569', borderRadius: 4, fontSize: 12 }}>
+                      <option value="faceplusplus">Face++ Passive ($0.00019/check)</option>
+                      <option value="aws">AWS DetectFaces ($0.001/check)</option>
+                      <option value="heuristic">Heuristic Passive ($0)</option>
+                    </select>
+                  </div>
+                  <PassiveLivenessCheck serverUrl={livenessServerUrl} provider={passiveLivenessProvider} onComplete={(r) => { setPassiveLivenessResult(r); setLivenessTestMode(null); }} />
                 </div>
               )}
               {livenessTestStarted && !livenessTestResult && livenessTestMode === 'upload' && (
