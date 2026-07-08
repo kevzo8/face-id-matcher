@@ -103,8 +103,17 @@ class LivenessPassiveProvider:
         is_real = confidence > 0.35
         score = min(20, max(0, int((confidence - 0.2) * 50))) if is_real else 0
 
+        breakdown = [
+            {"label": "Sharpness", "pts": round(s_blur * 5, 1)},
+            {"label": "Edges", "pts": round(s_edge * 5, 1)},
+            {"label": "Color Depth", "pts": round(s_color * 5, 1)},
+            {"label": "Tonal Range", "pts": round(s_hist * 5, 1)},
+            {"label": "Detail", "pts": round(s_freq * 5, 1)},
+        ]
+
         return {
             "is_real": bool(is_real),
             "confidence": round(confidence, 4),
             "score": score,
+            "breakdown": breakdown,
         }

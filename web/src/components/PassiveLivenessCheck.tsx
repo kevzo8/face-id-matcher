@@ -7,6 +7,7 @@ interface PassiveResult {
   score: number;
   error?: string;
   snapshotUrl?: string;
+  breakdown?: { label: string; pts: number }[];
 }
 
 interface Props {
@@ -49,34 +50,40 @@ export default function PassiveLivenessCheck({ onComplete, serverUrl }: Props) {
           if (cancelled || doneRef.current) return;
           await new Promise(r => setTimeout(r, 33));
 
-          const det = await faceapi.detectSingleFace(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.3 })).withFaceLandmarks();
-          if (det && canvasRef.current) {
+          const detections = await faceapi.detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.3 })).withFaceLandmarks();
+          if (detections.length > 0 && canvasRef.current) {
             const canvas = canvasRef.current;
             const ctx = canvas.getContext('2d');
             if (!ctx) continue;
 
-            // Draw current frame (full canvas for backend, face crop for snapshot)
+            // Pick detection closest to center
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            let best = detections[0];
+            let bestDist = Infinity;
+            for (const d of detections) {
+              const b = d.detection.box;
+              const dist = Math.abs(b.x + b.width / 2 - cx) + Math.abs(b.y + b.height / 2 - cy);
+              if (dist < bestDist) { bestDist = dist; best = d; }
+            }
+            const det = best;
+            const box = det.detection.box;
+
+            // Draw full video frame
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Send full frame to backend (it uses bbox to crop with 2.7x scale)
+            // Draw green bounding box around the detected face
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(box.x, box.y, box.width, box.height);
+
+            // Capture the frame with bounding box as snapshot
+            const snapshotUrl = canvas.toDataURL('image/jpeg', 0.7);
+
+            // Send full frame (without box) to backend
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             const fullB64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
-
-            // Crop face for local snapshot display
-            const box = det.detection.box;
-            const pad = 0.5;
-            const fx = Math.max(0, Math.floor(box.x - box.width * pad));
-            const fy = Math.max(0, Math.floor(box.y - box.height * pad));
-            const fw = Math.min(canvas.width - fx, Math.ceil(box.width * (1 + pad * 2)));
-            const fh = Math.min(canvas.height - fy, Math.ceil(box.height * (1 + pad * 2)));
-            const faceData = ctx.getImageData(fx, fy, fw, fh);
-
-            const tmpCanvas = document.createElement('canvas');
-            tmpCanvas.width = fw;
-            tmpCanvas.height = fh;
-            const tmpCtx = tmpCanvas.getContext('2d');
-            if (!tmpCtx) continue;
-            tmpCtx.putImageData(faceData, 0, 0);
-            const snapshotUrl = tmpCanvas.toDataURL('image/jpeg', 0.7);
 
             const bbox = [box.x / canvas.width, box.y / canvas.height, box.width / canvas.width, box.height / canvas.height];
 

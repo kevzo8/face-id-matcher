@@ -253,6 +253,7 @@ class PassiveLivenessResponse(BaseModel):
     confidence: float
     score: int
     error: str | None = None
+    breakdown: list[dict] | None = None
 
 
 @app.post("/liveness/passive", response_model=PassiveLivenessResponse)
@@ -276,6 +277,7 @@ async def passive_liveness(request: Request):
             confidence=result.get("confidence", 0),
             score=result.get("score", 0),
             error=result.get("error"),
+            breakdown=result.get("breakdown"),
         )
     except Exception as e:
         return PassiveLivenessResponse(is_real=False, confidence=0, score=0, error=str(e))

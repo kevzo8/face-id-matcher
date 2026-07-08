@@ -75,7 +75,7 @@ export default function App() {
   const [livenessTestResult, setLivenessTestResult] = useState<{ pass: boolean; score: number; details: string; recordingUrl?: string; breakdown?: { label: string; pts: number }[] } | null>(null);
   const [livenessTestVideo, setLivenessTestVideo] = useState<HTMLVideoElement | null>(null);
   const [livenessTestMode, setLivenessTestMode] = useState<'active' | 'passive' | 'upload' | null>(null);
-  const [passiveLivenessResult, setPassiveLivenessResult] = useState<{ is_real: boolean; confidence: number; score: number; snapshotUrl?: string } | null>(null);
+  const [passiveLivenessResult, setPassiveLivenessResult] = useState<{ is_real: boolean; confidence: number; score: number; snapshotUrl?: string; breakdown?: { label: string; pts: number }[] } | null>(null);
   const livenessTestVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -543,7 +543,7 @@ export default function App() {
                   {passiveLivenessResult.snapshotUrl && (
                     <div style={{ marginBottom: 12 }}>
                       <img src={passiveLivenessResult.snapshotUrl} alt="Captured face"
-                        style={{ width: 160, height: 160, borderRadius: 8, objectFit: 'cover', border: '2px solid #475569' }} />
+                        style={{ width: '100%', maxWidth: 320, borderRadius: 8, objectFit: 'contain', border: '1px solid #475569' }} />
                     </div>
                   )}
                   <div style={{ padding: '14px 16px', borderRadius: 8,
@@ -558,6 +558,17 @@ export default function App() {
                     <div style={{ color: passiveLivenessResult.is_real ? '#86efac' : '#fca5a5', fontSize: 12 }}>
                       Score: {passiveLivenessResult.score}/20 &mdash; {passiveLivenessResult.is_real ? 'Real face detected' : 'Spoof detected'}
                     </div>
+                    {passiveLivenessResult.breakdown && (
+                      <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left' }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Score Breakdown</div>
+                        {passiveLivenessResult.breakdown.map((b, i) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '2px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3 }}>
+                            <span>{b.label}</span>
+                            <span style={{ fontWeight: 600, color: b.pts > 0 ? '#86efac' : '#fca5a5' }}>+{b.pts.toFixed(1)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <button onClick={() => { setPassiveLivenessResult(null); setLivenessTestMode(null); }}
                     style={{ padding: '8px 20px', fontSize: 13, fontWeight: 600, border: '1px solid #475569', borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#e2e8f0' }}>
