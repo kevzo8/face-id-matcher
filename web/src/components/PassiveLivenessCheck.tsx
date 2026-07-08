@@ -46,10 +46,15 @@ export default function PassiveLivenessCheck({ onComplete, serverUrl }: Props) {
 
         setStatus('Detecting face...');
 
-        // Wait up to 5s for a face
-        for (let i = 0; i < 150; i++) {
+        const startTime = Date.now();
+        const TIMEOUT_MS = 10_000;
+        let frameCount = 0;
+
+        // Wait up to TIMEOUT_MS for a face
+        while (Date.now() - startTime < TIMEOUT_MS) {
           if (cancelled || doneRef.current) return;
           await new Promise(r => setTimeout(r, 33));
+          frameCount++;
 
           const detections = await faceapi.detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.3 })).withFaceLandmarks();
           if (detections.length > 0 && canvasRef.current) {
