@@ -100,8 +100,22 @@ class LivenessPassiveProvider:
             s_freq * 0.20
         )
 
-        is_real = confidence > 0.35
-        score = min(20, max(0, int((confidence - 0.2) * 50))) if is_real else 0
+        is_real = confidence > 0.30
+        score = min(20, max(1, int((confidence - 0.15) * 50)))
+
+        # Generate meaningful reason
+        reasons = []
+        if lap_var < 10:
+            reasons.append("blurry")
+        if edge_strength < 3:
+            reasons.append("low contrast")
+        if ch_var < 300:
+            reasons.append("flat color")
+        if hist_spread < 0.15:
+            reasons.append("narrow tones")
+        if hf_ratio > 18:
+            reasons.append("artificial pattern")
+        details = "; ".join(reasons) if reasons else "face looks natural"
 
         breakdown = [
             {"label": "Sharpness", "pts": round(s_blur * 5, 1)},
@@ -115,5 +129,6 @@ class LivenessPassiveProvider:
             "is_real": bool(is_real),
             "confidence": round(confidence, 4),
             "score": score,
+            "details": details,
             "breakdown": breakdown,
         }

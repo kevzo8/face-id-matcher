@@ -253,6 +253,7 @@ class PassiveLivenessResponse(BaseModel):
     confidence: float
     score: int
     error: str | None = None
+    details: str | None = None
     breakdown: list[dict] | None = None
 
 
@@ -277,6 +278,7 @@ async def passive_liveness(request: Request):
             confidence=result.get("confidence", 0),
             score=result.get("score", 0),
             error=result.get("error"),
+            details=result.get("details"),
             breakdown=result.get("breakdown"),
         )
     except Exception as e:

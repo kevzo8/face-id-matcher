@@ -6,6 +6,7 @@ interface PassiveResult {
   confidence: number;
   score: number;
   error?: string;
+  details?: string;
   snapshotUrl?: string;
   breakdown?: { label: string; pts: number }[];
 }

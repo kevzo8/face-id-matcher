@@ -75,7 +75,7 @@ export default function App() {
   const [livenessTestResult, setLivenessTestResult] = useState<{ pass: boolean; score: number; details: string; recordingUrl?: string; breakdown?: { label: string; pts: number }[] } | null>(null);
   const [livenessTestVideo, setLivenessTestVideo] = useState<HTMLVideoElement | null>(null);
   const [livenessTestMode, setLivenessTestMode] = useState<'active' | 'passive' | 'upload' | null>(null);
-  const [passiveLivenessResult, setPassiveLivenessResult] = useState<{ is_real: boolean; confidence: number; score: number; snapshotUrl?: string; breakdown?: { label: string; pts: number }[] } | null>(null);
+  const [passiveLivenessResult, setPassiveLivenessResult] = useState<{ is_real: boolean; confidence: number; score: number; snapshotUrl?: string; details?: string; breakdown?: { label: string; pts: number }[] } | null>(null);
   const livenessTestVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -464,7 +464,7 @@ export default function App() {
                     <button onClick={() => { setLivenessTestResult(null); setPassiveLivenessResult(null); setLivenessTestMode('passive'); }}
                       style={{ width: '100%', maxWidth: 320, padding: '12px 20px', fontSize: 14, fontWeight: 600, border: 'none', borderRadius: 8, cursor: 'pointer', background: 'linear-gradient(135deg, #14532d, #16a34a)', color: '#bbf7d0', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ fontSize: 20 }}>&#9725;</span>
-                      <span><strong>Passive Liveness</strong><br /><span style={{ fontSize: 11, opacity: 0.7 }}>Snap & detect — no action needed, server-side ONNX</span></span>
+                      <span><strong>Passive Liveness</strong><br /><span style={{ fontSize: 11, opacity: 0.7 }}>Snap & detect — no action needed, server-side analysis</span></span>
                     </button>
                     <label style={{ width: '100%', maxWidth: 320, padding: '12px 20px', fontSize: 14, fontWeight: 600, border: '2px dashed #f97316', borderRadius: 8, cursor: 'pointer', background: 'transparent', color: '#f97316', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, boxSizing: 'border-box' }}>
                       <span style={{ fontSize: 20 }}>&#128247;</span>
@@ -481,6 +481,11 @@ export default function App() {
                           video.oncanplay = () => { setLivenessTestVideo(video); setLivenessTestStarted(true); };
                         }} />
                     </label>
+                  </div>
+                  <div style={{ background: '#1e293b', borderRadius: 6, padding: 10, marginTop: 10, fontSize: 11, color: '#94a3b8', lineHeight: 1.5, textAlign: 'left' }}>
+                    <strong style={{ color: '#e2e8f0' }}>How it works</strong><br />
+                    <strong style={{ color: '#a78bfa' }}>Active</strong>: Detects your face, tracks blinks &amp; head motion (turn left/right, look up/down). Scores: face size, texture, motion, challenges, blinks. Threshold: 70/100.<br />
+                    <strong style={{ color: '#4ade80' }}>Passive</strong>: Snaps one frame, analyzes sharpness, edges, color depth, tonal range &amp; frequency patterns via server-side heuristics to detect printed photos or screen replays. Score: 0–20.
                   </div>
                 </>
               )}
@@ -556,7 +561,7 @@ export default function App() {
                       {Math.round(passiveLivenessResult.confidence * 100)}%
                     </div>
                     <div style={{ color: passiveLivenessResult.is_real ? '#86efac' : '#fca5a5', fontSize: 12 }}>
-                      Score: {passiveLivenessResult.score}/20 &mdash; {passiveLivenessResult.is_real ? 'Real face detected' : 'Spoof detected'}
+                      Score: {passiveLivenessResult.score}/20 &mdash; {passiveLivenessResult.details || (passiveLivenessResult.is_real ? 'Real face detected' : 'Spoof detected')}
                     </div>
                     {passiveLivenessResult.breakdown && (
                       <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left' }}>
