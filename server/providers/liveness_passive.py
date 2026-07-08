@@ -87,7 +87,7 @@ class LivenessPassiveProvider:
             return max(0.0, min(1.0, (v - lo) / (hi - lo)))
 
         s_blur = clamp(lap_var, 5, 100)
-        s_edge = clamp(edge_strength, 2, 20)
+        s_edge = clamp(edge_strength, 0.5, 15)
         s_color = clamp(ch_var, 200, 3000)
         s_hist = clamp(hist_spread, 0.1, 0.6)
         s_freq = clamp(hf_ratio, 3, 20)
