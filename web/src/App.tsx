@@ -450,11 +450,9 @@ export default function App() {
             <div style={{ maxWidth: 480, margin: '0 auto' }}>
               <h3 style={{ color: '#e2e8f0', fontWeight: 600, fontSize: 15, marginBottom: 8, textAlign: 'center' }}>Liveness Detection Test</h3>
               <video ref={livenessTestVideoRef} style={{ display: 'none' }} playsInline muted />
-              {!livenessTestStarted && !livenessTestResult && !livenessTestMode && (
+              {!livenessTestStarted && !livenessTestResult && !livenessTestMode && !passiveLivenessResult && (
                 <>
-                  <div style={{ background: '#1e293b', borderRadius: 6, padding: 12, marginBottom: 12, fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
-                    <strong style={{ color: '#e2e8f0', display: 'block', marginBottom: 4 }}>Choose a test type:</strong>
-                  </div>
+                  <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 8, fontWeight: 600 }}>Choose a test type:</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
                      <button onClick={() => { setLivenessTestResult(null); setPassiveLivenessResult(null); setLivenessTestMode('active'); }}
                       style={{ width: '100%', maxWidth: 320, padding: '12px 20px', fontSize: 14, fontWeight: 600, border: 'none', borderRadius: 8, cursor: 'pointer', background: 'linear-gradient(135deg, #581c87, #7c3aed)', color: '#e9d5ff', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -481,11 +479,6 @@ export default function App() {
                           video.oncanplay = () => { setLivenessTestVideo(video); setLivenessTestStarted(true); };
                         }} />
                     </label>
-                  </div>
-                  <div style={{ background: '#1e293b', borderRadius: 6, padding: 10, marginTop: 10, fontSize: 11, color: '#94a3b8', lineHeight: 1.5, textAlign: 'left' }}>
-                    <strong style={{ color: '#e2e8f0' }}>How it works</strong><br />
-                    <strong style={{ color: '#a78bfa' }}>Active</strong>: Detects your face, tracks blinks &amp; head motion (turn left/right, look up/down). Scores: face size, texture, motion, challenges, blinks. Threshold: 70/100.<br />
-                    <strong style={{ color: '#4ade80' }}>Passive</strong>: Snaps one frame, analyzes sharpness, edges, color depth, tonal range &amp; frequency patterns via server-side heuristics to detect printed photos or screen replays. Score: 0–20.
                   </div>
                 </>
               )}
@@ -761,6 +754,12 @@ export default function App() {
                 {livenessProvider === 'passive_liveness' && <><strong style={{ color: '#94a3b8' }}>MiniFASNet Passive</strong> &mdash; ONNX anti-spoofing, $0/check, server-based.</>}
                 {livenessProvider === 'open_face_liveness' && <><strong style={{ color: '#94a3b8' }}>open-face-liveness</strong> &mdash; Browser-only, $0, MIT.</>}
                 {livenessProvider === 'openbiometrics' && <><strong style={{ color: '#94a3b8' }}>OpenBiometrics</strong> &mdash; Self-hosted platform, MiniFASNet passive + 6 active presets, $0.</>}
+              </div>
+              <hr style={{ border: 'none', borderTop: '1px solid #334155', margin: '4px 0' }} />
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', marginBottom: 4 }}>HOW LIVENESS DETECTION WORKS</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.6, marginBottom: 8 }}>
+                <strong style={{ color: '#a78bfa' }}>Active</strong>: Tracks blinks &amp; head motion (turn left/right, look up/down). Scores: face size, texture, motion, challenges, blinks. Threshold: 70/100.<br />
+                <strong style={{ color: '#4ade80' }}>Passive</strong>: Single-frame analysis of sharpness, edges, color depth, tonal range &amp; frequency to detect printed photos / replays. Score: 0–20.
               </div>
               <hr style={{ border: 'none', borderTop: '1px solid #334155', margin: '4px 0' }} />
               <div style={{ fontSize: 11, fontWeight: 700, color: '#ef4444' }}>WHY LIVENESS FAILS</div>
