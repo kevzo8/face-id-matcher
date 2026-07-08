@@ -53,9 +53,14 @@ export default function Presentation({ feature = 'id_to_face', initialSlide = 0,
 
   if (feature !== 'id_to_face') {
     const label = feature === 'liveness' ? 'Liveness Test' : 'OCR & ID Type';
+    const placeholderBtn: React.CSSProperties = {
+      background: t.sidebarBg, border: `1px solid ${t.border}`,
+      borderRadius: 6, color: t.textSecondary, cursor: 'pointer',
+      padding: '4px 8px', fontSize: 13, whiteSpace: 'nowrap',
+    };
     return (
       <div style={{ minHeight: '100vh', background: t.bg, color: t.text, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
-        <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 16, ...btnStyle }}>✕ Close</button>
+        <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 16, ...placeholderBtn }}>✕ Close</button>
         <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4, color: t.textMuted }}>📋</div>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 8px' }}>{label} Presentation</h1>
         <p style={{ color: t.textMuted, fontSize: 14, maxWidth: 400, textAlign: 'center' }}>
