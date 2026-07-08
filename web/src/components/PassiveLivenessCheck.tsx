@@ -47,7 +47,7 @@ export default function PassiveLivenessCheck({ onComplete, serverUrl }: Props) {
         setStatus('Detecting face...');
 
         const startTime = Date.now();
-        const TIMEOUT_MS = 10_000;
+        const TIMEOUT_MS = 5_000;
         let frameCount = 0;
 
         // Wait up to TIMEOUT_MS for a face

@@ -83,24 +83,54 @@ class LivenessPassiveProvider:
         high_freq = float(np.mean(magnitude[~mask_low])) + 1e-8
         hf_ratio = low_freq / high_freq
 
+        # 6. Specular highlight detection (screens have sharp, saturated reflections)
+        max_rgb = np.max(face_rgb, axis=2)
+        mean_rgb = np.mean(face_rgb, axis=2)
+        highlight_mask = (max_rgb > 240) & ((max_rgb - mean_rgb) > 30)
+        highlight_ratio = float(np.sum(highlight_mask)) / (h * w)
+
+        # 7. Moiré / screen pattern detection (high-frequency periodic artifacts)
+        fft_mag = np.abs(np.fft.fft2(gray_float))
+        fft_mag_shift = np.fft.fftshift(fft_mag)
+        outer = np.ones_like(fft_mag_shift, dtype=bool)
+        mask_inner = (y_grid - cy) ** 2 + (x_grid - cx_) ** 2 < (min(h, w) * 0.3) ** 2
+        outer[mask_inner] = False
+        outer_energy = float(np.mean(fft_mag_shift[outer]))
+        total_energy = float(np.mean(fft_mag_shift)) + 1e-8
+        moire_ratio = outer_energy / total_energy
+
+        # 8. Color banding / quantization (screens posterize gradients)
+        ch_range = float(np.mean([
+            np.ptp(face_rgb[:, :, 0]),
+            np.ptp(face_rgb[:, :, 1]),
+            np.ptp(face_rgb[:, :, 2]),
+        ]))
+        banding_score = min(1.0, ch_range / 200.0)
+
         def clamp(v, lo, hi):
             return max(0.0, min(1.0, (v - lo) / (hi - lo)))
 
         s_blur = clamp(lap_var, 5, 100)
         s_edge = clamp(edge_strength, 0.5, 15)
-        s_color = clamp(ch_var, 200, 3000)
-        s_hist = clamp(hist_spread, 0.1, 0.6)
-        s_freq = clamp(hf_ratio, 3, 20)
+        s_color = clamp(ch_var, 200, 8000)
+        s_hist = clamp(hist_spread, 0.1, 1.0)
+        s_freq = clamp(hf_ratio, 3, 50)
+        s_highlight = 1.0 - clamp(highlight_ratio, 0.0, 0.02)  # penalize highlights (stricter)
+        s_moire = 1.0 - clamp(moire_ratio, 0.2, 1.0)  # penalize moiré (stricter)
+        s_banding = 1.0 - banding_score  # penalize banding
 
         confidence = (
-            s_blur * 0.25 +
-            s_edge * 0.20 +
-            s_color * 0.20 +
-            s_hist * 0.15 +
-            s_freq * 0.20
+            s_blur * 0.20 +
+            s_edge * 0.15 +
+            s_color * 0.15 +
+            s_hist * 0.10 +
+            s_freq * 0.10 +
+            s_highlight * 0.15 +
+            s_moire * 0.10 +
+            s_banding * 0.05
         )
 
-        is_real = confidence > 0.30
+        is_real = confidence > 0.50
         score = min(20, max(1, int((confidence - 0.15) * 50)))
 
         # Generate meaningful reason
@@ -115,6 +145,12 @@ class LivenessPassiveProvider:
             reasons.append("narrow tones")
         if hf_ratio > 18:
             reasons.append("artificial pattern")
+        if highlight_ratio > 0.005:
+            reasons.append("screen glare")
+        if moire_ratio > 0.2:
+            reasons.append("moiré pattern")
+        if banding_score < 0.6:
+            reasons.append("color banding")
         details = "; ".join(reasons) if reasons else "face looks natural"
 
         breakdown = [
@@ -123,13 +159,16 @@ class LivenessPassiveProvider:
             {"label": "Color Depth", "pts": round(s_color * 4, 1)},
             {"label": "Tonal Range", "pts": round(s_hist * 4, 1)},
             {"label": "Detail", "pts": round(s_freq * 4, 1)},
+            {"label": "No Glare", "pts": round(s_highlight * 4, 1)},
+            {"label": "No Moiré", "pts": round(s_moire * 4, 1)},
+            {"label": "No Banding", "pts": round(s_banding * 4, 1)},
         ]
 
         raw_score = sum(b["pts"] for b in breakdown)
         score = max(1, min(20, int(raw_score)))
 
         return {
-            "is_real": bool(confidence > 0.30),
+            "is_real": bool(confidence > 0.50),
             "confidence": round(score / 20, 4),
             "score": score,
             "details": details,
