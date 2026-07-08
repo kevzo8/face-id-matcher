@@ -37,6 +37,8 @@ from pydantic import BaseModel
 providers = {}
 default_provider = None
 liveness_passive = None
+liveness_faceplusplus = None
+liveness_aws = None
 
 
 @asynccontextmanager
@@ -87,23 +89,56 @@ async def lifespan(app: FastAPI):
         # Use first available provider as default
         default_provider = next(iter(providers.values()))
     
-    # Initialize passive liveness provider
-    global liveness_passive
+    # Initialize passive liveness providers
+    global liveness_passive, liveness_faceplusplus, liveness_aws
+    
+    # Heuristic passive liveness (always try)
     try:
         from providers.liveness_passive import LivenessPassiveProvider
         liveness_passive = LivenessPassiveProvider()
-        print("LivenessPassiveProvider initialized")
+        print("LivenessPassiveProvider (heuristic) initialized")
     except ModuleNotFoundError:
         try:
             from server.providers.liveness_passive import LivenessPassiveProvider
             liveness_passive = LivenessPassiveProvider()
-            print("LivenessPassiveProvider initialized (server.providers)")
+            print("LivenessPassiveProvider (heuristic) initialized (server.providers)")
         except Exception as e:
             print(f"LivenessPassiveProvider not available: {e}")
     except Exception as e:
         print(f"LivenessPassiveProvider not available: {e}")
+    
+    # Face++ liveness (if credentials available)
+    try:
+        from providers.liveness_faceplusplus import LivenessFacePlusPlusProvider
+        liveness_faceplusplus = LivenessFacePlusPlusProvider()
+        print("Face++ Liveness Provider initialized")
+    except ModuleNotFoundError:
+        try:
+            from server.providers.liveness_faceplusplus import LivenessFacePlusPlusProvider
+            liveness_faceplusplus = LivenessFacePlusPlusProvider()
+            print("Face++ Liveness Provider initialized (server.providers)")
+        except Exception as e:
+            print(f"Face++ Liveness not available: {e}")
+    except Exception as e:
+        print(f"Face++ Liveness not available: {e}")
+    
+    # AWS Rekognition liveness (if credentials available)
+    try:
+        from providers.liveness_aws_rekognition import LivenessAWSRekognitionProvider
+        liveness_aws = LivenessAWSRekognitionProvider()
+        print("AWS Rekognition Liveness Provider initialized")
+    except ModuleNotFoundError:
+        try:
+            from server.providers.liveness_aws_rekognition import LivenessAWSRekognitionProvider
+            liveness_aws = LivenessAWSRekognitionProvider()
+            print("AWS Rekognition Liveness Provider initialized (server.providers)")
+        except Exception as e:
+            print(f"AWS Rekognition Liveness not available: {e}")
+    except Exception as e:
+        print(f"AWS Rekognition Liveness not available: {e}")
 
     print(f"Available providers: {list(providers.keys())}")
+    print(f"Liveness providers: face++={bool(liveness_faceplusplus)}, aws={bool(liveness_aws)}, heuristic={bool(liveness_passive)}")
     yield
 
 
@@ -266,21 +301,53 @@ class PassiveLivenessResponse(BaseModel):
 
 @app.post("/liveness/passive")
 async def passive_liveness(request: Request):
-    global liveness_passive
-    if liveness_passive is None:
-        return {"is_real": False, "confidence": 0, "score": 0, "details": "Passive liveness provider not loaded", "error": "Passive liveness not initialized"}
-
+    global liveness_passive, liveness_faceplusplus, liveness_aws
+    
     body = await request.json()
     image_b64 = body.get("image")
     bbox = body.get("bbox")
+    provider = body.get("provider", "faceplusplus")  # Default to Face++
 
     if not image_b64:
         raise HTTPException(status_code=400, detail="No image provided")
 
     try:
         image_bytes = base64.b64decode(image_b64)
-        result = liveness_passive.predict(image_bytes, bbox)
-        return result
+        
+        # Try requested provider with fallback chain
+        result = None
+        provider_used = None
+        
+        if provider == "faceplusplus" and liveness_faceplusplus:
+            result = liveness_faceplusplus.predict(image_bytes, bbox)
+            provider_used = "Face++ Liveness"
+        elif provider == "aws" and liveness_aws:
+            result = liveness_aws.predict(image_bytes, bbox)
+            provider_used = "AWS Rekognition"
+        elif provider == "heuristic" and liveness_passive:
+            result = liveness_passive.predict(image_bytes, bbox)
+            provider_used = "Heuristic Liveness"
+        else:
+            # Fallback chain: Face++ → AWS → Heuristic
+            if liveness_faceplusplus:
+                result = liveness_faceplusplus.predict(image_bytes, bbox)
+                provider_used = "Face++ Liveness (fallback)"
+            elif liveness_aws:
+                result = liveness_aws.predict(image_bytes, bbox)
+                provider_used = "AWS Rekognition (fallback)"
+            elif liveness_passive:
+                result = liveness_passive.predict(image_bytes, bbox)
+                provider_used = "Heuristic Liveness (fallback)"
+            else:
+                return PassiveLivenessResponse(is_real=False, confidence=0, score=0, error="No liveness provider available")
+        
+        if result:
+            # Add provider info
+            result["provider"] = provider_used
+            return result
+        else:
+            return PassiveLivenessResponse(is_real=False, confidence=0, score=0, error="Liveness check failed")
+            
     except Exception as e:
         return PassiveLivenessResponse(is_real=False, confidence=0, score=0, error=str(e))
 

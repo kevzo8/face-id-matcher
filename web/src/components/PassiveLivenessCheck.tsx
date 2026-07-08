@@ -9,14 +9,16 @@ interface PassiveResult {
   details?: string;
   snapshotUrl?: string;
   breakdown?: { label: string; pts: number }[];
+  provider?: string;
 }
 
 interface Props {
   onComplete: (result: PassiveResult) => void;
   serverUrl: string;
+  provider?: 'faceplusplus' | 'aws' | 'heuristic';
 }
 
-export default function PassiveLivenessCheck({ onComplete, serverUrl }: Props) {
+export default function PassiveLivenessCheck({ onComplete, serverUrl, provider = 'faceplusplus' }: Props) {
   const [status, setStatus] = useState('Opening camera...');
   const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -102,7 +104,7 @@ export default function PassiveLivenessCheck({ onComplete, serverUrl }: Props) {
             const res = await fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/passive`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ image: fullB64, bbox }),
+              body: JSON.stringify({ image: fullB64, bbox, provider }),
             });
             const data: PassiveResult = await res.json();
             onComplete({ ...data, snapshotUrl });
