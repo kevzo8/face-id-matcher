@@ -80,10 +80,12 @@ export default function App() {
 
   useEffect(() => {
     function handleRoute() {
-      const presMatch = window.location.pathname.match(/^\/presentation\/?(\d+)?$/);
+      const presMatch = window.location.pathname.match(/^\/(face-id|liveness|ocr)\/presentation\/(\d+)$/);
       if (presMatch) {
+        const feat = presMatch[1] === 'face-id' ? 'id_to_face' : presMatch[1] === 'liveness' ? 'liveness' : 'ocr';
+        setFeature(feat);
         setShowPresentation(true);
-        setInitialSlide(presMatch[1] ? parseInt(presMatch[1], 10) : 0);
+        setInitialSlide(parseInt(presMatch[2], 10));
         return;
       }
       setShowPresentation(false);
@@ -287,7 +289,7 @@ export default function App() {
   }
 
   if (showPresentation) {
-    return <Presentation initialSlide={initialSlide} onClose={() => { setShowPresentation(false); window.history.pushState(null, '', '/'); }} />;
+    return <Presentation feature={feature} initialSlide={initialSlide} onClose={() => { setShowPresentation(false); window.history.pushState(null, '', '/' + ({ id_to_face: 'face-id', liveness: 'liveness', ocr: 'ocr' })[feature]); }} />;
   }
 
   return (
@@ -296,7 +298,13 @@ export default function App() {
       <header style={{ marginBottom: 12, textAlign: 'center' }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
           <button
-            onClick={() => { window.history.pushState(null, '', '/presentation/0'); setShowPresentation(true); setInitialSlide(0); }}
+            onClick={() => {
+              const path = feature === 'id_to_face' ? 'face-id' : feature === 'liveness' ? 'liveness' : 'ocr';
+              const slide = feature === 'id_to_face' ? 0 : feature === 'liveness' ? 1 : 2;
+              window.history.pushState(null, '', '/' + path + '/presentation/' + slide);
+              setShowPresentation(true);
+              setInitialSlide(slide);
+            }}
             style={{
               padding: '6px 14px', fontSize: 12, fontWeight: 600,
               background: 'linear-gradient(135deg, #6366f1, #a855f7)',
@@ -337,6 +345,9 @@ export default function App() {
 
         {/* === Left: Feature Menu === */}
         <div style={{ flex: '0 0 130px', background: '#1e293b', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+
+          <div style={{ padding: '10px 10px 4px', fontSize: 10, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 1 }}>Applications</div>
+
           {([
             { key: 'id_to_face' as const, label: 'ID to Face', color: '#a855f7', icon: '\u2696' },
             { key: 'liveness' as const, label: 'Liveness Test', color: '#f97316', icon: '\u25C9' },
@@ -344,13 +355,36 @@ export default function App() {
           ]).map((f) => (
             <button
               key={f.key}
-              onClick={() => { setFeature(f.key); window.history.pushState(null, '', '/' + ({ id_to_face: 'face-id', liveness: 'liveness', ocr: 'ocr' })[f.key]); }}
+              onClick={() => { setShowPresentation(false); setFeature(f.key); window.history.pushState(null, '', '/' + ({ id_to_face: 'face-id', liveness: 'liveness', ocr: 'ocr' })[f.key]); }}
               style={{
                 width: '100%', textAlign: 'left', padding: '10px 10px', fontSize: 12, fontWeight: 600,
                 border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-                background: feature === f.key ? '#334155' : 'transparent',
-                color: feature === f.key ? f.color : '#64748b',
-                borderLeft: `3px solid ${feature === f.key ? f.color : 'transparent'}`,
+                background: !showPresentation && feature === f.key ? '#334155' : 'transparent',
+                color: !showPresentation && feature === f.key ? f.color : '#64748b',
+                borderLeft: `3px solid ${!showPresentation && feature === f.key ? f.color : 'transparent'}`,
+              }}
+            >
+              <span>{f.icon}</span>
+              <span>{f.label}</span>
+            </button>
+          ))}
+
+          <div style={{ padding: '12px 10px 4px', fontSize: 10, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 1 }}>Presentations</div>
+
+          {([
+            { key: 'id_to_face' as const, label: 'ID to Face', color: '#a855f7', icon: '\u2696', slide: 0, path: 'face-id' },
+            { key: 'liveness' as const, label: 'Liveness Test', color: '#f97316', icon: '\u25C9', slide: 1, path: 'liveness' },
+            { key: 'ocr' as const, label: 'OCR & ID Type', color: '#22c55e', icon: '\u2630', slide: 2, path: 'ocr' },
+          ]).map((f) => (
+            <button
+              key={'p-' + f.key}
+              onClick={() => { window.history.pushState(null, '', '/' + f.path + '/presentation/' + f.slide); setShowPresentation(true); setInitialSlide(f.slide); setFeature(f.key); }}
+              style={{
+                width: '100%', textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 500,
+                border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                background: showPresentation && feature === f.key ? '#334155' : 'transparent',
+                color: showPresentation && feature === f.key ? f.color : '#475569',
+                borderLeft: `3px solid ${showPresentation && feature === f.key ? f.color : 'transparent'}`,
               }}
             >
               <span>{f.icon}</span>

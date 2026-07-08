@@ -43,7 +43,7 @@ const lightTheme = {
 
 const MOBILE_BP = 768;
 
-export default function Presentation({ initialSlide = 0, onClose }: { initialSlide?: number; onClose: () => void }) {
+export default function Presentation({ feature = 'id_to_face', initialSlide = 0, onClose }: { feature?: string; initialSlide?: number; onClose: () => void }) {
   const [current, setCurrent] = useState(initialSlide);
   const [isMobile, setIsMobile] = useState(window.innerWidth < MOBILE_BP);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= MOBILE_BP);
@@ -51,19 +51,35 @@ export default function Presentation({ initialSlide = 0, onClose }: { initialSli
   const total = slides.length;
   const t = dark ? darkTheme : lightTheme;
 
+  if (feature !== 'id_to_face') {
+    const label = feature === 'liveness' ? 'Liveness Test' : 'OCR & ID Type';
+    return (
+      <div style={{ minHeight: '100vh', background: t.bg, color: t.text, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
+        <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 16, ...btnStyle }}>✕ Close</button>
+        <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.4, color: t.textMuted }}>📋</div>
+        <h1 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 8px' }}>{label} Presentation</h1>
+        <p style={{ color: t.textMuted, fontSize: 14, maxWidth: 400, textAlign: 'center' }}>
+          Coming soon — will be built after the {label.toLowerCase()} feature is finalized.
+        </p>
+      </div>
+    );
+  }
+
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < MOBILE_BP);
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  const baseRoute = '/' + ({ id_to_face: 'face-id', liveness: 'liveness', ocr: 'ocr' })[feature] + '/presentation/';
+
   const goTo = useCallback((i: number) => {
     if (i >= 0 && i < total) {
       setCurrent(i);
-      window.history.replaceState(null, '', `/presentation/${i}`);
+      window.history.replaceState(null, '', `${baseRoute}${i}`);
       if (isMobile) setSidebarOpen(false);
     }
-  }, [total, isMobile]);
+  }, [total, isMobile, baseRoute]);
 
   const next = useCallback(() => goTo(current + 1), [current, goTo]);
   const prev = useCallback(() => goTo(current - 1), [current, goTo]);

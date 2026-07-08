@@ -215,10 +215,20 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       }
 
       try {
-        const det = await faceapi.detectSingleFace(video, detOpts).withFaceLandmarks();
+        const detections = await faceapi.detectAllFaces(video, detOpts).withFaceLandmarks();
         const canvas = canvasRef.current;
 
-        if (det && canvas) {
+        if (detections.length > 0 && canvas) {
+          // Pick detection closest to center
+          const cx = canvas.width / 2;
+          const cy = canvas.height / 2;
+          let bestDist = Infinity;
+          let det = detections[0];
+          for (const d of detections) {
+            const b = d.detection.box;
+            const dist = Math.abs(b.x + b.width / 2 - cx) + Math.abs(b.y + b.height / 2 - cy);
+            if (dist < bestDist) { bestDist = dist; det = d; }
+          }
           const ctx = canvas.getContext('2d');
           if (ctx) ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           const box = det.detection.box;

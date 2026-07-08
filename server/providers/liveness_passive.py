@@ -118,16 +118,19 @@ class LivenessPassiveProvider:
         details = "; ".join(reasons) if reasons else "face looks natural"
 
         breakdown = [
-            {"label": "Sharpness", "pts": round(s_blur * 5, 1)},
-            {"label": "Edges", "pts": round(s_edge * 5, 1)},
-            {"label": "Color Depth", "pts": round(s_color * 5, 1)},
-            {"label": "Tonal Range", "pts": round(s_hist * 5, 1)},
-            {"label": "Detail", "pts": round(s_freq * 5, 1)},
+            {"label": "Sharpness", "pts": round(s_blur * 4, 1)},
+            {"label": "Edges", "pts": round(s_edge * 4, 1)},
+            {"label": "Color Depth", "pts": round(s_color * 4, 1)},
+            {"label": "Tonal Range", "pts": round(s_hist * 4, 1)},
+            {"label": "Detail", "pts": round(s_freq * 4, 1)},
         ]
 
+        raw_score = sum(b["pts"] for b in breakdown)
+        score = max(1, min(20, int(raw_score)))
+
         return {
-            "is_real": bool(is_real),
-            "confidence": round(confidence, 4),
+            "is_real": bool(confidence > 0.30),
+            "confidence": round(score / 20, 4),
             "score": score,
             "details": details,
             "breakdown": breakdown,
