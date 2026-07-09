@@ -82,6 +82,30 @@ export default function App() {
   const [passiveLivenessResult, setPassiveLivenessResult] = useState<{ is_real: boolean; confidence: number; score: number; snapshotUrl?: string; details?: string; error?: string; breakdown?: { label: string; pts: number }[]; info?: { label: string; value: string }[] } | null>(null);
   const [passiveLivenessProvider, setPassiveLivenessProvider] = useState<'faceplusplus' | 'aws' | 'heuristic'>('heuristic');
   const livenessTestVideoRef = useRef<HTMLVideoElement>(null);
+  const playbackRef = useRef<HTMLVideoElement>(null);
+
+  // Reset playback scrubber to 0:00 whenever a new recording is produced
+  useEffect(() => {
+    const url = livenessTestResult?.recordingUrl;
+    if (!url) return;
+    const v = playbackRef.current;
+    if (!v) return;
+    const seekToStart = () => { try { v.currentTime = 0; } catch {} };
+    seekToStart();
+    const onReady = () => seekToStart();
+    v.addEventListener('loadedmetadata', onReady);
+    v.addEventListener('canplay', onReady);
+    // Belt-and-suspenders: re-seek on the next two animation frames
+    // (some browsers apply a non-zero currentTime after metadata loads)
+    const raf1 = requestAnimationFrame(() => seekToStart());
+    const raf2 = requestAnimationFrame(() => requestAnimationFrame(seekToStart));
+    return () => {
+      v.removeEventListener('loadedmetadata', onReady);
+      v.removeEventListener('canplay', onReady);
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [livenessTestResult?.recordingUrl]);
 
   useEffect(() => {
     function handleRoute() {
@@ -532,8 +556,9 @@ export default function App() {
                   {livenessTestResult.recordingUrl && (
                     <div style={{ marginBottom: 12 }}>
                       <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Playback</div>
-                      <video key={livenessTestResult.recordingUrl} src={livenessTestResult.recordingUrl} controls
+                      <video ref={playbackRef} key={livenessTestResult.recordingUrl} src={livenessTestResult.recordingUrl} controls preload="auto"
                         onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0; }}
+                        onCanPlay={(e) => { e.currentTarget.currentTime = 0; }}
                         style={{ width: '100%', maxWidth: 280, borderRadius: 6, display: 'block', margin: '0 auto' }} />
                     </div>
                   )}
