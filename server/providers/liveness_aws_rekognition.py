@@ -5,7 +5,11 @@ Requires AWS credentials configured (aws configure or env vars).
 """
 
 import boto3
+import json
+import logging
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 class LivenessAWSRekognitionProvider:
@@ -52,6 +56,11 @@ class LivenessAWSRekognitionProvider:
             # Take the first (largest/most confident) face
             face = response["FaceDetails"][0]
             
+            # DEBUG: Log raw AWS response
+            mouth_data = face.get("MouthOpen", {})
+            eyes_data = face.get("EyesOpen", {})
+            logger.info(f"🔍 AWS Raw: MouthOpen={mouth_data}, EyesOpen={eyes_data}")
+            
             # Extract attributes for heuristic scoring
             # Real faces typically have:
             # - Eyes open (EyesOpen.Confidence > 80)
@@ -60,18 +69,28 @@ class LivenessAWSRekognitionProvider:
             # - Proper lighting (Quality.Brightness not extreme)
             
             eyes_open_conf = face.get("EyesOpen", {}).get("Confidence", 0)
+            eyes_open_value = face.get("EyesOpen", {}).get("Value", False)
+            
             mouth_open_conf = face.get("MouthOpen", {}).get("Confidence", 0)
+            mouth_open_value = face.get("MouthOpen", {}).get("Value", False)
+            
             quality = face.get("Quality", {})
             sharpness = quality.get("Sharpness", 0)
             brightness = quality.get("Brightness", 50)
-            
+
             # Heuristic scoring (0-100)
-            # 1. Eyes must be open (30 pts)
-            eyes_score = min(30, eyes_open_conf * 0.3)
-            
-            # 2. Mouth closed/natural (20 pts) — high mouth_open is bad
-            mouth_score = max(0, 20 - mouth_open_conf * 0.2)
-            
+            # 1. Eyes must be open (30 pts) — penalize if eyes closed
+            if eyes_open_value:
+                eyes_score = min(30, eyes_open_conf * 0.3)  # Confident eyes are open
+            else:
+                eyes_score = max(0, 30 - eyes_open_conf * 0.3)  # Eyes closed is bad
+
+            # 2. Mouth closed/natural (20 pts) — only penalize if AWS is VERY confident mouth is open
+            if mouth_open_value and mouth_open_conf >= 90:
+                # Penalize only when mouth is clearly open (90%+ confidence)
+                mouth_score = max(0, 20 - (mouth_open_conf - 90) * 2)  # At 100% → 0 pts, at 90% → 20 pts
+            else:
+                mouth_score = 20  # Mouth closed OR low-confidence open → natural (passive liveness allows closed mouth)
             # 3. Good sharpness (25 pts)
             sharpness_score = (sharpness / 100) * 25
             
@@ -83,17 +102,32 @@ class LivenessAWSRekognitionProvider:
             
             # Map to 0-20 scale
             score = max(1, min(20, int((confidence_score / 100) * 20)))
-            is_real = confidence_score > 60
+            is_real = confidence_score > 50  # 50 pts threshold = ~50% fairness, matches Face++ livescore > 50
+            
+            # Calculate breakdown scores by each component's contribution to final score
+            # Max total = 30+20+25+25 = 100, maps to 0-20 scale
+            # Each component's max contribution:
+            # - Eyes: (30/100) * 20 = 6 pts
+            # - Mouth: (20/100) * 20 = 4 pts
+            # - Sharpness: (25/100) * 20 = 5 pts
+            # - Brightness: (25/100) * 20 = 5 pts
+            eyes_breakdown = round((eyes_score / 30) * 6, 1)
+            mouth_breakdown = round((mouth_score / 20) * 4, 1)
+            sharpness_breakdown = round((sharpness_score / 25) * 5, 1)
+            brightness_breakdown = round((brightness_score / 25) * 5, 1)
+            
+            breakdown_sum = eyes_breakdown + mouth_breakdown + sharpness_breakdown + brightness_breakdown
+            logger.debug(f"AWS Breakdown: Eyes={eyes_breakdown}, Mouth={mouth_breakdown}, Sharpness={sharpness_breakdown}, Brightness={brightness_breakdown}, Sum={breakdown_sum}, Score={score}")
             
             return {
                 "is_real": bool(is_real),
                 "confidence": round(confidence_score / 100, 2),
                 "score": score,
                 "breakdown": [
-                    {"label": "Eyes Open", "pts": round((eyes_open_conf / 100) * 4, 1)},
-                    {"label": "Mouth Natural", "pts": round((max(0, 100 - mouth_open_conf) / 100) * 4, 1)},
-                    {"label": "Sharpness", "pts": round((sharpness / 100) * 4, 1)},
-                    {"label": "Brightness", "pts": round((max(0, 100 - abs(brightness - 50)) / 100) * 4, 1)}
+                    {"label": "Eyes Open", "pts": eyes_breakdown},
+                    {"label": "Mouth Natural", "pts": mouth_breakdown},
+                    {"label": "Sharpness", "pts": sharpness_breakdown},
+                    {"label": "Brightness", "pts": brightness_breakdown}
                 ],
                 "error": None
             }
