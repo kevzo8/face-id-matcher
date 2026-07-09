@@ -119,7 +119,7 @@ class LivenessAWSRekognitionProvider:
             
             # Map to 0-20 scale
             score = max(1, min(20, int((confidence_score / 100) * 20)))
-            is_real = confidence_score > 70  # 70 pts threshold to reject printed photos / spoofs
+            is_real = confidence_score > 80  # 80 pts threshold to reject printed photos / ID pictures / spoofs
             
             # Calculate breakdown scores by each component's contribution to final score
             # Max total = 30+20+25+25 = 100, maps to 0-20 scale
