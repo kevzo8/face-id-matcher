@@ -84,7 +84,10 @@ export default function App() {
   const livenessTestVideoRef = useRef<HTMLVideoElement>(null);
   const playbackRef = useRef<HTMLVideoElement>(null);
 
-  // Reset playback scrubber to 0:00 whenever a new recording is produced
+  // Reset playback scrubber to 0:00 whenever a new recording is produced.
+  // Note: listeners use { once: true } so they DON'T fire again during playback
+  // (canplay fires repeatedly as more data buffers, which would snap the
+  // playhead back to 0 and prevent the video from playing).
   useEffect(() => {
     const url = livenessTestResult?.recordingUrl;
     if (!url) return;
@@ -92,16 +95,15 @@ export default function App() {
     if (!v) return;
     const seekToStart = () => { try { v.currentTime = 0; } catch {} };
     seekToStart();
-    const onReady = () => seekToStart();
-    v.addEventListener('loadedmetadata', onReady);
-    v.addEventListener('canplay', onReady);
+    v.addEventListener('loadedmetadata', seekToStart, { once: true });
+    v.addEventListener('canplay', seekToStart, { once: true });
     // Belt-and-suspenders: re-seek on the next two animation frames
     // (some browsers apply a non-zero currentTime after metadata loads)
     const raf1 = requestAnimationFrame(() => seekToStart());
     const raf2 = requestAnimationFrame(() => requestAnimationFrame(seekToStart));
     return () => {
-      v.removeEventListener('loadedmetadata', onReady);
-      v.removeEventListener('canplay', onReady);
+      v.removeEventListener('loadedmetadata', seekToStart);
+      v.removeEventListener('canplay', seekToStart);
       cancelAnimationFrame(raf1);
       cancelAnimationFrame(raf2);
     };
