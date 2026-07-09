@@ -168,7 +168,7 @@ class LivenessPassiveProvider:
         score = max(1, min(20, int(raw_score)))
 
         return {
-            "is_real": bool(confidence > 0.70),
+            "is_real": bool((score / 20) > 0.70),
             "confidence": round(score / 20, 4),
             "score": score,
             "details": details,

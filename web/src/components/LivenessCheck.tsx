@@ -61,8 +61,8 @@ function frameDelta(canvas: HTMLCanvasElement, prev: ImageData | null, x: number
   const ctx = canvas.getContext('2d');
   if (!ctx) return 1;
   const curr = ctx.getImageData(x, y, w, h);
+  const len = Math.min(curr.data.length, prev.data.length);
   let diff = 0;
-  const len = curr.data.length;
   for (let i = 0; i < len; i += 16) {
     diff += Math.abs(curr.data[i] - prev.data[i]);
     diff += Math.abs(curr.data[i + 1] - prev.data[i + 1]);
@@ -496,6 +496,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
 
       score += backendScore;
       if (backendScore > 0) breakdown.push({ label: provider === 'openbiometrics' ? 'OpenBiometrics' : 'Backend', pts: backendScore });
+      score = Math.min(100, score);
       const pass = score >= LIVENESS_PASS_THRESHOLD;
       const details = reasons.join(', ');
 
