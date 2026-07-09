@@ -60,6 +60,8 @@ export default function App() {
   const [livenessProvider, setLivenessProvider] = useState<LivenessProvider>('open_face_liveness');
   const [livenessServerUrl, setLivenessServerUrl] = useState('https://face-id-matcher.onrender.com');
   const [obServerUrl, setObServerUrl] = useState('https://openbiometrics.onrender.com');
+  const [faceplusServerUrl, setFaceplusServerUrl] = useState('https://face-id-matcher.onrender.com');
+  const [awsServerUrl, setAwsServerUrl] = useState('https://face-id-matcher.onrender.com');
   const [feature, setFeature] = useState<'id_to_face' | 'liveness' | 'ocr'>('id_to_face');
   const [mode, setMode] = useState<'single' | 'batch' | 'csv'>('single');
   const [showInfo, setShowInfo] = useState(false);
@@ -78,7 +80,7 @@ export default function App() {
   const [livenessTestVideo, setLivenessTestVideo] = useState<HTMLVideoElement | null>(null);
   const [livenessTestMode, setLivenessTestMode] = useState<'active' | 'passive' | 'upload' | null>(null);
   const [passiveLivenessResult, setPassiveLivenessResult] = useState<{ is_real: boolean; confidence: number; score: number; snapshotUrl?: string; details?: string; error?: string; breakdown?: { label: string; pts: number }[] } | null>(null);
-  const [passiveLivenessProvider, setPassiveLivenessProvider] = useState<'faceplusplus' | 'aws' | 'heuristic'>('faceplusplus');
+  const [passiveLivenessProvider, setPassiveLivenessProvider] = useState<'faceplusplus' | 'aws' | 'heuristic'>('heuristic');
   const livenessTestVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -441,7 +443,7 @@ export default function App() {
                       style={{ padding: '8px 20px', fontSize: 13, fontWeight: 600, border: 'none', borderRadius: 6, cursor: 'pointer', background: 'linear-gradient(135deg, #f97316, #ef4444)', color: '#fff' }}>
                       Start Liveness Check
                     </button>
-                    <div style={{ color: '#64748b', fontSize: 10, marginTop: 4 }}>Required before face comparison</div>
+                    <div style={{ color: '#64748b', fontSize: 10, marginTop: 4 }}>Optional — verify selfie is a live person</div>
                   </div>
                 )}
                 {livenessRunning && (
@@ -469,10 +471,10 @@ export default function App() {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
                   <button onClick={handleMatch}
-                    disabled={!idImage || !selfieImage || matching || !modelsLoaded || (selfieImage && !livenessPassed)}
+                    disabled={!idImage || !selfieImage || matching || !modelsLoaded}
                     style={{ padding: '10px 28px', fontSize: 15, fontWeight: 600, border: 'none', borderRadius: 8,
-                      cursor: idImage && selfieImage && !matching && modelsLoaded && livenessPassed ? 'pointer' : 'not-allowed',
-                      background: idImage && selfieImage && !matching && modelsLoaded && livenessPassed ? '#a855f7' : '#334155', color: '#fff' }}>
+                      cursor: idImage && selfieImage && !matching && modelsLoaded ? 'pointer' : 'not-allowed',
+                      background: idImage && selfieImage && !matching && modelsLoaded ? '#a855f7' : '#334155', color: '#fff' }}>
                     {matching ? 'Matching...' : '\u2696 Compare Faces'}
                   </button>
                   <button onClick={handleReset} style={{ padding: '10px 20px', fontSize: 13, border: '1px solid #475569', borderRadius: 8, cursor: 'pointer', background: 'transparent', color: '#94a3b8' }}>Reset</button>
@@ -526,15 +528,12 @@ export default function App() {
               )}
               {livenessTestMode === 'passive' && !passiveLivenessResult && (
                 <div style={{ background: '#1e293b', borderRadius: 8, padding: 16, border: '1px solid #3b82f6', marginTop: 12 }}>
-                  <div style={{ marginBottom: 12 }}>
-                    <label style={{ fontSize: 12, color: '#94a3b8', marginRight: 8 }}>Passive Provider:</label>
-                    <select value={passiveLivenessProvider} onChange={(e) => setPassiveLivenessProvider(e.target.value as any)} style={{ padding: '6px 8px', background: '#0f172a', color: '#e2e8f0', border: '1px solid #475569', borderRadius: 4, fontSize: 12 }}>
-                      <option value="faceplusplus">Face++ Passive ($0.00019/check)</option>
-                      <option value="aws">AWS DetectFaces ($0.001/check)</option>
-                      <option value="heuristic">Heuristic Passive ($0)</option>
-                    </select>
-                  </div>
-                  <PassiveLivenessCheck serverUrl={livenessServerUrl} provider={passiveLivenessProvider} onComplete={(r) => { setPassiveLivenessResult(r); setLivenessTestMode(null); }} />
+                  <PassiveLivenessCheck 
+                 serverUrl={livenessServerUrl} 
+                 provider={passiveLivenessProvider} 
+                 onComplete={(r) => { setPassiveLivenessResult(r); setLivenessTestMode(null); }}
+                 faceplusServerUrl={faceplusServerUrl} 
+                 awsServerUrl={awsServerUrl} />
                 </div>
               )}
               {livenessTestStarted && !livenessTestResult && livenessTestMode === 'upload' && (
@@ -544,6 +543,14 @@ export default function App() {
               )}
               {livenessTestResult && (
                 <div style={{ textAlign: 'center', marginTop: 12 }}>
+                  {livenessTestResult.recordingUrl && (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Playback</div>
+                      <video key={livenessTestResult.recordingUrl} src={livenessTestResult.recordingUrl} controls
+                        onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0; }}
+                        style={{ width: '100%', maxWidth: 280, borderRadius: 6, display: 'block', margin: '0 auto' }} />
+                    </div>
+                  )}
                   <div style={{ padding: '14px 16px', borderRadius: 8,
                     background: livenessTestResult.pass ? '#064e3b' : '#450a0a',
                     border: `1px solid ${livenessTestResult.pass ? '#22c55e' : '#ef4444'}`, marginBottom: 12 }}>
@@ -564,13 +571,6 @@ export default function App() {
                       </div>
                     )}
                   </div>
-                  {livenessTestResult.recordingUrl && (
-                    <div style={{ marginBottom: 12 }}>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Playback</div>
-                      <video src={livenessTestResult.recordingUrl} controls
-                        style={{ width: '100%', maxWidth: 280, borderRadius: 6, display: 'block', margin: '0 auto' }} />
-                    </div>
-                  )}
                   <button onClick={() => {
                     if (livenessTestResult.recordingUrl?.startsWith('blob:')) URL.revokeObjectURL(livenessTestResult.recordingUrl);
                     setLivenessTestStarted(false); setLivenessTestResult(null); setLivenessTestVideo(null); setLivenessTestMode(null);
@@ -765,15 +765,19 @@ export default function App() {
               <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Used when you click "Active Liveness"</div>
               <select value={livenessProvider} onChange={(e) => setLivenessProvider(e.target.value as LivenessProvider)}
                 style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12 }}>
-                <option value="open_face_liveness">open-face-liveness (browser)</option>
-                <option value="aws_detect_faces">AWS DetectFaces (server)</option>
-                <option value="aws_rekognition">AWS Rekog Liveness KVS (later)</option>
-                <option value="faceplusplus">Face++ Liveness</option>
-                <option value="azure_face">Azure Face Liveness</option>
-                <option value="hyperverge">HyperVerge</option>
-                <option value="didit">Didit</option>
-                <option value="iproov">iProov</option>
-                <option value="openbiometrics">OpenBiometrics (server)</option>
+                <optgroup label="Functional">
+                  <option value="open_face_liveness">open-face-liveness (browser)</option>
+                  <option value="aws_detect_faces">AWS DetectFaces (server)</option>
+                </optgroup>
+                <optgroup label="Not functional (trying later)">
+                  <option value="aws_rekognition">AWS Rekog Liveness KVS</option>
+                  <option value="faceplusplus">Face++ Liveness</option>
+                  <option value="azure_face">Azure Face Liveness</option>
+                  <option value="hyperverge">HyperVerge</option>
+                  <option value="didit">Didit</option>
+                  <option value="iproov">iProov</option>
+                  <option value="openbiometrics">OpenBiometrics</option>
+                </optgroup>
               </select>
               {livenessProvider !== 'open_face_liveness' && (
                 <>
@@ -790,8 +794,8 @@ export default function App() {
                 </>
               )}
               <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.5 }}>
-                {livenessProvider === 'open_face_liveness' && <><strong style={{ color: '#94a3b8' }}>open-face-liveness</strong> &mdash; Browser-only, $0, MIT. Uses face-api.js for blink detection (EAR) &amp; head-turn challenges entirely in-browser. No server call.</>}
-                {livenessProvider === 'aws_detect_faces' && <><strong style={{ color: '#94a3b8' }}>AWS DetectFaces</strong> &mdash; $0.001/check, face attributes, NOT true liveness.</>}
+                {livenessProvider === 'open_face_liveness' && <><strong style={{ color: '#94a3b8' }}>open-face-liveness</strong> &mdash; Browser-only, $0, MIT. Uses face-api.js for blink detection (EAR) &amp; head-turn challenges entirely in-browser. No server call. Metrics: Face Size (0-20), Texture (0-20), Motion / frame delta (0-20), Challenges (0-30), Blinks (0-10). Threshold: 70/100.</>}
+                {livenessProvider === 'aws_detect_faces' && <><strong style={{ color: '#94a3b8' }}>AWS DetectFaces</strong> &mdash; $0.001/check, face attributes, NOT true liveness. Adds up to <strong style={{ color: '#f59e0b' }}>+20pts</strong> (confidence ≥90, eyes open, brightness &gt;40, sharpness &gt;40). Base open_face_liveness max is 100, AWS adds on top then capped at 100 total.</>}
                 {livenessProvider === 'aws_rekognition' && <><strong style={{ color: '#94a3b8' }}>AWS Rekog Liveness</strong> &mdash; iBeta L1+L2, ~$0.015/check. Requires KVS + WebSocket setup.</>}
                 {livenessProvider === 'faceplusplus' && <><strong style={{ color: '#94a3b8' }}>Face++</strong> &mdash; $0.00019/check, cheapest cloud.</>}
                 {livenessProvider === 'azure_face' && <><strong style={{ color: '#94a3b8' }}>Azure Face</strong> &mdash; $0.015/check, 30K free/mo.</>}
@@ -803,10 +807,65 @@ export default function App() {
 
               <hr style={{ border: 'none', borderTop: '1px solid #334155', margin: '4px 0' }} />
 
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#4ade80' }}>PASSIVE LIVENESS</div>
-              <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Always uses heuristic analysis on the backend</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>
-                Captures one frame &rarr; sends to <strong style={{ color: '#e2e8f0' }}>/liveness/passive</strong> &rarr; analyzes sharpness (Laplacian variance), edges (gradient), color depth (channel variance), tonal range (histogram spread), &amp; detail (FFT frequency ratio). Built from scratch — original MiniFASNet ONNX model was broken (identical output for any input), rewrote as pure numpy/PIL heuristics. Needs backend for compute-intensive operations unavailable in-browser. Score 0–20, threshold: <strong style={{ color: '#4ade80' }}>&gt;6</strong> (<strong style={{ color: '#4ade80' }}>&gt;30%</strong>).
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#4ade80' }}>PASSIVE LIVENESS PROVIDER</div>
+              <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Used when you click "Passive Liveness"</div>
+              <select value={passiveLivenessProvider} onChange={(e) => setPassiveLivenessProvider(e.target.value as any)}
+                style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, marginBottom: 8 }}>
+                <option value="heuristic">Heuristic Passive ($0)</option>
+                <option value="aws">AWS DetectFaces ($0.001/check)</option>
+                <option value="faceplusplus">Face++ Passive ($0.00019/check)</option>
+              </select>
+<div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>
+                
+                {passiveLivenessProvider === 'faceplusplus' && (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Server URL</div>
+                    <input type="text" value={faceplusServerUrl} onChange={(e) => setFaceplusServerUrl(e.target.value)}
+                    style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box', marginBottom: 8 }} />
+                    <strong style={{ color: '#fbbf24' }}>Face++ (Megvii)</strong> &mdash; Cloud-based trained ML model ($0.00019/check).
+                    <br />
+                    <span style={{ fontSize: 10, color: '#64748b', marginTop: 4, display: 'block' }}>
+                      Sends face to the <strong>facepp/v3/detect</strong> API and reads the <strong>liveness</strong> attribute (1 = real, 2 = fake, 0 = uncertain). Maps to 0-20 scale. Threshold: <strong>score &gt; 50</strong> (score ≥ 10/20).<br />
+                      Breakdown: <strong>Face++ Liveness</strong> (main score). Requires Facial Recognition (Detect) API access; Dense Facial Landmarks is a separate API.<br />
+                      <span style={{ color: '#ef4444' }}>⚠️ Ensure your Face++ plan includes Detect + liveness attribute access.</span>
+                    </span>
+                  </>
+                )}
+                
+                {passiveLivenessProvider === 'aws' && (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Server URL</div>
+                    <input type="text" value={awsServerUrl} onChange={(e) => setAwsServerUrl(e.target.value)}
+                    style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box', marginBottom: 8 }} />
+                    <strong style={{ color: '#22c55e' }}>AWS DetectFaces</strong> &mdash; Heuristic from face attributes ($0.001/check).
+                    <br />
+                    <span style={{ fontSize: 10, color: '#64748b', marginTop: 4, display: 'block' }}>
+                      Analyzes: <strong>Eyes Open</strong> (eyes detected &amp; open), <strong>Mouth Natural</strong> (mouth confidently closed), <strong>Sharpness</strong> (image clarity), <strong>Brightness</strong> (lighting balance). Each metric 0-25 pts max (total 0-100). Maps to 0-20 scale. Threshold: <strong>score &gt; 50</strong> (score ≥ 10/20).<br />
+                    </span>
+                  </>
+                )}
+                
+                {passiveLivenessProvider === 'heuristic' && (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Server URL</div>
+                    <input type="text" value={livenessServerUrl} onChange={(e) => setLivenessServerUrl(e.target.value)}
+                    style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box', marginBottom: 8 }} />
+                    <strong style={{ color: '#4ade80' }}>Heuristic (Local)</strong> &mdash; Server-side numpy/PIL analysis ($0, no API calls).
+                    <br />
+                    <span style={{ fontSize: 10, color: '#64748b', marginTop: 4, display: 'block' }}>
+                      <strong>8 metrics (0-4 pts each):</strong><br />
+                      1. <strong>Sharpness</strong> (Laplacian variance ≥5) — detects blur<br />
+                      2. <strong>Edges</strong> (gradient strength ≥0.5) — photo texture<br />
+                      3. <strong>Color Depth</strong> (channel variance ≥500) — prevents flat photos<br />
+                      4. <strong>Tonal Range</strong> (histogram spread ≥0.2) — color variation<br />
+                      5. <strong>Detail</strong> (FFT high-freq ≥5) — fine details<br />
+                      6. <strong>No Glare</strong> (highlight ratio &lt;2%) — no screen reflections<br />
+                      7. <strong>No Moiré</strong> (screen pattern &lt;20%) — no digital artifacts<br />
+                      8. <strong>No Banding</strong> (color quantization &lt;40%) — no screen posterization<br />
+                      Weighted average, threshold: <strong>score &gt; 6</strong> (0-20 scale). Fails on: printed photos, screen replays, poor image quality.
+                    </span>
+                  </>
+                )}
               </div>
 
               <hr style={{ border: 'none', borderTop: '1px solid #334155', margin: '4px 0' }} />
@@ -817,8 +876,17 @@ export default function App() {
               </button>
               {showLivenessHow && (
                 <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.6, marginBottom: 8, marginTop: 4 }}>
-                  <strong style={{ color: '#a78bfa' }}>Active</strong>: Tracks blinks &amp; head motion (turn left/right, look up/down). Scores: face size, texture, motion, challenges, blinks. Threshold: <strong style={{ color: '#f59e0b' }}>70/100</strong>.<br />
-                  <strong style={{ color: '#4ade80' }}>Passive</strong>: Single-frame heuristic analysis of sharpness, edges, color depth, tonal range &amp; frequency. Score: 0–20. Confidence = score/20. Threshold: <strong style={{ color: '#4ade80' }}>score &gt; 6</strong> (<strong style={{ color: '#4ade80' }}>&gt;30%</strong>).
+                  <strong style={{ color: '#a78bfa' }}>Active</strong> metrics (threshold <strong style={{ color: '#f59e0b' }}>70/100</strong>):<br />
+                  &nbsp;&nbsp;• <strong>Face Size</strong> (0-20): face width ≥80px → up to 20pts. Penalizes small/distorted faces.<br />
+                  &nbsp;&nbsp;• <strong>Texture</strong> (0-20): Laplacian pixel variance ≥20 → up to 20pts. Flat printed photos score low.<br />
+                  &nbsp;&nbsp;• <strong>Motion</strong> (0-20): frame-to-frame pixel delta ≥0.8 → up to 20pts. Requires natural micro-movements.<br />
+                  &nbsp;&nbsp;• <strong>Challenges</strong> (0-30): 15pts each for head-turn (left/right) or look (up/down) detected via nose offset vs baseline.<br />
+                  &nbsp;&nbsp;• <strong>Blinks</strong> (0-10): EAR ≤0.2 triggers blink count; ≥2 blinks → 6-10pts.<br />
+                  <strong style={{ color: '#4ade80' }}>Passive</strong>: Single-frame analysis. Three methods available:<br />
+                  &nbsp;&nbsp;• <strong>Face++</strong>: Trained ML model, high accuracy, requires internet<br />
+                  &nbsp;&nbsp;• <strong>AWS DetectFaces</strong>: Heuristic from face attributes (eyes, mouth, sharpness, lighting)<br />
+                  &nbsp;&nbsp;• <strong>Heuristic</strong>: 8-point local analysis (sharpness, edges, color, tone, detail, anti-glare, anti-moiré, anti-banding)<br />
+                  All use 0-20 scale. Threshold: <strong style={{ color: '#4ade80' }}>score &gt; 6</strong> (≈30% confidence). Fails on: printed photos, screen replays, poor image quality.
                 </div>
               )}
 

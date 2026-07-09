@@ -85,12 +85,13 @@ class LivenessAWSRekognitionProvider:
             else:
                 eyes_score = max(0, 30 - eyes_open_conf * 0.3)  # Eyes closed is bad
 
-            # 2. Mouth closed/natural (20 pts) — only penalize if AWS is VERY confident mouth is open
+            # 2. Mouth natural (20 pts): only when AWS is confident the mouth is closed
             if mouth_open_value and mouth_open_conf >= 90:
-                # Penalize only when mouth is clearly open (90%+ confidence)
-                mouth_score = max(0, 20 - (mouth_open_conf - 90) * 2)  # At 100% → 0 pts, at 90% → 20 pts
+                mouth_score = max(0, 20 - (mouth_open_conf - 90) * 2)  # Clearly open -> penalize
+            elif not mouth_open_value and mouth_open_conf >= 70:
+                mouth_score = 20  # Confidently closed -> natural
             else:
-                mouth_score = 20  # Mouth closed OR low-confidence open → natural (passive liveness allows closed mouth)
+                mouth_score = 0  # Uncertain (covered/occluded) or not confidently closed -> no natural pts
             # 3. Good sharpness (25 pts)
             sharpness_score = (sharpness / 100) * 25
             
