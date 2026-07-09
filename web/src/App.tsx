@@ -822,8 +822,8 @@ export default function App() {
                     <strong style={{ color: '#fbbf24' }}>Face++ (Megvii)</strong> &mdash; Cloud-based trained ML model ($0.00019/check).
                     <br />
                     <span style={{ fontSize: 10, color: '#64748b', marginTop: 4, display: 'block' }}>
-                      Sends face to the <strong>facepp/v3/detect</strong> API (Free-plan Detect) and uses standard attributes (eyes open, blur) as a <strong>heuristic</strong> liveness signal. Maps to 0-20 scale. Threshold: <strong>score &gt; 50</strong> (score ≥ 10/20).<br />
-                      Breakdown: <strong>Face++ Eyes Open</strong>, <strong>Face++ Quality</strong>. True liveness is NOT on the Free plan (liveness attribute/endpoint unavailable).<br />
+                      Sends face to the <strong>facepp/v3/detect</strong> API (Free-plan Detect) and uses standard attributes (eyes open, blur) as a <strong>heuristic</strong> liveness signal. Maps to 0-20 scale. Threshold: <strong>score &gt; 70</strong> (score ≥ 14/20).<br />
+                      Breakdown: <strong>Face Detected</strong>, <strong>Eyes Open</strong>, <strong>Image Quality</strong>, <strong>Smiling</strong>. True liveness is NOT on the Free plan (liveness attribute/endpoint unavailable).<br />
                       <span style={{ color: '#ef4444' }}>⚠️ Heuristic only — Free plan has no real Face++ liveness. Upgrade plan (or use AWS/Heuristic) for stronger spoof detection.</span>
                     </span>
                   </>
@@ -837,7 +837,7 @@ export default function App() {
                     <strong style={{ color: '#22c55e' }}>AWS DetectFaces</strong> &mdash; Heuristic from face attributes ($0.001/check).
                     <br />
                     <span style={{ fontSize: 10, color: '#64748b', marginTop: 4, display: 'block' }}>
-                      Analyzes: <strong>Eyes Open</strong> (eyes detected &amp; open), <strong>Mouth Natural</strong> (mouth confidently closed), <strong>Sharpness</strong> (image clarity), <strong>Brightness</strong> (lighting balance). Each metric 0-25 pts max (total 0-100). Maps to 0-20 scale. Threshold: <strong>score &gt; 50</strong> (score ≥ 10/20).<br />
+                      Analyzes: <strong>Eyes Open</strong> (eyes detected &amp; open), <strong>Mouth Natural</strong> (mouth confidently closed), <strong>Sharpness</strong> (image clarity), <strong>Brightness</strong> (lighting balance). Each metric 0-25 pts max (total 0-100). Maps to 0-20 scale. Threshold: <strong>score &gt; 80</strong> (score ≥ 16/20).<br />
                     </span>
                   </>
                 )}
@@ -883,7 +883,7 @@ export default function App() {
                   &nbsp;&nbsp;• <strong>Face++</strong>: Trained ML model, high accuracy, requires internet<br />
                   &nbsp;&nbsp;• <strong>AWS DetectFaces</strong>: Heuristic from face attributes (eyes, mouth, sharpness, lighting)<br />
                   &nbsp;&nbsp;• <strong>Heuristic</strong>: 8-point local analysis (sharpness, edges, color, tone, detail, anti-glare, anti-moiré, anti-banding)<br />
-                  All use 0-20 scale. Threshold: <strong style={{ color: '#4ade80' }}>score &gt; 6</strong> (≈30% confidence). Fails on: printed photos, screen replays, poor image quality.
+                  All use 0-20 scale. Passive thresholds: <strong style={{ color: '#4ade80' }}>Heuristic 70%</strong>, <strong style={{ color: '#4ade80' }}>Face++ 70%</strong>, <strong style={{ color: '#4ade80' }}>AWS DetectFaces 80%</strong> (higher = stricter, rejects ID photos / printed spoofs). Fails on: printed photos, screen replays, poor image quality.
                 </div>
               )}
 
