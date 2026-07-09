@@ -68,7 +68,7 @@ class LivenessFacePlusPlusProvider:
                     "api_key": self.api_key,
                     "api_secret": self.api_secret,
                     "image_base64": image_b64,
-                    "return_attributes": "gender,age,smiling,eyestatus,blur",
+                    "return_attributes": "gender,age,smiling,eyestatus,blur,emotion",
                 },
                 timeout=10
             )
@@ -131,6 +131,14 @@ class LivenessFacePlusPlusProvider:
             age_val = age.get("value") if isinstance(age, dict) else None
             smiling = attrs.get("smiling", {})
             smiling_val = smiling.get("value") if isinstance(smiling, dict) else None
+            emotion = attrs.get("emotion", {})
+            expression = None
+            if isinstance(emotion, dict):
+                expression = max(
+                    (k for k, v in emotion.items() if isinstance(v, (int, float))),
+                    key=lambda k: emotion[k],
+                    default=None,
+                )
 
             info = []
             if age_val is not None:
@@ -139,6 +147,8 @@ class LivenessFacePlusPlusProvider:
                 info.append({"label": "Gender", "value": str(gender_val)})
             if smiling_val is not None:
                 info.append({"label": "Smiling", "value": f"{int(smiling_val)}%"})
+            if expression:
+                info.append({"label": "Expression", "value": str(expression).title()})
 
             score = max(1, min(20, int((livescore / 100) * 20)))
             confidence = livescore / 100
