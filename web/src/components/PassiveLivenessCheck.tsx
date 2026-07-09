@@ -9,6 +9,7 @@ interface PassiveResult {
   details?: string;
   snapshotUrl?: string;
   breakdown?: { label: string; pts: number }[];
+  info?: { label: string; value: string }[];
   provider?: string;
 }
 

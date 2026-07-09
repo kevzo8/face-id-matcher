@@ -124,6 +124,22 @@ class LivenessFacePlusPlusProvider:
             score_blur = max(0.0, 50.0 - blurness * 0.5)  # up to 50
             livescore = score_eyes + score_blur
 
+            # Prediction attributes (info only — not used for the liveness score)
+            gender = attrs.get("gender", {})
+            gender_val = gender.get("value") if isinstance(gender, dict) else None
+            age = attrs.get("age", {})
+            age_val = age.get("value") if isinstance(age, dict) else None
+            smiling = attrs.get("smiling", {})
+            smiling_val = smiling.get("value") if isinstance(smiling, dict) else None
+
+            info = []
+            if age_val is not None:
+                info.append({"label": "Age", "value": str(int(age_val))})
+            if gender_val:
+                info.append({"label": "Gender", "value": str(gender_val)})
+            if smiling_val is not None:
+                info.append({"label": "Smiling", "value": f"{int(smiling_val)}%"})
+
             score = max(1, min(20, int((livescore / 100) * 20)))
             confidence = livescore / 100
             is_real = livescore > 70  # same 70 threshold as the other passive providers
@@ -136,6 +152,7 @@ class LivenessFacePlusPlusProvider:
                     {"label": "Face++ Eyes Open", "pts": round((score_eyes / 50) * 4, 1)},
                     {"label": "Face++ Quality", "pts": round((score_blur / 50) * 4, 1)},
                 ],
+                "info": info,
                 "error": None
             }
 

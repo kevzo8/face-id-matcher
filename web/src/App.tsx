@@ -79,7 +79,7 @@ export default function App() {
   const [livenessTestResult, setLivenessTestResult] = useState<{ pass: boolean; score: number; details: string; recordingUrl?: string; breakdown?: { label: string; pts: number }[] } | null>(null);
   const [livenessTestVideo, setLivenessTestVideo] = useState<HTMLVideoElement | null>(null);
   const [livenessTestMode, setLivenessTestMode] = useState<'active' | 'passive' | 'upload' | null>(null);
-  const [passiveLivenessResult, setPassiveLivenessResult] = useState<{ is_real: boolean; confidence: number; score: number; snapshotUrl?: string; details?: string; error?: string; breakdown?: { label: string; pts: number }[] } | null>(null);
+  const [passiveLivenessResult, setPassiveLivenessResult] = useState<{ is_real: boolean; confidence: number; score: number; snapshotUrl?: string; details?: string; error?: string; breakdown?: { label: string; pts: number }[]; info?: { label: string; value: string }[] } | null>(null);
   const [passiveLivenessProvider, setPassiveLivenessProvider] = useState<'faceplusplus' | 'aws' | 'heuristic'>('heuristic');
   const livenessTestVideoRef = useRef<HTMLVideoElement>(null);
 
@@ -594,6 +594,17 @@ export default function App() {
                           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '2px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3 }}>
                             <span>{b.label}</span>
                             <span style={{ fontWeight: 600, color: b.pts > 0 ? '#86efac' : '#fca5a5' }}>+{b.pts.toFixed(1)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {passiveLivenessResult.info && passiveLivenessResult.info.length > 0 && (
+                      <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left' }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Predictions</div>
+                        {passiveLivenessResult.info.map((it, i) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '2px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3 }}>
+                            <span>{it.label}</span>
+                            <span style={{ fontWeight: 600, color: '#93c5fd' }}>{it.value}</span>
                           </div>
                         ))}
                       </div>

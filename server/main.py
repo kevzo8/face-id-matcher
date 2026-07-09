@@ -297,6 +297,7 @@ class PassiveLivenessResponse(BaseModel):
     error: str | None = None
     details: str | None = None
     breakdown: list[dict] | None = None
+    info: list[dict] | None = None
 
 
 @app.post("/liveness/passive")
@@ -306,7 +307,7 @@ async def passive_liveness(request: Request):
     body = await request.json()
     image_b64 = body.get("image")
     bbox = body.get("bbox")
-    provider = body.get("provider", "faceplusplus")  # Default to Face++
+    provider = body.get("provider", "heuristic")  # Default to heuristic
 
     if not image_b64:
         raise HTTPException(status_code=400, detail="No image provided")
