@@ -16,9 +16,11 @@ interface Props {
   onComplete: (result: PassiveResult) => void;
   serverUrl: string;
   provider?: 'faceplusplus' | 'aws' | 'heuristic';
+  faceplusServerUrl?: string;
+  awsServerUrl?: string;
 }
 
-export default function PassiveLivenessCheck({ onComplete, serverUrl, provider = 'faceplusplus' }: Props) {
+export default function PassiveLivenessCheck({ onComplete, serverUrl, provider = 'heuristic', faceplusServerUrl, awsServerUrl }: Props) {
   const [status, setStatus] = useState('Opening camera...');
   const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -101,7 +103,7 @@ export default function PassiveLivenessCheck({ onComplete, serverUrl, provider =
             // Stop camera
             stream.getTracks().forEach(t => t.stop());
 
-            const res = await fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/passive`, {
+            const res = await fetch(`${(provider === 'faceplusplus' && faceplusServerUrl) || (provider === 'aws' && awsServerUrl) || serverUrl.replace(/\/+$/, '')}/liveness/passive`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ image: fullB64, bbox, provider }),
@@ -125,7 +127,7 @@ export default function PassiveLivenessCheck({ onComplete, serverUrl, provider =
 
     run();
     return () => { cancelled = true; if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop()); };
-  }, [serverUrl, onComplete]);
+  }, [serverUrl, onComplete, provider]);
 
   if (error) {
     return <div style={{ textAlign: 'center', padding: 12, color: '#ef4444', fontSize: 13 }}>Error: {error}</div>;
