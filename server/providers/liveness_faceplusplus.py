@@ -129,8 +129,6 @@ class LivenessFacePlusPlusProvider:
             gender_val = gender.get("value") if isinstance(gender, dict) else None
             age = attrs.get("age", {})
             age_val = age.get("value") if isinstance(age, dict) else None
-            smiling = attrs.get("smiling", {})
-            smiling_val = smiling.get("value") if isinstance(smiling, dict) else None
             emotion = attrs.get("emotion", {})
             expression = None
             if isinstance(emotion, dict):
@@ -145,8 +143,6 @@ class LivenessFacePlusPlusProvider:
                 info.append({"label": "Age", "value": str(int(age_val))})
             if gender_val:
                 info.append({"label": "Gender", "value": str(gender_val)})
-            if smiling_val is not None:
-                info.append({"label": "Smiling", "value": f"{int(smiling_val)}%"})
             if expression:
                 info.append({"label": "Expression", "value": str(expression).title()})
 

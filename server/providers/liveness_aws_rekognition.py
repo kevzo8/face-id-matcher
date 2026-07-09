@@ -81,8 +81,6 @@ class LivenessAWSRekognitionProvider:
             # Prediction attributes (info only — not used for the liveness score)
             gender = face.get("Gender", {}).get("Value")
             age_range = face.get("AgeRange", {})
-            smile = face.get("Smile", {})
-            smile_val = smile.get("Confidence", 0) if isinstance(smile, dict) else 0
             emotions = face.get("Emotions", [])
             expression = None
             if emotions:
@@ -93,8 +91,6 @@ class LivenessAWSRekognitionProvider:
                 info.append({"label": "Gender", "value": str(gender)})
             if age_range.get("Low") is not None and age_range.get("High") is not None:
                 info.append({"label": "Age", "value": f"{age_range['Low']}-{age_range['High']}"})
-            if smile:
-                info.append({"label": "Smiling", "value": f"{int(smile_val)}%"})
             if expression:
                 info.append({"label": "Expression", "value": str(expression).title()})
 

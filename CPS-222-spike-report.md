@@ -492,6 +492,11 @@ const handleLivenessResult = (score: number) => {
 | **OpenBiometrics integration** | `server/main.py` | Proxy `/liveness/openbiometrics` endpoint → POST multipart to OpenBiometrics `/api/v1/detect` → return liveness + quality. |
 | **Presentation slides** | `web/src/components/Presentation.tsx`, `web/src/data/slides.tsx` | Feature-routed presentations at `/face-id/presentation/{slide}`, `/liveness/presentation/{slide}`, `/ocr/presentation/{slide}`. |
 | **Sidebar info** | `web/src/App.tsx` | Per-feature right sidebar with provider selection, descriptions, How It Works, and Why It Fails sections. |
+| **Passive — Heuristic (server)** | `server/providers/liveness_passive.py` | numpy/PIL heuristic analysis (Laplacian variance, edge gradients, color/channel variance, histogram spread, FFT frequency ratio, glare/moiré/banding). Score 0–20, **threshold aligned to displayed score: `score/20 > 0.70` (≈70%)**. |
+| **Passive — AWS DetectFaces** | `server/providers/liveness_aws_rekognition.py` | `DetectFaces` (Attributes=ALL) heuristic: Eyes Open (30), Mouth Natural (20, only when AWS confident mouth closed), Sharpness (25), Brightness (25). Surfaces **Predictions** (Gender, Age range, Expression). Threshold 70/100. **No nudity/inappropriate-selfie detection** in DetectFaces. |
+| **Passive — Face++** | `server/providers/liveness_faceplusplus.py` | Free-plan `facepp/v3/detect` with attributes (eyestatus, blur, gender, age, smiling, emotion). Heuristic: Eyes Open + Image Quality. Surfaces **Predictions** (Age, Gender, Expression). Threshold 70/100. **Heuristic only — Free plan has no true liveness API** (see 8.2). |
+| **Predictions / Facial Attributes** | backend `info` field → `PassiveLivenessCheck.tsx` + `App.tsx` | Non-scored "Predictions" group under each passive result: Age, Gender, and Expression (dominant emotion). Rendered separately from the scored "Score Breakdown". |
+| **Liveness UI** | `web/src/App.tsx` | Provider dropdown subgrouped into "Functional" vs "Not functional (trying later)"; AWS DetectFaces moved to 2nd passive choice; "Video Demos" sidebar section added (top Present Slides / Demo buttons removed); playback progress-bar reset on new video. |
 
 ### 8.2 Key Findings
 
@@ -502,6 +507,10 @@ const handleLivenessResult = (score: number) => {
 | **Scoring alignment** | Original had 3 different formulas for confidence, score, and breakdown — user sees contradictory numbers. Fixed: breakdown ×4 each (max 20), score = sum of breakdown, confidence = score/20. All three now aligned. |
 | **detectSingleFace limitation** | Active liveness used `detectSingleFace` which picks highest-confidence face — wrong person when multiple faces in frame. Fixed to `detectAllFaces` + closest-to-center Manhattan distance. |
 | **Render import issue** | Backend at `face-id-matcher.onrender.com` runs `uvicorn server.main:app` from `/app`, so `from providers.liveness_passive` fails. Added fallback: `try: from providers... except: from server.providers...`. |
+| **Face++ Free plan has NO true liveness** | `facepp/v1/liveness` returns **404** (not on Free plan). `facepp/v3/detect` with `return_attributes=liveness` returns **400** (invalid attribute). Passive Face++ therefore uses `v3/detect` standard attributes + a heuristic score — it is NOT real liveness detection. |
+| **Passive threshold contradiction fixed** | Heuristic `is_real` was checked against the internal weighted-sum `confidence` (~0.55 max) while the UI showed `score/20`. A real face at **75% displayed still failed**. Fixed: `is_real = (score/20) > 0.70`, so the threshold matches the displayed percentage. All three passive providers now use a consistent 70% threshold. |
+| **AWS "Mouth Natural" covered-mouth fix** | Previously any non-open mouth scored full points, so a covered mouth falsely passed as "natural". Now scored only when AWS is **confident the mouth is closed** (Value=False & conf ≥ 70); covered/uncertain → 0 pts. |
+| **Facial-attribute Predictions added** | Both AWS DetectFaces and Face++ passive results now return a non-scored `info` array (Age, Gender, Expression from dominant emotion) shown as a "Predictions" group — informative only, does not affect pass/fail. |
 
 ### 8.3 Implemented Providers
 
@@ -510,9 +519,9 @@ const handleLivenessResult = (score: number) => {
 | **open-face-liveness** (default) | Browser (face-api.js) | $0, MIT | ✅ Active: blink + head-turn |
 | **Passive Liveness** | Server (numpy/PIL) | $0 + compute | ✅ Passive: heuristic analysis |
 | **OpenBiometrics** | Self-hosted server | $0 + hosting | ✅ Active + Passive proxied |
-| **AWS DetectFaces** | Cloud REST | $0.001/check | ✅ Wired (face attributes only — not true liveness) |
+| **AWS DetectFaces** | Cloud REST | $0.001/check | ✅ Wired (face attributes only — not true liveness). Surfaces Predictions: Gender, Age, Expression. Threshold 70. |
 | **AWS Rekognition Liveness** | Cloud KVS | ~$0.015/check | 🔧 Not yet implemented (requires KVS + WebSocket) |
-| **Face++** | Cloud REST | $0.00019/check | 🔧 Not yet implemented |
+| **Face++** | Cloud REST | $0.00019/check | ✅ Implemented (heuristic via `facepp/v3/detect`; Free plan has NO true liveness API). Surfaces Predictions: Age, Gender, Expression. Threshold 70. |
 | **Azure Face** | Cloud REST | $0.015/check | 🔧 Not yet implemented |
 | **HyperVerge** | Cloud REST | Tiered | 🔧 Not yet implemented |
 | **Didit** | Cloud REST | $0.10/check | 🔧 Not yet implemented |
@@ -534,7 +543,24 @@ const handleLivenessResult = (score: number) => {
 - Color Depth (channel variance): 0–4 pts
 - Tonal Range (histogram spread): 0–4 pts
 - Detail (FFT low/high frequency ratio): 0–4 pts
-- Threshold: >6 (>30% confidence)
+- No Glare / No Moiré / No Banding: 0–4 pts each
+- **Threshold: `score/20 > 0.70` (≈70%, score > 14)** — aligned to the displayed percentage so a real face at 75% now passes.
+
+**Passive — AWS DetectFaces (0–100 → 0–20):**
+- Eyes Open: 0–30 pts (penalize if closed)
+- Mouth Natural: 0–20 pts (only when AWS confident mouth is closed; covered/uncertain → 0)
+- Sharpness: 0–25 pts
+- Brightness: 0–25 pts (≈50 ideal)
+- Threshold: 70/100
+- **Predictions (not scored):** Gender, Age range, Smiling %, Expression (dominant emotion). *No nudity/inappropriate-selfie detection in DetectFaces.*
+
+**Passive — Face++ (0–100 → 0–20, Free-plan heuristic):**
+- Face Detected: 0–20 (base)
+- Eyes Open: 0–30
+- Image Quality (blur): 0–30
+- Smiling: 0–20
+- Threshold: 70/100
+- **Predictions (not scored):** Age, Gender, Smiling %, Expression (dominant `emotion`). *Heuristic only — Free plan has no true liveness endpoint.*
 
 ### 8.5 Deployment
 
