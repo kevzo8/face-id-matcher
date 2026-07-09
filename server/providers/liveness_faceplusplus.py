@@ -109,9 +109,15 @@ class LivenessFacePlusPlusProvider:
             right_open = self._eye_open_prob(eyestatus.get("right_eye_status", {}))
             eyes_open = (left_open + right_open) / 2.0
 
-            # 2. Blur (blurness 0-100, higher = worse) — sharp real captures score higher
+            # 2. Blur (blurness 0-100, higher = worse) — structure varies by API version
             blur = attrs.get("blur", {})
-            blurness = blur.get("blurness", 0) if isinstance(blur, dict) else 0
+            blurness = 0
+            if isinstance(blur, dict):
+                b = blur.get("blurness", 0)
+                if isinstance(b, dict):
+                    blurness = b.get("value", 0)
+                elif isinstance(b, (int, float)):
+                    blurness = b
 
             # Heuristic livescore (0-100): eyes open + image sharpness
             score_eyes = eyes_open * 50          # up to 50
