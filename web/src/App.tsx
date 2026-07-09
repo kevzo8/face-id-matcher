@@ -301,40 +301,6 @@ export default function App() {
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: 16 }}>
       {/* Header */}
       <header style={{ marginBottom: 12, textAlign: 'center' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-          <button
-            onClick={() => {
-              const path = feature === 'id_to_face' ? 'face-id' : feature === 'liveness' ? 'liveness' : 'ocr';
-              const slide = feature === 'id_to_face' ? 0 : feature === 'liveness' ? 1 : 2;
-              window.history.pushState(null, '', '/' + path + '/presentation/' + slide);
-              setShowPresentation(true);
-              setInitialSlide(slide);
-            }}
-            style={{
-              padding: '6px 14px', fontSize: 12, fontWeight: 600,
-              background: 'linear-gradient(135deg, #6366f1, #a855f7)',
-              color: '#fff', border: 'none', borderRadius: 6,
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4 }}><polygon points="5 3 19 12 5 21 5 3" /></svg> Present Slides
-          </button>
-          <a
-            href="https://screenrec.com/share/irItDuPKEv"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              marginLeft: 8,
-              padding: '6px 14px', fontSize: 12, fontWeight: 600,
-              background: 'linear-gradient(135deg, #ef4444, #f97316)',
-              color: '#fff', border: 'none', borderRadius: 6,
-              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4,
-              textDecoration: 'none',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4 }}><circle cx="12" cy="12" r="10" fill="currentColor"/><circle cx="12" cy="12" r="4" fill="#0f172a"/></svg> Demo Video
-          </a>
-        </div>
         <div style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: 700, marginBottom: 2 }}>Face ID Matcher POC</div>
         <p style={{ color: '#94a3b8', fontSize: 13 }}>
           Compare any two face photos — selfie vs ID, selfie vs selfie, or ID vs ID — with 1:1 face matching
@@ -396,8 +362,28 @@ export default function App() {
               <span>{f.label}</span>
             </button>
           ))}
-        </div>
 
+          <div style={{ padding: '12px 10px 4px', fontSize: 10, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 1 }}>Video Demos</div>
+
+          {([
+            { key: 'id_to_face' as const, label: 'ID to Face', color: '#a855f7', icon: '\u2696', demo: 'https://screenrec.com/share/irItDuPKEv' },
+            { key: 'liveness' as const, label: 'Liveness Test', color: '#f97316', icon: '\u25C9', demo: null },
+            { key: 'ocr' as const, label: 'OCR & ID Type', color: '#22c55e', icon: '\u2630', demo: null },
+          ]).map((f) => (
+            f.demo ? (
+              <a key={'d-' + f.key} href={f.demo} target="_blank" rel="noopener noreferrer"
+                style={{ width: '100%', textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 500, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: f.color }}>
+                <span>▶</span><span>{f.label}</span>
+              </a>
+            ) : (
+              <div key={'d-' + f.key}
+                style={{ width: '100%', textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8, color: '#475569' }}>
+                <span>▶</span><span>{f.label} (to follow)</span>
+              </div>
+            )
+          ))}
+
+        </div>
         {/* === Center: Main content === */}
         <div style={{ flex: '1 1 0', minWidth: 280 }}>
 
@@ -825,9 +811,9 @@ export default function App() {
                     <strong style={{ color: '#fbbf24' }}>Face++ (Megvii)</strong> &mdash; Cloud-based trained ML model ($0.00019/check).
                     <br />
                     <span style={{ fontSize: 10, color: '#64748b', marginTop: 4, display: 'block' }}>
-                      Sends face to the <strong>facepp/v3/detect</strong> API and reads the <strong>liveness</strong> attribute (1 = real, 2 = fake, 0 = uncertain). Maps to 0-20 scale. Threshold: <strong>score &gt; 50</strong> (score ≥ 10/20).<br />
-                      Breakdown: <strong>Face++ Liveness</strong> (main score). Requires Facial Recognition (Detect) API access; Dense Facial Landmarks is a separate API.<br />
-                      <span style={{ color: '#ef4444' }}>⚠️ Ensure your Face++ plan includes Detect + liveness attribute access.</span>
+                      Sends face to the <strong>facepp/v3/detect</strong> API (Free-plan Detect) and uses standard attributes (eyes open, blur) as a <strong>heuristic</strong> liveness signal. Maps to 0-20 scale. Threshold: <strong>score &gt; 50</strong> (score ≥ 10/20).<br />
+                      Breakdown: <strong>Face++ Eyes Open</strong>, <strong>Face++ Quality</strong>. True liveness is NOT on the Free plan (liveness attribute/endpoint unavailable).<br />
+                      <span style={{ color: '#ef4444' }}>⚠️ Heuristic only — Free plan has no real Face++ liveness. Upgrade plan (or use AWS/Heuristic) for stronger spoof detection.</span>
                     </span>
                   </>
                 )}
