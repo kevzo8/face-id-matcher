@@ -79,8 +79,8 @@ class LivenessFacePlusPlusProvider:
             score = max(1, min(20, int((livescore / 100) * 20)))
             confidence = livescore / 100
             
-            # Face++ returns livescore > 50 as real
-            is_real = livescore > 50
+            # Face++ returns livescore > 70 as real (raise threshold to reject printed photos / spoofs)
+            is_real = livescore > 70
             
             return {
                 "is_real": bool(is_real),

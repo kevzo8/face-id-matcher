@@ -130,7 +130,7 @@ class LivenessPassiveProvider:
             s_banding * 0.05
         )
 
-        is_real = confidence > 0.50
+        is_real = confidence > 0.70
         score = min(20, max(1, int((confidence - 0.15) * 50)))
 
         # Generate meaningful reason
@@ -168,7 +168,7 @@ class LivenessPassiveProvider:
         score = max(1, min(20, int(raw_score)))
 
         return {
-            "is_real": bool(confidence > 0.50),
+            "is_real": bool(confidence > 0.70),
             "confidence": round(score / 20, 4),
             "score": score,
             "details": details,
