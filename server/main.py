@@ -303,6 +303,68 @@ async def detect_faces_liveness(request: Request):
         )
 
 
+@app.post("/liveness/detect-objects", response_model=DetectObjectsResponse)
+async def detect_objects_liveness(request: Request):
+    body = await request.json()
+    image_b64 = body.get("image")
+    if not image_b64:
+        raise HTTPException(status_code=400, detail="No image provided")
+
+    try:
+        import boto3
+        rekognition = boto3.client("rekognition", region_name=os.environ.get("AWS_DEFAULT_REGION", "ap-southeast-1"))
+        response = rekognition.detect_labels(
+            Image={"Bytes": base64.b64decode(image_b64)},
+            MaxLabels=50,
+            MinConfidence=50,
+        )
+
+        # Objects that suggest a phone/screen presentation attack
+        spoof_indicators = {
+            "Mobile Phone": 0, "Cell Phone": 0, "Smartphone": 0, "Phone": 0,
+            "Hand": 0, "Finger": 0, "Arm": 0,
+            "Screen": 0, "Display": 0, "Monitor": 0,
+            "Electronics": 0, "Device": 0, "Gadget": 0,
+            "Camera": 0, "Lens": 0,
+        }
+        detected_spoof_objects = []
+
+        for label in response.get("Labels", []):
+            name = label.get("Name", "")
+            confidence = label.get("Confidence", 0)
+            if name in spoof_indicators and confidence >= 50:
+                spoof_indicators[name] = confidence
+                detected_spoof_objects.append({"label": name, "confidence": confidence})
+
+        # Check for phone-like rectangular objects with high confidence
+        has_phone = any(v > 0 for k, v in spoof_indicators.items() if k in ["Mobile Phone", "Cell Phone", "Smartphone", "Phone"])
+        has_hand = any(v > 0 for k, v in spoof_indicators.items() if k in ["Hand", "Finger", "Arm"])
+        has_screen = any(v > 0 for k, v in spoof_indicators.items() if k in ["Screen", "Display", "Monitor"])
+
+        return DetectObjectsResponse(
+            spoof_objects_detected=detected_spoof_objects,
+            has_phone=has_phone,
+            has_hand=has_hand,
+            has_screen=has_screen,
+            spoof_risk="high" if (has_phone or (has_hand and has_screen)) else "medium" if has_screen else "low"
+        )
+    except Exception as e:
+        return DetectObjectsResponse(
+            spoof_objects_detected=[],
+            has_phone=False, has_hand=False, has_screen=False,
+            spoof_risk="unknown", error=str(e)
+        )
+
+
+class DetectObjectsResponse(BaseModel):
+    spoof_objects_detected: list[dict]
+    has_phone: bool
+    has_hand: bool
+    has_screen: bool
+    spoof_risk: str
+    error: str | None = None
+
+
 class PassiveLivenessResponse(BaseModel):
     is_real: bool
     confidence: float

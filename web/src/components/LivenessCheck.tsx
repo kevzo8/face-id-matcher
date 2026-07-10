@@ -66,6 +66,7 @@ interface LivenessResult {
   challenges?: { label: string; pts: number }[];
   info?: { label: string; value: string }[];
   colorAnalysis?: { label: string; value: string }[];
+  objectInfo?: { label: string; value: string }[];
 }
 
 interface LivenessCheckProps {
@@ -794,12 +795,50 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
         }
       }
 
+      // Object detection for phone/screen/hand (spoof indicators)
+      let objectInfo: { label: string; value: string }[] | undefined;
+      if (serverUrl && canvasRef.current) {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (ctx && video) {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const b64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+          try {
+            const res = await fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/detect-objects`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ image: b64 }),
+            });
+            const data = await res.json();
+            objectInfo = [];
+            if (data.spoof_objects_detected && data.spoof_objects_detected.length > 0) {
+              for (const obj of data.spoof_objects_detected) {
+                objectInfo.push({ label: obj.label, value: `${obj.confidence.toFixed(0)}%` });
+              }
+              if (data.has_phone) objectInfo.push({ label: '⚠️ Phone Detected', value: 'Potential presentation attack' });
+              if (data.has_hand) objectInfo.push({ label: 'Hand Detected', value: 'Holding device?' });
+              if (data.has_screen) objectInfo.push({ label: 'Screen Detected', value: 'Displaying image?' });
+              if (data.spoof_risk === 'high') objectInfo.push({ label: 'Spoof Risk', value: 'HIGH — phone/screen+hand detected' });
+              else if (data.spoof_risk === 'medium') objectInfo.push({ label: 'Spoof Risk', value: 'MEDIUM — screen detected' });
+              else objectInfo.push({ label: 'Spoof Risk', value: 'LOW' });
+            } else {
+              objectInfo.push({ label: 'Spoof Objects', value: 'None detected' });
+              objectInfo.push({ label: 'Spoof Risk', value: 'LOW' });
+            }
+            reasons.push(data.spoof_risk === 'high' ? 'OBJECT:HIGH_RISK' : data.spoof_risk === 'medium' ? 'OBJECT:MEDIUM_RISK' : 'OBJECT:LOW_RISK');
+          } catch {
+            reasons.push('OBJECT:error');
+          }
+        }
+      }
+
       // Note: AWS DetectFaces is intentionally NOT added to the score. It's a face
       // attribute analyzer, not a liveness detector. Adding its score would let a
       // printed photo pass because it has eyes open, good lighting, and high sharpness.
       if (backendScore > 0) breakdown.push({ label: 'OpenBiometrics', pts: backendScore });
       score = Math.min(100, score);
       const pass = score >= LIVENESS_PASS_THRESHOLD;
+      const finalPass = pass;
       const details = reasons.join(', ');
 
       runningRef.current = false;
@@ -838,10 +877,38 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
         colorAnalysis = [{ label: 'Note', value: isMobile ? 'Flash liveness skipped — no baseline color captured' : 'Flash liveness not available on desktop' }];
       }
 
-      // Pass decision: score threshold only (spoof signals are informational)
-      const finalPass = pass;
+      // Object detection (phone/hand/screen) - separate from score
+      if (serverUrl && canvasRef.current) {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (ctx && video) {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const b64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+          try {
+            const res = await fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/detect-objects`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ image: b64 }),
+            });
+            const data = await res.json();
+            if (data.spoof_objects_detected && data.spoof_objects_detected.length > 0) {
+              objectInfo = [
+                { label: 'Spoof Risk', value: data.spoof_risk ?? 'unknown' },
+                ...data.spoof_objects_detected.map((o: { label: string; confidence: number }) => ({ label: o.label, value: `${o.confidence.toFixed(0)}%` })),
+              ];
+              if (data.has_phone) reasons.push('Phone detected');
+              if (data.has_hand) reasons.push('Hand detected');
+              if (data.has_screen) reasons.push('Screen detected');
+            } else {
+              objectInfo = [{ label: 'Spoof Risk', value: 'low' }, { label: 'Objects', value: 'none detected' }];
+            }
+          } catch {
+            objectInfo = [{ label: 'Spoof Risk', value: 'error' }, { label: 'Objects', value: 'detection failed' }];
+          }
+        }
+      }
 
-      onComplete({ pass: finalPass, score, details: reasons.join(', '), recordingUrl, recordingDuration, breakdown, challenges, info: awsInfo, colorAnalysis });
+      onComplete({ pass: finalPass, score, details: reasons.join(', '), recordingUrl, recordingDuration, breakdown, challenges, info: awsInfo, colorAnalysis, objectInfo });
     }
 
     rafRef.current = requestAnimationFrame(checkFrame);
