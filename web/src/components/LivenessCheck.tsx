@@ -876,9 +876,15 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
         else if (correctFlashes === 1) notes.push('Weak light reflection (1 of 3 flashes detected)');
         else notes.push('Natural light reflection detected');
         if (!isMobile) notes.push('Flash detection works best on mobile where screen directly illuminates face');
-        colorAnalysis = notes.map(n => ({ label: 'Note', value: n }));
+        colorAnalysis = [
+          ...(colorAnalysis || []),
+          ...notes.map(n => ({ label: 'Note', value: n })),
+        ];
       } else {
-        colorAnalysis = [{ label: 'Note', value: isMobile ? 'Flash liveness skipped — no baseline color captured' : 'Flash liveness not available on desktop' }];
+        colorAnalysis = [
+          ...(colorAnalysis || []),
+          { label: 'Note', value: isMobile ? 'Flash liveness skipped — no baseline color captured' : 'Flash liveness not available on desktop' },
+        ];
       }
 
       // Object detection (phone/hand/screen) - separate from score
