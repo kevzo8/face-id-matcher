@@ -191,7 +191,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const recordingStartRef = useRef(0);
-  const startTimeRef = useRef(Date.now());
+  const startTimeRef = useRef(0);
   const TIMEOUT_MS = 60_000;
 
   const [flashColor, setFlashColor] = useState<'red' | 'green' | 'blue' | null>(null);
@@ -409,6 +409,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
     analysisStartedRef.current = true;
 
     runningRef.current = true;
+    startTimeRef.current = Date.now();
     const detOpts = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.15 });
 
     async function checkFrame() {
