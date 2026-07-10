@@ -76,7 +76,7 @@ interface LivenessCheckProps {
   obServerUrl?: string;
 }
 
-const LIVENESS_PASS_THRESHOLD = 70;
+const LIVENESS_PASS_THRESHOLD = 75;
 
 function eyeAspectRatio(landmarks: faceapi.Point[]): number {
   if (landmarks.length < 8) return 0;
@@ -183,8 +183,11 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
   const challengePassedRef = useRef(false);
   const challengeScoreRef = useRef(0);
   const challengeResultsRef = useRef<{ label: string; pts: number }[]>([]);
+  const challengeMovementFramesRef = useRef(0);
+  const baselineSamplesRef = useRef<{ offsetX: number; eyeNoseY: number }[]>([]);
   const baselineNoseRef = useRef<{ offsetX: number; eyeNoseY: number } | null>(null);
   const inChallengeRef = useRef(false);
+  const eyeOpenStreakRef = useRef(0);
 
   const stopCamera = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -397,8 +400,12 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
               blinkCountRef.current++;
               wasEyeClosedRef.current = true;
             }
+            eyeOpenStreakRef.current = 0;
           } else {
-            wasEyeClosedRef.current = false;
+            eyeOpenStreakRef.current++;
+            if (eyeOpenStreakRef.current >= 3) {
+              wasEyeClosedRef.current = false;
+            }
           }
 
           const vx = Math.max(0, Math.floor(box.x));
@@ -424,10 +431,10 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
             const eyeMidY = (leftEye[0].y + rightEye[0].y) / 2;
 
             if (!baselineNoseRef.current) {
-              baselineNoseRef.current = {
+              baselineSamplesRef.current.push({
                 offsetX: (nose.x - faceBoxCenter) / box.width,
                 eyeNoseY: (nose.y - eyeMidY) / box.height,
-              };
+              });
             }
 
             const basePct = Math.min(100, Math.round((frameCountRef.current / COLLECT_FRAMES) * 100));
@@ -435,11 +442,22 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
             setStatus('Hold still — collecting baseline');
 
             if (frameCountRef.current >= COLLECT_FRAMES) {
+              // Compute median baseline from collected samples
+              if (baselineSamplesRef.current.length > 0) {
+                const sortedX = baselineSamplesRef.current.map(s => s.offsetX).sort((a, b) => a - b);
+                const sortedY = baselineSamplesRef.current.map(s => s.eyeNoseY).sort((a, b) => a - b);
+                const mid = Math.floor(sortedX.length / 2);
+                baselineNoseRef.current = {
+                  offsetX: sortedX.length % 2 === 0 ? (sortedX[mid - 1] + sortedX[mid]) / 2 : sortedX[mid],
+                  eyeNoseY: sortedY.length % 2 === 0 ? (sortedY[mid - 1] + sortedY[mid]) / 2 : sortedY[mid],
+                };
+              }
               inChallengeRef.current = true;
               challengesRef.current = pickChallenges(2);
               challengeIdxRef.current = 0;
               challengeFrameRef.current = 0;
               challengePassedRef.current = false;
+              challengeMovementFramesRef.current = 0;
               const c = challengesRef.current[0];
               setStatus(CHALLENGE_LABELS[c]);
               setProgress(0);
@@ -463,32 +481,33 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
                 const deltaX = curOffsetX - base.offsetX;
                 const deltaY = curEyeNoseY - base.eyeNoseY;
 
-                if (challenge === 'turn_left' && deltaX > 0.06) {
-                  challengePassedRef.current = true;
-                } else if (challenge === 'turn_right' && deltaX < -0.06) {
-                  challengePassedRef.current = true;
-                } else if (challenge === 'look_up' && deltaY < -0.04) {
-                  challengePassedRef.current = true;
-                } else if (challenge === 'look_down' && deltaY > 0.04) {
-                  challengePassedRef.current = true;
-                }
+                let moved = false;
+                if (challenge === 'turn_left' && deltaX > 0.06) moved = true;
+                else if (challenge === 'turn_right' && deltaX < -0.06) moved = true;
+                else if (challenge === 'look_up' && deltaY < -0.04) moved = true;
+                else if (challenge === 'look_down' && deltaY > 0.04) moved = true;
+
+                if (moved) challengeMovementFramesRef.current++;
               }
 
               const cPct = Math.min(100, Math.round((challengeFrameRef.current / CHALLENGE_FRAMES) * 100));
               setProgress(cPct);
 
               if (challengeFrameRef.current >= CHALLENGE_FRAMES) {
-                const passed = challengePassedRef.current;
+                const passed = challengeMovementFramesRef.current >= 10;
                 if (passed) challengeScoreRef.current += 15;
                 challengeResultsRef.current.push({ label: CHALLENGE_LABELS[challenge], pts: passed ? 15 : 0 });
 
                 challengeIdxRef.current++;
                 if (challengeIdxRef.current >= challengesRef.current.length) {
+                  cancelAnimationFrame(rafRef.current);
+                  runningRef.current = false;
                   await computeResult();
                   return;
                 }
                 challengeFrameRef.current = 0;
                 challengePassedRef.current = false;
+                challengeMovementFramesRef.current = 0;
                 const next = challengesRef.current[challengeIdxRef.current];
                 setStatus(CHALLENGE_LABELS[next]);
                 setProgress(0);
@@ -507,7 +526,9 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
         }
       } catch { /* skip */ }
 
-      rafRef.current = requestAnimationFrame(checkFrame);
+      if (runningRef.current) {
+        rafRef.current = requestAnimationFrame(checkFrame);
+      }
     }
 
     async function computeResult() {
@@ -626,11 +647,6 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
             if (data.score > 0) {
               backendScore = data.score;
               reasons.push(`AWS:${data.score}pts`);
-              // Itemize each AWS criterion as individual breakdown items
-              if (data.confidence > 90) { breakdown.push({ label: 'AWS Face Confidence', pts: 5 }); reasons.push('face conf high'); }
-              if (data.eyes_open && data.eyes_open_confidence > 80) { breakdown.push({ label: 'AWS Eyes Open', pts: 5 }); reasons.push('eyes open'); }
-              if (data.quality_brightness > 40) { breakdown.push({ label: 'AWS Lighting', pts: 5 }); reasons.push('good lighting'); }
-              if (data.quality_sharpness > 40) { breakdown.push({ label: 'AWS Sharpness', pts: 5 }); reasons.push('sharp image'); }
               // Predictions from AWS
               awsInfo = [];
               if (data.age_low != null && data.age_high != null) awsInfo.push({ label: 'Age', value: `${data.age_low}-${data.age_high}` });
@@ -646,6 +662,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       }
 
       score += backendScore;
+      if (backendScore > 0) breakdown.push({ label: provider === 'openbiometrics' ? 'OpenBiometrics' : 'AWS Score', pts: backendScore });
       score = Math.min(100, score);
       const pass = score >= LIVENESS_PASS_THRESHOLD;
       const details = reasons.join(', ');
