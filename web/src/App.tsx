@@ -74,7 +74,7 @@ export default function App() {
   const [selfieFaceBox, setSelfieFaceBox] = useState<FaceBox | null>(null);
   const [livenessRunning, setLivenessRunning] = useState(false);
   const [livenessPassed, setLivenessPassed] = useState(false);
-  const [livenessResult, setLivenessResult] = useState<{ pass: boolean; score: number; details: string } | null>(null);
+  const [livenessResult, setLivenessResult] = useState<{ pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[]; provider?: string } | null>(null);
   const [livenessTestStarted, setLivenessTestStarted] = useState(false);
   const [livenessTestResult, setLivenessTestResult] = useState<{ pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[]; provider?: string } | null>(null);
   const [livenessTestVideo, setLivenessTestVideo] = useState<HTMLVideoElement | null>(null);
@@ -266,7 +266,7 @@ export default function App() {
     setResult(null);
   }, []);
 
-  const handleLivenessComplete = useCallback((result: { pass: boolean; score: number; details: string }) => {
+  const handleLivenessComplete = useCallback((result: { pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[]; provider?: string }) => {
     setLivenessResult(result);
     setLivenessPassed(result.pass);
     setLivenessRunning(false);
@@ -510,7 +510,7 @@ export default function App() {
               )}
               {livenessTestMode === 'active' && !livenessTestResult && (
                 <div style={{ background: '#1e293b', borderRadius: 8, padding: 16, border: '1px solid #475569', marginTop: 12 }}>
-                  <LivenessCheck onComplete={(r) => { setLivenessTestResult(r as { pass: boolean; score: number; details: string; recordingUrl?: string }); setLivenessTestStarted(false); setLivenessTestMode(null); }} autoStart={true} provider={livenessProvider} serverUrl={livenessServerUrl} obServerUrl={obServerUrl} />
+                  <LivenessCheck onComplete={(r) => { setLivenessTestResult(r as { pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[]; provider?: string }); setLivenessTestStarted(false); setLivenessTestMode(null); }} autoStart={true} provider={livenessProvider} serverUrl={livenessServerUrl} obServerUrl={obServerUrl} />
                 </div>
               )}
               {livenessTestMode === 'passive' && !passiveLivenessResult && (
@@ -525,7 +525,7 @@ export default function App() {
               )}
               {livenessTestStarted && !livenessTestResult && livenessTestMode === 'upload' && (
                 <div style={{ background: '#1e293b', borderRadius: 8, padding: 16, border: '1px solid #475569', marginTop: 12 }}>
-                  <LivenessCheck onComplete={(r) => { setLivenessTestResult(r as { pass: boolean; score: number; details: string; recordingUrl?: string }); setLivenessTestStarted(false); setLivenessTestMode(null); }} externalVideo={livenessTestVideo} autoStart={true} provider={livenessProvider} serverUrl={livenessServerUrl} obServerUrl={obServerUrl} />
+                  <LivenessCheck onComplete={(r) => { setLivenessTestResult(r as { pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[]; provider?: string }); setLivenessTestStarted(false); setLivenessTestMode(null); }} externalVideo={livenessTestVideo} autoStart={true} provider={livenessProvider} serverUrl={livenessServerUrl} obServerUrl={obServerUrl} />
                 </div>
               )}
               {livenessTestResult && (
