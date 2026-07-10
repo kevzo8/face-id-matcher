@@ -351,14 +351,14 @@ async def detect_objects_liveness(request: Request):
         for label in response.get("Labels", []):
             name = label.get("Name", "")
             confidence = label.get("Confidence", 0)
-            if name in spoof_indicators and confidence >= 50:
+            if name in spoof_indicators and confidence >= 40:
                 spoof_indicators[name] = confidence
                 detected_spoof_objects.append({"label": name, "confidence": confidence})
 
         # Check for phone-like rectangular objects with high confidence
         has_phone = any(v > 0 for k, v in spoof_indicators.items() if k in ["Mobile Phone", "Cell Phone", "Smartphone", "Phone"])
         has_hand = any(v > 0 for k, v in spoof_indicators.items() if k in ["Hand", "Finger", "Arm"])
-        has_screen = any(v > 0 for k, v in spoof_indicators.items() if k in ["Screen", "Display", "Monitor", "Television", "TV", "Electronics", "Device"])
+        has_screen = any(v > 0 for k, v in spoof_indicators.items() if k in ["Screen", "Display", "Monitor", "Television", "TV", "Electronics", "Device", "Computer", "Laptop", "Tablet"])
         has_photo = any(v > 0 for k, v in spoof_indicators.items() if k in ["Photo", "Photograph", "Picture", "Picture Frame", "Frame", "Border", "Paper", "Printed Material", "Flat", "Two-Dimensional", "Poster", "Print"])
         has_id = any(v > 0 for k, v in spoof_indicators.items() if k in ["ID Card", "Identification Card", "Driver's License", "Passport", "License", "Credit Card", "Card", "Identification", "Document", "ID"])
 
