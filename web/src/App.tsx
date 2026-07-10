@@ -585,11 +585,11 @@ export default function App() {
                               <span style={{ fontWeight: 600, color: '#fbbf24' }}>{it.value}</span>
                             </div>
                           ))}
+                          <div style={{ marginTop: 4, fontSize: 10, color: '#94a3b8', fontStyle: 'italic' }}>
+                            Note: Flash detection works best on mobile where screen directly illuminates face
+                          </div>
                         </div>
                       )}
-                      <div style={{ marginTop: 4, fontSize: 10, color: '#94a3b8', fontStyle: 'italic' }}>
-                        Note: Flash detection works best on mobile where screen directly illuminates face
-                      </div>
                       {livenessTestResult.objectInfo && livenessTestResult.objectInfo.length > 0 && livenessTestResult.provider === 'aws_detect_faces_objects' && (
                         <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left' }}>
                           <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Object Analysis</div>
