@@ -47,7 +47,12 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
   const refreshCameras = useCallback(async () => {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter((d) => d.kind === 'videoinput');
+      const videoDevices = devices.filter((d) => d.kind === 'videoinput')
+        .sort((a, b) => {
+          const aV = /obs|virtual|streamlabs/i.test(a.label) ? 1 : 0;
+          const bV = /obs|virtual|streamlabs/i.test(b.label) ? 1 : 0;
+          return aV - bV;
+        });
       setCameras(videoDevices);
       if (videoDevices.length > 0 && !selectedCamera) {
         setSelectedCamera(videoDevices[0].deviceId);
