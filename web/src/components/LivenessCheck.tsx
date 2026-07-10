@@ -361,12 +361,31 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
     let cancelled = false;
 
     async function init() {
-      const stream = streamRef.current;
+      let stream = streamRef.current;
       if (!stream) {
-        if (!cancelled) setError('Camera stream lost');
-        return;
+        // Stream lost between preview and running — try to reopen
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: selectedCamera
+              ? { deviceId: { exact: selectedCamera } }
+              : { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+            audio: false,
+          });
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.muted = true;
+            videoRef.current.playsInline = true;
+            await videoRef.current.play().catch(() => {});
+            // Give the video a moment to have a frame
+            await new Promise<void>((r) => setTimeout(r, 200));
+          }
+        } catch (err) {
+          if (!cancelled) setError('Camera stream lost and could not be re-opened');
+          return;
+        }
       }
-      startRecording(stream);
+      startRecording(stream!);
       const video = videoRef.current;
       if (!video) { return; }
       setStatus('Analyzing face...');
@@ -830,8 +849,57 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
     return () => stopCamera();
   }, [stopCamera]);
 
+  const reset = useCallback(() => {
+    setError(null);
+    setStatus(externalVideo ? 'Analyzing video...' : 'Camera preview');
+    setProgress(0);
+    analysisStartedRef.current = false;
+    runningRef.current = false;
+    frameCountRef.current = 0;
+    challengeFrameRef.current = 0;
+    challengeIdxRef.current = -1;
+    challengeScoreRef.current = 0;
+    challengeResultsRef.current = [];
+    challengeMovementFramesRef.current = 0;
+    baselineSamplesRef.current = [];
+    baselineNoseRef.current = null;
+    baselineRGBSamplesRef.current = [];
+    inChallengeRef.current = false;
+    inFlashRef.current = false;
+    flashStepRef.current = 0;
+    flashFrameCountRef.current = 0;
+    flashBaselineRef.current = null;
+    flashSamplesRef.current = [];
+    flashStepSamplesRef.current = [];
+    blinkCountRef.current = 0;
+    wasEyeClosedRef.current = false;
+    eyeOpenStreakRef.current = 0;
+    faceSizesRef.current = [];
+    textureVarianceRef.current = [];
+    frameDeltasRef.current = [];
+    prevFrameRef.current = null;
+    setFlashColor(null);
+    setPhase('preview');
+  }, [externalVideo]);
+
   if (error) {
-    return <div style={{ textAlign: 'center', padding: 12, color: '#ef4444', fontSize: 13 }}>Camera error: {error}</div>;
+    return (
+      <div style={{ textAlign: 'center', padding: 12 }}>
+        <div style={{ color: '#ef4444', fontSize: 13, marginBottom: 12 }}>
+          Camera error: {error}
+        </div>
+        <button
+          onClick={reset}
+          style={{
+            padding: '8px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            background: 'linear-gradient(135deg, #581c87, #7c3aed)',
+            color: '#e9d5ff', border: 'none', borderRadius: 6,
+          }}
+        >
+          &#8634; Reset
+        </button>
+      </div>
+    );
   }
 
   const isPreview = phase === 'preview' && !externalVideo;
