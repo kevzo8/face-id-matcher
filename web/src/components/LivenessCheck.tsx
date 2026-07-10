@@ -77,6 +77,7 @@ interface LivenessCheckProps {
   provider?: string;
   serverUrl?: string;
   obServerUrl?: string;
+  modelsLoaded?: boolean;
 }
 
 const LIVENESS_PASS_THRESHOLD = 75;
@@ -166,7 +167,7 @@ const CHALLENGE_LABELS: Record<Challenge, string> = {
   look_down: 'Look down toward the floor',
 };
 
-export default function LivenessCheck({ onComplete, externalVideo, autoStart = true, provider, serverUrl, obServerUrl }: LivenessCheckProps) {
+export default function LivenessCheck({ onComplete, externalVideo, autoStart = true, provider, serverUrl, obServerUrl, modelsLoaded }: LivenessCheckProps) {
   const [phase, setPhase] = useState<'preview' | 'running'>(externalVideo ? 'running' : 'preview');
   const [status, setStatus] = useState(externalVideo ? 'Analyzing video...' : 'Camera preview');
   const [progress, setProgress] = useState(0);
@@ -369,6 +370,10 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
     let cancelled = false;
 
     async function init() {
+      // Wait for models to load
+      while (!modelsLoaded) {
+        await new Promise(r => setTimeout(r, 100));
+      }
       let stream = streamRef.current;
       if (!stream) {
         // Stream lost between preview and running â€” try to reopen
@@ -396,6 +401,21 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       startRecording(stream!);
       const video = videoRef.current;
       if (!video) { return; }
+
+      // Wait for face-api models to load
+      if (!modelsLoaded) {
+        setStatus('Loading face detection models...');
+        await new Promise<void>((resolve) => {
+          const checkLoaded = setInterval(() => {
+            if (modelsLoaded) {
+              clearInterval(checkLoaded);
+              resolve();
+            }
+          }, 100);
+        });
+        if (cancelled) return;
+      }
+      
       setStatus('Analyzing face...');
       startAnalysis(video);
     }
