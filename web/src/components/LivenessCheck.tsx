@@ -65,6 +65,7 @@ interface LivenessResult {
   breakdown?: { label: string; pts: number }[];
   challenges?: { label: string; pts: number }[];
   info?: { label: string; value: string }[];
+  colorAnalysis?: { label: string; value: string }[];
 }
 
 interface LivenessCheckProps {
@@ -170,6 +171,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
   const [error, setError] = useState<string | null>(null);
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [selectedCamera, setSelectedCamera] = useState<string>('');
+  const [isMobile, setIsMobile] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -239,6 +241,10 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       // ignore
     }
   }, [selectedCamera]);
+
+  useEffect(() => {
+    setIsMobile(/Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+  }, []);
 
   const startCamera = useCallback(async (deviceId?: string) => {
     setError(null);
@@ -558,15 +564,23 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
 
                 challengeIdxRef.current++;
                 if (challengeIdxRef.current >= challengesRef.current.length) {
-                  // Challenges done — start flash liveness phase
-                  inChallengeRef.current = false;
-                  inFlashRef.current = true;
-                  flashStepRef.current = 0;
-                  flashFrameCountRef.current = 0;
-                  flashStepSamplesRef.current = [];
-                  setFlashColor('red');
-                  setStatus('Look at the screen — checking light reflection');
-                  setProgress(0);
+                  // Challenges done — start flash liveness phase (mobile only)
+                  if (isMobile) {
+                    inChallengeRef.current = false;
+                    inFlashRef.current = true;
+                    flashStepRef.current = 0;
+                    flashFrameCountRef.current = 0;
+                    flashStepSamplesRef.current = [];
+                    setFlashColor('red');
+                    setStatus('Look at the screen — checking light reflection');
+                    setProgress(0);
+                  } else {
+                    // Desktop: skip flash, go straight to result
+                    cancelAnimationFrame(rafRef.current);
+                    runningRef.current = false;
+                    await computeResult();
+                    return;
+                  }
                 } else {
                   challengeFrameRef.current = 0;
                   challengePassedRef.current = false;
@@ -812,34 +826,28 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       const challenges = challengeResultsRef.current.length > 0 ? challengeResultsRef.current : undefined;
       if (externalVideo) { video.pause(); }
 
-      // Spoof prediction: based on flash response + challenge + motion
-      const spoofSignals: string[] = [];
-      let spoofScore = 0;
-      if (base && flashSamplesRef.current.length === 3) {
+      // Color analysis (mobile only) - separate from score breakdown
+      let colorAnalysis: { label: string; value: string }[] | undefined;
+      if (isMobile && base && flashSamplesRef.current.length === 3) {
         const correctFlashes = flashSamplesRef.current.filter((s) => {
           const dr = s.r - base.r, dg = s.g - base.g, db = s.b - base.b;
           const pos = s.color === 'red' ? dr : s.color === 'green' ? dg : db;
           const other = s.color === 'red' ? (dg + db) / 2 : s.color === 'green' ? (dr + db) / 2 : (dr + dg) / 2;
           return pos - other > 8;
         }).length;
-        if (correctFlashes === 0) { spoofSignals.push('no light reflection on any flash'); spoofScore += 2; }
-        else if (correctFlashes === 1) { spoofSignals.push('weak light reflection (1/3)'); spoofScore += 1; }
-        else spoofSignals.push('natural light reflection');
+        const notes: string[] = [];
+        if (correctFlashes === 0) notes.push('The face did not reflect any flash');
+        else if (correctFlashes === 1) notes.push('Weak light reflection (1 of 3 flashes detected)');
+        else notes.push('Natural light reflection detected');
+        colorAnalysis = notes.map(n => ({ label: 'Note', value: n }));
+      } else if (isMobile) {
+        colorAnalysis = [{ label: 'Note', value: 'Flash liveness skipped — no baseline color captured' }];
       }
-      const passesPassed = challengeResultsRef.current.filter((c) => c.pts > 0).length;
-      if (passesPassed === 0) { spoofSignals.push('no challenges completed'); spoofScore += 1; }
-      const totalChallengeFrames = challengeResultsRef.current.length;
-      if (avgDelta < 0.3 && totalChallengeFrames > 0) { spoofSignals.push('unnatural stillness'); spoofScore += 1; }
-      if (avgTexture < 15) { spoofSignals.push('flat skin texture'); spoofScore += 1; }
-      const isSpoof = spoofScore >= 2;
-      const spoofPrediction = isSpoof ? 'Likely Spoof' : 'Likely Real';
-      const spoofInfo = [{ label: 'Prediction', value: spoofPrediction }, ...spoofSignals.map((s) => ({ label: 'Signal', value: s }))];
 
-      // Pass decision: must meet score threshold AND must not be flagged as spoof
-      const finalPass = pass && !isSpoof;
-      if (isSpoof) reasons.push('SPOOF DETECTED');
+      // Pass decision: score threshold only (spoof signals are informational)
+      const finalPass = pass;
 
-      onComplete({ pass: finalPass, score, details: reasons.join(', '), recordingUrl, recordingDuration, breakdown, challenges, info: awsInfo ? [...awsInfo, ...spoofInfo] : spoofInfo });
+      onComplete({ pass: finalPass, score, details: reasons.join(', '), recordingUrl, recordingDuration, breakdown, challenges, info: awsInfo, colorAnalysis });
     }
 
     rafRef.current = requestAnimationFrame(checkFrame);
@@ -921,7 +929,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
             width: '100%', borderRadius: 6, display: 'block', margin: '0 auto 8px', transform: externalVideo ? 'none' : 'scaleX(-1)',
           }}
         />
-        {flashColor && (
+        {isMobile && flashColor && (
           <div style={{
             position: 'absolute', inset: 0, pointerEvents: 'none',
             background: flashColor === 'red' ? 'rgba(255, 0, 0, 0.55)' :
