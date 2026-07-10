@@ -705,6 +705,10 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       score += blinkPts;
       breakdown.push({ label: 'Blinks', pts: blinkPts });
 
+      // Color analysis & object detection (declared here for use in flash analysis below)
+      let colorAnalysis: { label: string; value: string }[] | undefined;
+      let objectInfo: { label: string; value: string }[] | undefined;
+
       // Flash liveness: verify face reflects colored flashes
       let flashPts = 0;
       const base = flashBaselineRef.current;
@@ -724,7 +728,11 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
           if (passed) flashPts += 7;
           flashDetails.push({ label: `${sample.color.toUpperCase()} flash`, pts: passed ? 7 : 0 });
         }
-        breakdown.push(...flashDetails);
+        // Add flash details to color analysis instead of breakdown
+        colorAnalysis = [
+          ...colorAnalysis || [],
+          ...flashDetails.map(d => ({ label: d.label, value: d.pts > 0 ? '✓ Passed' : '✗ Failed' })),
+        ];
         reasons.push(`flash:${flashPts}/21`);
       } else {
         reasons.push('flash:skipped');
@@ -796,7 +804,6 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       }
 
       // Object detection for phone/screen/hand (spoof indicators)
-      let objectInfo: { label: string; value: string }[] | undefined;
       if (serverUrl && canvasRef.current) {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
@@ -857,9 +864,6 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       const challenges = challengeResultsRef.current.length > 0 ? challengeResultsRef.current : undefined;
       if (externalVideo) { video.pause(); }
 
-      // Color analysis - separate from score breakdown
-      // Flash detection works best on mobile where screen directly illuminates face
-      let colorAnalysis: { label: string; value: string }[] | undefined;
       if (base && flashSamplesRef.current.length === 3) {
         const correctFlashes = flashSamplesRef.current.filter((s) => {
           const dr = s.r - base.r, dg = s.g - base.g, db = s.b - base.b;
@@ -871,7 +875,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
         if (correctFlashes === 0) notes.push('The face did not reflect any flash');
         else if (correctFlashes === 1) notes.push('Weak light reflection (1 of 3 flashes detected)');
         else notes.push('Natural light reflection detected');
-        if (!isMobile) notes.push('Note: Flash detection works best on mobile where screen directly illuminates face');
+        if (!isMobile) notes.push('Flash detection works best on mobile where screen directly illuminates face');
         colorAnalysis = notes.map(n => ({ label: 'Note', value: n }));
       } else {
         colorAnalysis = [{ label: 'Note', value: isMobile ? 'Flash liveness skipped — no baseline color captured' : 'Flash liveness not available on desktop' }];
