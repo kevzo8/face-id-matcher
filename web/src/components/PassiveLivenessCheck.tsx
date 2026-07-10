@@ -16,7 +16,7 @@ interface PassiveResult {
 interface Props {
   onComplete: (result: PassiveResult) => void;
   serverUrl: string;
-  provider?: 'faceplusplus' | 'aws' | 'heuristic';
+  provider?: 'faceplusplus' | 'faceplusplus_hybrid' | 'aws' | 'aws_hybrid' | 'heuristic';
   faceplusServerUrl?: string;
   awsServerUrl?: string;
 }
@@ -106,9 +106,46 @@ export default function PassiveLivenessCheck({ onComplete, serverUrl, provider =
 
   // Open camera on mount in preview phase
   useEffect(() => {
-    startCamera(selectedCamera || undefined);
-    refreshCameras();
-    return () => stopCamera();
+    let cancelled = false;
+    (async () => {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      if (cancelled) return;
+      const sorted = devices.filter(d => d.kind === 'videoinput')
+        .sort((a, b) => {
+          const aV = /obs|virtual|streamlabs/i.test(a.label) ? 1 : 0;
+          const bV = /obs|virtual|streamlabs/i.test(b.label) ? 1 : 0;
+          return aV - bV;
+        });
+      setCameras(sorted);
+      const deviceId = sorted.length > 0 ? sorted[0].deviceId : undefined;
+      setSelectedCamera(deviceId || '');
+      // Open with the preferred device, not with the stale selectedCamera value
+      const constraints: MediaStreamConstraints[] = [];
+      if (deviceId) {
+        constraints.push({ video: { deviceId: { exact: deviceId } }, audio: false });
+      } else {
+        constraints.push(
+          { video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
+          { video: { width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
+          { video: true, audio: false },
+        );
+      }
+      for (const c of constraints) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia(c);
+          if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.muted = true;
+            videoRef.current.playsInline = true;
+            videoRef.current.play().catch(() => {});
+          }
+          break;
+        } catch { /* try next */ }
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   // Run detection when phase transitions to 'detecting'

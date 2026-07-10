@@ -1,12 +1,70 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as faceapi from 'face-api.js';
 
+async function fixWebmDuration(blob: Blob, durationMs: number): Promise<Blob> {
+  const buf = await blob.arrayBuffer();
+  const view = new DataView(buf);
+  // EBML Element ID 0x4489 = Duration (float), parent is Info (0x1549A966)
+  // Find info ID (0x1549A966 = [0x15, 0x49, 0xA9, 0x66])
+  const infoId = [0x15, 0x49, 0xA9, 0x66];
+  // Search for Info element in the first ~4KB
+  const maxSearch = Math.min(buf.byteLength, 4096);
+  let infoEnd = -1;
+  let infoStart = 0;
+  for (let j = 0; j < maxSearch - 4; j++) {
+    if (view.getUint8(j) === infoId[0] && view.getUint8(j+1) === infoId[1] &&
+        view.getUint8(j+2) === infoId[2] && view.getUint8(j+3) === infoId[3]) {
+      infoStart = j;
+      let pos = j + 4;
+      while (pos < buf.byteLength && (view.getUint8(pos) & 0x80)) pos++;
+      pos++;
+      infoEnd = pos;
+      break;
+    }
+  }
+  if (infoEnd < 0) return blob;
+  // Search for Duration ID (0x4489 = [0x44, 0x89]) within Info
+  const durId = [0x44, 0x89];
+  for (let j = infoStart; j < infoEnd - 2; j++) {
+    if (view.getUint8(j) === durId[0] && view.getUint8(j+1) === durId[1]) {
+      let pos = j + 2;
+      // Read EBML variable-length data size
+      let size = 0;
+      let sizeLen = 0;
+      const first = view.getUint8(pos);
+      if (first === 0x88) { size = 8; sizeLen = 1; } // 0x88 = size 8, 1-byte encoding
+      else if (first === 0x84) { size = 4; sizeLen = 1; }
+      else { // fallback: just proceed
+        sizeLen = 1;
+        while (pos + sizeLen < buf.byteLength && (view.getUint8(pos + sizeLen - 1) & 0x80) === 0) sizeLen++;
+        size = buf.byteLength - pos - sizeLen;
+      }
+      pos += sizeLen;
+      if (pos + 8 > buf.byteLength) return blob;
+      // Write duration as 8-byte float (big-endian IEEE 754)
+      const durFloat = durationMs / 1000; // Duration in seconds (TimecodeScale default = 1ms)
+      const durBytes = new Float64Array([durFloat]);
+      // Float64Array is little-endian, need to swap for big-endian EBML
+      const be = new Uint8Array(8);
+      const le = new Uint8Array(durBytes.buffer);
+      for (let j = 0; j < 8; j++) be[j] = le[7 - j];
+      const patched = new Uint8Array(buf);
+      patched.set(be, pos);
+      return new Blob([patched], { type: 'video/webm' });
+    }
+  }
+  return blob;
+}
+
 interface LivenessResult {
   pass: boolean;
   score: number;
   details: string;
   recordingUrl?: string;
+  recordingDuration?: number;
   breakdown?: { label: string; pts: number }[];
+  challenges?: { label: string; pts: number }[];
+  info?: { label: string; value: string }[];
 }
 
 interface LivenessCheckProps {
@@ -115,6 +173,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
   const wasEyeClosedRef = useRef(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
+  const recordingStartRef = useRef(0);
   const startTimeRef = useRef(Date.now());
   const TIMEOUT_MS = 20_000;
 
@@ -123,6 +182,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
   const challengeFrameRef = useRef(0);
   const challengePassedRef = useRef(false);
   const challengeScoreRef = useRef(0);
+  const challengeResultsRef = useRef<{ label: string; pts: number }[]>([]);
   const baselineNoseRef = useRef<{ offsetX: number; eyeNoseY: number } | null>(null);
   const inChallengeRef = useRef(false);
 
@@ -200,6 +260,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
 
   function startRecording(stream: MediaStream) {
     recordedChunksRef.current = [];
+    recordingStartRef.current = Date.now();
     try {
       const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
       recorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
@@ -213,9 +274,46 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
   // Open camera in preview phase
   useEffect(() => {
     if (phase !== 'preview' || externalVideo) return;
-    startCamera(selectedCamera || undefined);
-    return () => stopCamera();
-  }, []);
+    let cancelled = false;
+    (async () => {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      if (cancelled) return;
+      const sorted = devices.filter(d => d.kind === 'videoinput')
+        .sort((a, b) => {
+          const aV = /obs|virtual|streamlabs/i.test(a.label) ? 1 : 0;
+          const bV = /obs|virtual|streamlabs/i.test(b.label) ? 1 : 0;
+          return aV - bV;
+        });
+      setCameras(sorted);
+      const deviceId = sorted.length > 0 ? sorted[0].deviceId : undefined;
+      setSelectedCamera(deviceId || '');
+      const constraints: MediaStreamConstraints[] = [];
+      if (deviceId) {
+        constraints.push({ video: { deviceId: { exact: deviceId } }, audio: false });
+      } else {
+        constraints.push(
+          { video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
+          { video: { width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
+          { video: true, audio: false },
+        );
+      }
+      for (const c of constraints) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia(c);
+          if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.muted = true;
+            videoRef.current.playsInline = true;
+            videoRef.current.play().catch(() => {});
+          }
+          break;
+        } catch { /* try next */ }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [phase, externalVideo]);
 
   // Run analysis when phase transitions to 'running'
   useEffect(() => {
@@ -380,7 +478,9 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
               setProgress(cPct);
 
               if (challengeFrameRef.current >= CHALLENGE_FRAMES) {
-                if (challengePassedRef.current) challengeScoreRef.current += 15;
+                const passed = challengePassedRef.current;
+                if (passed) challengeScoreRef.current += 15;
+                challengeResultsRef.current.push({ label: CHALLENGE_LABELS[challenge], pts: passed ? 15 : 0 });
 
                 challengeIdxRef.current++;
                 if (challengeIdxRef.current >= challengesRef.current.length) {
@@ -508,7 +608,9 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
             reasons.push('OB:error');
           }
         }
-      } else if (provider === 'aws_detect_faces' && serverUrl && canvasRef.current) {
+      }
+      let awsInfo: { label: string; value: string }[] | undefined;
+      if (provider === 'aws_detect_faces' && serverUrl && canvasRef.current) {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         if (ctx && video) {
@@ -524,9 +626,16 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
             if (data.score > 0) {
               backendScore = data.score;
               reasons.push(`AWS:${data.score}pts`);
-              if (data.eyes_open) reasons.push('eyes open');
-              if (data.quality_brightness > 40) reasons.push('good lighting');
-              if (data.quality_sharpness > 40) reasons.push('sharp image');
+              // Itemize each AWS criterion as individual breakdown items
+              if (data.confidence > 90) { breakdown.push({ label: 'AWS Face Confidence', pts: 5 }); reasons.push('face conf high'); }
+              if (data.eyes_open && data.eyes_open_confidence > 80) { breakdown.push({ label: 'AWS Eyes Open', pts: 5 }); reasons.push('eyes open'); }
+              if (data.quality_brightness > 40) { breakdown.push({ label: 'AWS Lighting', pts: 5 }); reasons.push('good lighting'); }
+              if (data.quality_sharpness > 40) { breakdown.push({ label: 'AWS Sharpness', pts: 5 }); reasons.push('sharp image'); }
+              // Predictions from AWS
+              awsInfo = [];
+              if (data.age_low != null && data.age_high != null) awsInfo.push({ label: 'Age', value: `${data.age_low}-${data.age_high}` });
+              if (data.gender) awsInfo.push({ label: 'Gender', value: data.gender });
+              if (data.expression) awsInfo.push({ label: 'Expression', value: data.expression });
             } else {
               reasons.push('AWS:no face');
             }
@@ -537,7 +646,6 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       }
 
       score += backendScore;
-      if (backendScore > 0) breakdown.push({ label: provider === 'openbiometrics' ? 'OpenBiometrics' : 'Backend', pts: backendScore });
       score = Math.min(100, score);
       const pass = score >= LIVENESS_PASS_THRESHOLD;
       const details = reasons.join(', ');
@@ -549,11 +657,15 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       if (externalVideo) {
         recordingUrl = externalVideo.currentSrc || externalVideo.src || undefined;
       } else if (recordedChunksRef.current.length > 0) {
-        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
-        recordingUrl = URL.createObjectURL(blob);
+        const rawBlob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+        const recordingDurationMs = Date.now() - recordingStartRef.current;
+        const fixedBlob = await fixWebmDuration(rawBlob, recordingDurationMs).catch(() => rawBlob);
+        recordingUrl = URL.createObjectURL(fixedBlob);
       }
+      const recordingDuration = externalVideo ? undefined : Math.round((Date.now() - recordingStartRef.current) / 1000);
+      const challenges = challengeResultsRef.current.length > 0 ? challengeResultsRef.current : undefined;
       if (externalVideo) { video.pause(); }
-      onComplete({ pass, score, details, recordingUrl, breakdown });
+      onComplete({ pass, score, details, recordingUrl, recordingDuration, breakdown, challenges, info: awsInfo });
     }
 
     rafRef.current = requestAnimationFrame(checkFrame);
@@ -567,99 +679,75 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
     return <div style={{ textAlign: 'center', padding: 12, color: '#ef4444', fontSize: 13 }}>Camera error: {error}</div>;
   }
 
-  if (phase === 'preview' && !externalVideo) {
-    return (
-      <div style={{ textAlign: 'center' }}>
-        <canvas ref={canvasRef} style={{ display: 'none' }} width={640} height={480} />
-        <div style={{
-          position: 'relative',
-          borderRadius: 8,
-          overflow: 'hidden',
-          background: '#000',
-          minHeight: 200,
-          marginBottom: 8,
-        }}>
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            style={{ width: '100%', display: 'block', transform: 'scaleX(-1)' }}
-          />
-        </div>
-        {cameras.length > 1 && (
-          <div style={{ marginBottom: 8 }}>
-            <select
-              value={selectedCamera}
-              onChange={(e) => switchCamera(e.target.value)}
-              style={{
-                width: '100%',
-                padding: 6,
-                background: '#0f172a',
-                color: '#e2e8f0',
-                border: '1px solid #334155',
-                borderRadius: 6,
-                fontSize: 12,
-              }}
-            >
-              {cameras.map((cam, i) => (
-                <option key={cam.deviceId} value={cam.deviceId}>
-                  {cam.label || `Camera ${i + 1}`}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-        <button
-          onClick={() => {
-            setPhase('running');
-            setStatus('Analyzing face...');
-          }}
-          style={{
-            padding: '10px 28px',
-            fontSize: 14,
-            fontWeight: 600,
-            border: 'none',
-            borderRadius: 8,
-            cursor: 'pointer',
-            background: 'linear-gradient(135deg, #581c87, #7c3aed)',
-            color: '#e9d5ff',
-            marginTop: 4,
-          }}
-        >
-          Start Liveness
-        </button>
-      </div>
-    );
-  }
+  const isPreview = phase === 'preview' && !externalVideo;
 
   return (
     <div style={{ textAlign: 'center' }}>
       <canvas ref={canvasRef} style={{ display: 'none' }} width={640} height={480} />
-      <video
-        ref={videoRef}
-        style={{ width: '100%', maxWidth: 280, borderRadius: 6, display: 'block', margin: '0 auto 8px', transform: externalVideo ? 'none' : 'scaleX(-1)' }}
-        playsInline
-        muted
-      />
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 6 }}>
-        <div style={{
-          width: 10, height: 10, borderRadius: '50%',
-          background: progress < 100 ? '#f59e0b' : '#22c55e',
-          animation: progress < 100 ? 'pulse 1s infinite' : 'none',
-        }} />
-        <span style={{ color: '#e2e8f0', fontSize: 12, fontWeight: 600 }}>{status}</span>
+      <div style={isPreview ? {
+        position: 'relative', borderRadius: 8, overflow: 'hidden', background: '#000', minHeight: 200, marginBottom: 8,
+      } : {}}>
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          style={isPreview ? { width: '100%', display: 'block', transform: 'scaleX(-1)' } : {
+            width: '100%', maxWidth: 280, borderRadius: 6, display: 'block', margin: '0 auto 8px', transform: externalVideo ? 'none' : 'scaleX(-1)',
+          }}
+        />
       </div>
-      <div style={{ width: '80%', maxWidth: 200, margin: '0 auto', height: 4, background: '#334155', borderRadius: 2, overflow: 'hidden' }}>
-        <div style={{
-          width: `${progress}%`, height: '100%',
-          background: 'linear-gradient(90deg, #f59e0b, #22c55e)',
-          borderRadius: 2, transition: 'width 0.15s',
-        }} />
-      </div>
-      <div style={{ color: '#64748b', fontSize: 10, marginTop: 4 }}>
-        {externalVideo ? 'Analyzing uploaded video...' : 'Follow the on-screen instructions to move your head'}
-      </div>
+      {isPreview && cameras.length > 1 && (
+        <div style={{ marginBottom: 8 }}>
+          <select
+            value={selectedCamera}
+            onChange={(e) => switchCamera(e.target.value)}
+            style={{
+              width: '100%', padding: 6, background: '#0f172a', color: '#e2e8f0',
+              border: '1px solid #334155', borderRadius: 6, fontSize: 12,
+            }}
+          >
+            {cameras.map((cam, i) => (
+              <option key={cam.deviceId} value={cam.deviceId}>
+                {cam.label || `Camera ${i + 1}`}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      {isPreview ? (
+        <button
+          onClick={() => { setPhase('running'); setStatus('Analyzing face...'); }}
+          style={{
+            padding: '10px 28px', fontSize: 14, fontWeight: 600, border: 'none',
+            borderRadius: 8, cursor: 'pointer', background: 'linear-gradient(135deg, #581c87, #7c3aed)',
+            color: '#e9d5ff', marginTop: 4,
+          }}
+        >
+          Start Liveness
+        </button>
+      ) : (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 6 }}>
+            <div style={{
+              width: 10, height: 10, borderRadius: '50%',
+              background: progress < 100 ? '#f59e0b' : '#22c55e',
+              animation: progress < 100 ? 'pulse 1s infinite' : 'none',
+            }} />
+            <span style={{ color: '#e2e8f0', fontSize: 12, fontWeight: 600 }}>{status}</span>
+          </div>
+          <div style={{ width: '80%', maxWidth: 200, margin: '0 auto', height: 4, background: '#334155', borderRadius: 2, overflow: 'hidden' }}>
+            <div style={{
+              width: `${progress}%`, height: '100%',
+              background: 'linear-gradient(90deg, #f59e0b, #22c55e)',
+              borderRadius: 2, transition: 'width 0.15s',
+            }} />
+          </div>
+          <div style={{ color: '#64748b', fontSize: 10, marginTop: 4 }}>
+            {externalVideo ? 'Analyzing uploaded video...' : 'Follow the on-screen instructions to move your head'}
+          </div>
+        </>
+      )}
     </div>
   );
 }

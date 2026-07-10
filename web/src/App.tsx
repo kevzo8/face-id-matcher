@@ -76,38 +76,13 @@ export default function App() {
   const [livenessPassed, setLivenessPassed] = useState(false);
   const [livenessResult, setLivenessResult] = useState<{ pass: boolean; score: number; details: string } | null>(null);
   const [livenessTestStarted, setLivenessTestStarted] = useState(false);
-  const [livenessTestResult, setLivenessTestResult] = useState<{ pass: boolean; score: number; details: string; recordingUrl?: string; breakdown?: { label: string; pts: number }[] } | null>(null);
+  const [livenessTestResult, setLivenessTestResult] = useState<{ pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[] } | null>(null);
   const [livenessTestVideo, setLivenessTestVideo] = useState<HTMLVideoElement | null>(null);
   const [livenessTestMode, setLivenessTestMode] = useState<'active' | 'passive' | 'upload' | null>(null);
   const [passiveLivenessResult, setPassiveLivenessResult] = useState<{ is_real: boolean; confidence: number; score: number; snapshotUrl?: string; details?: string; error?: string; breakdown?: { label: string; pts: number }[]; info?: { label: string; value: string }[] } | null>(null);
-  const [passiveLivenessProvider, setPassiveLivenessProvider] = useState<'faceplusplus' | 'aws' | 'heuristic'>('heuristic');
+  const [passiveLivenessProvider, setPassiveLivenessProvider] = useState<'faceplusplus' | 'faceplusplus_hybrid' | 'aws' | 'aws_hybrid' | 'heuristic'>('heuristic');
   const livenessTestVideoRef = useRef<HTMLVideoElement>(null);
   const playbackRef = useRef<HTMLVideoElement>(null);
-
-  // Reset playback scrubber to 0:00 whenever a new recording is produced.
-  // Note: listeners use { once: true } so they DON'T fire again during playback
-  // (canplay fires repeatedly as more data buffers, which would snap the
-  // playhead back to 0 and prevent the video from playing).
-  useEffect(() => {
-    const url = livenessTestResult?.recordingUrl;
-    if (!url) return;
-    const v = playbackRef.current;
-    if (!v) return;
-    const seekToStart = () => { try { v.currentTime = 0; } catch {} };
-    seekToStart();
-    v.addEventListener('loadedmetadata', seekToStart, { once: true });
-    v.addEventListener('canplay', seekToStart, { once: true });
-    // Belt-and-suspenders: re-seek on the next two animation frames
-    // (some browsers apply a non-zero currentTime after metadata loads)
-    const raf1 = requestAnimationFrame(() => seekToStart());
-    const raf2 = requestAnimationFrame(() => requestAnimationFrame(seekToStart));
-    return () => {
-      v.removeEventListener('loadedmetadata', seekToStart);
-      v.removeEventListener('canplay', seekToStart);
-      cancelAnimationFrame(raf1);
-      cancelAnimationFrame(raf2);
-    };
-  }, [livenessTestResult?.recordingUrl]);
 
   useEffect(() => {
     function handleRoute() {
@@ -498,7 +473,7 @@ export default function App() {
 
           {/* ==================== LIVENESS ==================== */}
           <div style={{ display: feature === 'liveness' ? 'block' : 'none' }}>
-            <div style={{ maxWidth: 480, margin: '0 auto' }}>
+            <div style={{ maxWidth: 680, margin: '0 auto' }}>
               <h3 style={{ color: '#e2e8f0', fontWeight: 600, fontSize: 15, marginBottom: 8, textAlign: 'center' }}>Liveness Detection Test</h3>
               <video ref={livenessTestVideoRef} style={{ display: 'none' }} playsInline muted />
               {!livenessTestStarted && !livenessTestResult && !livenessTestMode && !passiveLivenessResult && (
@@ -554,93 +529,127 @@ export default function App() {
                 </div>
               )}
               {livenessTestResult && (
-                <div style={{ textAlign: 'center', marginTop: 12 }}>
-                  {livenessTestResult.recordingUrl && (
-                    <div style={{ marginBottom: 12 }}>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Playback</div>
-                      <video ref={playbackRef} key={livenessTestResult.recordingUrl} src={livenessTestResult.recordingUrl} controls preload="auto"
-                        onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0; }}
-                        onCanPlay={(e) => { e.currentTarget.currentTime = 0; }}
-                        style={{ width: '100%', maxWidth: 280, borderRadius: 6, display: 'block', margin: '0 auto' }} />
-                    </div>
-                  )}
-                  <div style={{ padding: '14px 16px', borderRadius: 8,
-                    background: livenessTestResult.pass ? '#064e3b' : '#450a0a',
-                    border: `1px solid ${livenessTestResult.pass ? '#22c55e' : '#ef4444'}`, marginBottom: 12 }}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: livenessTestResult.pass ? '#86efac' : '#fca5a5', marginBottom: 4 }}>
-                      {livenessTestResult.pass ? 'ACTIVE LIVENESS PASSED' : 'ACTIVE LIVENESS FAILED'}
-                    </div>
-                    <div style={{ fontSize: 32, fontWeight: 800, color: livenessTestResult.pass ? '#bbf7d0' : '#fecaca', marginBottom: 4 }}>{livenessTestResult.score}/100</div>
-                    <div style={{ color: livenessTestResult.pass ? '#86efac' : '#fca5a5', fontSize: 12 }}>{livenessTestResult.details}</div>
-                    {livenessTestResult.breakdown && (
-                      <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left' }}>
-                        <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Score Breakdown</div>
-                        {livenessTestResult.breakdown.map((b, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '2px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3 }}>
-                            <span>{b.label}</span>
-                            <span style={{ fontWeight: 600, color: b.pts > 0 ? '#86efac' : '#fca5a5' }}>{b.pts > 0 ? '+' : ''}{b.pts}</span>
+                <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginTop: 12 }}>
+                  <div style={{ flex: '0 0 280px', textAlign: 'center' }}>
+                    {livenessTestResult.recordingUrl && (
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Playback</div>
+                        <video ref={playbackRef} key={livenessTestResult.recordingUrl} src={livenessTestResult.recordingUrl} controls preload="auto"
+                          onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0; }}
+                          style={{ width: '100%', borderRadius: 6, display: 'block' }} />
+                        {livenessTestResult.recordingDuration != null && (
+                          <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
+                            Duration: {Math.floor(livenessTestResult.recordingDuration / 60)}:{String(Math.floor(livenessTestResult.recordingDuration % 60)).padStart(2, '0')}
                           </div>
-                        ))}
+                        )}
                       </div>
                     )}
                   </div>
-                  <button onClick={() => {
-                    if (livenessTestResult.recordingUrl?.startsWith('blob:')) URL.revokeObjectURL(livenessTestResult.recordingUrl);
-                    setLivenessTestStarted(false); setLivenessTestResult(null); setLivenessTestVideo(null); setLivenessTestMode(null);
-                    if (livenessTestVideoRef.current) { livenessTestVideoRef.current.src = ''; livenessTestVideoRef.current.load(); }
-                  }}
-                    style={{ padding: '8px 20px', fontSize: 13, fontWeight: 600, border: '1px solid #475569', borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#e2e8f0' }}>
-                    &#8634; Reset
-                  </button>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ padding: '14px 16px', borderRadius: 8,
+                      background: livenessTestResult.pass ? '#064e3b' : '#450a0a',
+                      border: `1px solid ${livenessTestResult.pass ? '#22c55e' : '#ef4444'}`, marginBottom: 12 }}>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: livenessTestResult.pass ? '#86efac' : '#fca5a5', marginBottom: 4 }}>
+                        {livenessTestResult.pass ? 'ACTIVE LIVENESS PASSED' : 'ACTIVE LIVENESS FAILED'}
+                      </div>
+                      <div style={{ fontSize: 32, fontWeight: 800, color: livenessTestResult.pass ? '#bbf7d0' : '#fecaca', marginBottom: 4 }}>{livenessTestResult.score}/100</div>
+                      <div style={{ color: livenessTestResult.pass ? '#86efac' : '#fca5a5', fontSize: 12 }}>{livenessTestResult.details}</div>
+                      {livenessTestResult.challenges && (
+                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left' }}>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Challenges</div>
+                          {livenessTestResult.challenges.map((c, i) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '2px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3 }}>
+                              <span>{c.label}</span>
+                              <span style={{ fontWeight: 600, color: c.pts > 0 ? '#86efac' : '#fca5a5' }}>+{c.pts}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {livenessTestResult.breakdown && (
+                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left' }}>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Score Breakdown</div>
+                          {livenessTestResult.breakdown.map((b, i) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '2px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3 }}>
+                              <span>{b.label}</span>
+                              <span style={{ fontWeight: 600, color: b.pts > 0 ? '#86efac' : '#fca5a5' }}>{b.pts > 0 ? '+' : ''}{b.pts}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {livenessTestResult.info && livenessTestResult.info.length > 0 && (
+                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left' }}>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Predictions</div>
+                          {livenessTestResult.info.map((it, i) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '2px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3 }}>
+                              <span>{it.label}</span>
+                              <span style={{ fontWeight: 600, color: '#93c5fd' }}>{it.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button onClick={() => {
+                      if (livenessTestResult.recordingUrl?.startsWith('blob:')) URL.revokeObjectURL(livenessTestResult.recordingUrl);
+                      setLivenessTestStarted(false); setLivenessTestResult(null); setLivenessTestVideo(null); setLivenessTestMode(null);
+                      if (livenessTestVideoRef.current) { livenessTestVideoRef.current.src = ''; livenessTestVideoRef.current.load(); }
+                    }}
+                      style={{ padding: '8px 20px', fontSize: 13, fontWeight: 600, border: '1px solid #475569', borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#e2e8f0' }}>
+                      &#8634; Reset
+                    </button>
+                  </div>
                 </div>
               )}
               {passiveLivenessResult && (
-                <div style={{ textAlign: 'center', marginTop: 12 }}>
-                  {passiveLivenessResult.snapshotUrl && (
-                    <div style={{ marginBottom: 12 }}>
-                      <img src={passiveLivenessResult.snapshotUrl} alt="Captured face"
-                        style={{ width: '100%', maxWidth: 320, borderRadius: 8, objectFit: 'contain', border: '1px solid #475569' }} />
-                    </div>
-                  )}
-                  <div style={{ padding: '14px 16px', borderRadius: 8,
-                    background: passiveLivenessResult.is_real ? '#064e3b' : '#450a0a',
-                    border: `1px solid ${passiveLivenessResult.is_real ? '#22c55e' : '#ef4444'}`, marginBottom: 12 }}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: passiveLivenessResult.is_real ? '#86efac' : '#fca5a5', marginBottom: 4 }}>
-                      {passiveLivenessResult.is_real ? 'PASSIVE LIVENESS PASSED' : 'PASSIVE LIVENESS FAILED'}
-                    </div>
-                    <div style={{ fontSize: 32, fontWeight: 800, color: passiveLivenessResult.is_real ? '#bbf7d0' : '#fecaca', marginBottom: 4 }}>
-                      {Math.round(passiveLivenessResult.confidence * 100)}%
-                    </div>
-                    <div style={{ color: passiveLivenessResult.is_real ? '#86efac' : '#fca5a5', fontSize: 12 }}>
-                      Score: {passiveLivenessResult.score}/20 &mdash; {passiveLivenessResult.details || passiveLivenessResult.error || (passiveLivenessResult.is_real ? 'Real face detected' : 'Spoof detected')}
-                    </div>
-                    {passiveLivenessResult.breakdown && (
-                      <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left' }}>
-                        <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Score Breakdown</div>
-                        {passiveLivenessResult.breakdown.map((b, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '2px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3 }}>
-                            <span>{b.label}</span>
-                            <span style={{ fontWeight: 600, color: b.pts > 0 ? '#86efac' : '#fca5a5' }}>+{b.pts.toFixed(1)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {passiveLivenessResult.info && passiveLivenessResult.info.length > 0 && (
-                      <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left' }}>
-                        <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Predictions</div>
-                        {passiveLivenessResult.info.map((it, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '2px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3 }}>
-                            <span>{it.label}</span>
-                            <span style={{ fontWeight: 600, color: '#93c5fd' }}>{it.value}</span>
-                          </div>
-                        ))}
+                <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginTop: 12 }}>
+                  <div style={{ flex: '0 0 280px', textAlign: 'center' }}>
+                    {passiveLivenessResult.snapshotUrl && (
+                      <div>
+                        <img src={passiveLivenessResult.snapshotUrl} alt="Captured face"
+                          style={{ width: '100%', borderRadius: 8, objectFit: 'contain', border: '1px solid #475569' }} />
                       </div>
                     )}
                   </div>
-                  <button onClick={() => { setPassiveLivenessResult(null); setLivenessTestMode(null); }}
-                    style={{ padding: '8px 20px', fontSize: 13, fontWeight: 600, border: '1px solid #475569', borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#e2e8f0' }}>
-                    &#8634; Reset
-                  </button>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ padding: '14px 16px', borderRadius: 8,
+                      background: passiveLivenessResult.is_real ? '#064e3b' : '#450a0a',
+                      border: `1px solid ${passiveLivenessResult.is_real ? '#22c55e' : '#ef4444'}`, marginBottom: 12 }}>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: passiveLivenessResult.is_real ? '#86efac' : '#fca5a5', marginBottom: 4 }}>
+                        {passiveLivenessResult.is_real ? 'PASSIVE LIVENESS PASSED' : 'PASSIVE LIVENESS FAILED'}
+                      </div>
+                      <div style={{ fontSize: 32, fontWeight: 800, color: passiveLivenessResult.is_real ? '#bbf7d0' : '#fecaca', marginBottom: 4 }}>
+                        {Math.round(passiveLivenessResult.confidence * 100)}%
+                      </div>
+                      <div style={{ color: passiveLivenessResult.is_real ? '#86efac' : '#fca5a5', fontSize: 12 }}>
+                        Score: {passiveLivenessResult.score}/20 &mdash; {passiveLivenessResult.details || passiveLivenessResult.error || (passiveLivenessResult.is_real ? 'Real face detected' : 'Spoof detected')}
+                      </div>
+                      {passiveLivenessResult.breakdown && (
+                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left' }}>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Score Breakdown</div>
+                          {passiveLivenessResult.breakdown.map((b, i) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '2px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3 }}>
+                              <span>{b.label}</span>
+                              <span style={{ fontWeight: 600, color: b.pts > 0 ? '#86efac' : '#fca5a5' }}>+{b.pts.toFixed(1)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {passiveLivenessResult.info && passiveLivenessResult.info.length > 0 && (
+                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left' }}>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Predictions</div>
+                          {passiveLivenessResult.info.map((it, i) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '2px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3 }}>
+                              <span>{it.label}</span>
+                              <span style={{ fontWeight: 600, color: '#93c5fd' }}>{it.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button onClick={() => { setPassiveLivenessResult(null); setLivenessTestMode(null); }}
+                      style={{ padding: '8px 20px', fontSize: 13, fontWeight: 600, border: '1px solid #475569', borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#e2e8f0' }}>
+                      &#8634; Reset
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -837,7 +846,9 @@ export default function App() {
                 style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, marginBottom: 8 }}>
                 <option value="heuristic">Heuristic Passive ($0)</option>
                 <option value="aws">AWS DetectFaces ($0.001/check)</option>
+                <option value="aws_hybrid">AWS + Heuristic ($0.001/check)</option>
                 <option value="faceplusplus">Face++ Passive ($0.00019/check)</option>
+                <option value="faceplusplus_hybrid">Face++ + Heuristic ($0.00019/check)</option>
               </select>
 <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>
                 
@@ -856,6 +867,21 @@ export default function App() {
                   </>
                 )}
                 
+                {passiveLivenessProvider === 'faceplusplus_hybrid' && (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Server URL</div>
+                    <input type="text" value={faceplusServerUrl} onChange={(e) => setFaceplusServerUrl(e.target.value)}
+                    style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box', marginBottom: 8 }} />
+                    <strong style={{ color: '#fbbf24' }}>Face++ + Heuristic</strong> &mdash; Combined ($0.00019/check).
+                    <br />
+                    <span style={{ fontSize: 10, color: '#64748b', marginTop: 4, display: 'block' }}>
+                      Merges <strong>Face++ cloud attributes</strong> (eyes open, blur, smiling) with <strong>pixel-level spoof detection</strong> (glare&nbsp;—&nbsp;bright spots from screens/paper, moiré&nbsp;—&nbsp;rainbow/wavy patterns from screen capture, color banding&nbsp;—&nbsp;blocky/patchy colors, edges&nbsp;—&nbsp;how defined facial features look).<br />
+                      Formula: <strong>confidence = Face++ × 40% + Heuristic × 60%</strong>. Threshold: <strong>combined &gt; 0.75</strong> (score ≥ 15/20).<br />
+                      <span style={{ color: '#22c55e' }}>✓ Face++ cloud analysis + heuristic spoof detection in one score.</span>
+                    </span>
+                  </>
+                )}
+                
                 {passiveLivenessProvider === 'aws' && (
                   <>
                     <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Server URL</div>
@@ -864,7 +890,23 @@ export default function App() {
                     <strong style={{ color: '#22c55e' }}>AWS DetectFaces</strong> &mdash; Heuristic from face attributes ($0.001/check).
                     <br />
                     <span style={{ fontSize: 10, color: '#64748b', marginTop: 4, display: 'block' }}>
-                      Analyzes: <strong>Eyes Open</strong> (eyes detected &amp; open), <strong>Mouth Natural</strong> (mouth confidently closed), <strong>Sharpness</strong> (image clarity), <strong>Brightness</strong> (lighting balance). Each metric 0-25 pts max (total 0-100). Maps to 0-20 scale. Threshold: <strong>score &gt; 80</strong> (score ≥ 16/20).<br />
+                      <strong>Standalone mode.</strong> Analyzes: <strong>Eyes Open</strong> (eyes detected &amp; open), <strong>Mouth Natural</strong> (mouth confidently closed), <strong>Sharpness</strong> (image clarity), <strong>Brightness</strong> (lighting balance). Each metric 0-25 pts (total 0-100). Maps to 0-20 scale. Threshold: <strong>score &gt; 80</strong> (score ≥ 16/20).<br />
+                      <span style={{ color: '#f59e0b' }}>⚠️ No spoof detection — use "AWS + Heuristic" for printed photo/screen detection.</span>
+                    </span>
+                  </>
+                )}
+                
+                {passiveLivenessProvider === 'aws_hybrid' && (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Server URL</div>
+                    <input type="text" value={awsServerUrl} onChange={(e) => setAwsServerUrl(e.target.value)}
+                    style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box', marginBottom: 8 }} />
+                    <strong style={{ color: '#22c55e' }}>AWS DetectFaces + Heuristic</strong> &mdash; Combined ($0.001/check).
+                    <br />
+                    <span style={{ fontSize: 10, color: '#64748b', marginTop: 4, display: 'block' }}>
+                      Merges <strong>AWS face attributes</strong> (eyes open, mouth, sharpness, brightness) with <strong>pixel-level spoof detection</strong> (glare&nbsp;—&nbsp;bright spots from screens/paper, moiré&nbsp;—&nbsp;rainbow/wavy patterns from screen capture, color banding&nbsp;—&nbsp;blocky/patchy colors, edges&nbsp;—&nbsp;how defined facial features look).<br />
+                      Formula: <strong>confidence = AWS × 40% + Heuristic × 60%</strong>. Threshold: <strong>combined &gt; 0.75</strong> (score ≥ 15/20).<br />
+                      <span style={{ color: '#22c55e' }}>✓ Catches printed photos (glare), screen replays (moiré/banding), ID pictures (flat texture) even when AWS scores them high.</span>
                     </span>
                   </>
                 )}
@@ -878,14 +920,14 @@ export default function App() {
                     <br />
                     <span style={{ fontSize: 10, color: '#64748b', marginTop: 4, display: 'block' }}>
                       <strong>8 metrics (0-4 pts each):</strong><br />
-                      1. <strong>Sharpness</strong> (Laplacian variance ≥5) — detects blur<br />
-                      2. <strong>Edges</strong> (gradient strength ≥0.5) — photo texture<br />
-                      3. <strong>Color Depth</strong> (channel variance ≥500) — prevents flat photos<br />
-                      4. <strong>Tonal Range</strong> (histogram spread ≥0.2) — color variation<br />
-                      5. <strong>Detail</strong> (FFT high-freq ≥5) — fine details<br />
-                      6. <strong>No Glare</strong> (highlight ratio &lt;2%) — no screen reflections<br />
-                      7. <strong>No Moiré</strong> (screen pattern &lt;20%) — no digital artifacts<br />
-                      8. <strong>No Banding</strong> (color quantization &lt;40%) — no screen posterization<br />
+                      1. <strong>Sharpness</strong> (Laplacian variance ≥5) — how clear/sharp the face looks (blurry photos fail)<br />
+                      2. <strong>Edges</strong> (gradient strength ≥0.5) — how well-defined facial features are (printed photos look soft/fuzzy)<br />
+                      3. <strong>Color Depth</strong> (channel variance ≥500) — richness of skin tones (flat/low-contrast images fail)<br />
+                      4. <strong>Tonal Range</strong> (histogram spread ≥0.2) — natural light variation (washed-out photos fail)<br />
+                      5. <strong>Detail</strong> (FFT high-freq ≥5) — fine texture like pores and skin grain (screens can't reproduce these)<br />
+                      6. <strong>No Glare</strong> (highlight ratio &lt;2%) — no bright spots from screen or paper reflection<br />
+                      7. <strong>No Moiré</strong> (screen pattern &lt;20%) — no rainbow/wavy patterns from screen capture<br />
+                      8. <strong>No Banding</strong> (color quantization &lt;40%) — smooth color gradients, not blocky/patchy (screen posterization)<br />
                       Weighted average, threshold: <strong>score &gt; 6</strong> (0-20 scale). Fails on: printed photos, screen replays, poor image quality.
                     </span>
                   </>
@@ -901,11 +943,11 @@ export default function App() {
               {showLivenessHow && (
                 <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.6, marginBottom: 8, marginTop: 4 }}>
                   <strong style={{ color: '#a78bfa' }}>Active</strong> metrics (threshold <strong style={{ color: '#f59e0b' }}>70/100</strong>):<br />
-                  &nbsp;&nbsp;• <strong>Face Size</strong> (0-20): face width ≥80px → up to 20pts. Penalizes small/distorted faces.<br />
-                  &nbsp;&nbsp;• <strong>Texture</strong> (0-20): Laplacian pixel variance ≥20 → up to 20pts. Flat printed photos score low.<br />
-                  &nbsp;&nbsp;• <strong>Motion</strong> (0-20): frame-to-frame pixel delta ≥0.8 → up to 20pts. Requires natural micro-movements.<br />
-                  &nbsp;&nbsp;• <strong>Challenges</strong> (0-30): 15pts each for head-turn (left/right) or look (up/down) detected via nose offset vs baseline.<br />
-                  &nbsp;&nbsp;• <strong>Blinks</strong> (0-10): EAR ≤0.2 triggers blink count; ≥2 blinks → 6-10pts.<br />
+                  &nbsp;&nbsp;• <strong>Face Size</strong> (0-20): face is big enough in frame → up to 20pts. Small/distorted faces lose points.<br />
+                  &nbsp;&nbsp;• <strong>Texture</strong> (0-20): how much natural skin detail the camera sees (Laplacian variance ≥20) → up to 20pts. Flat printed photos score low.<br />
+                  &nbsp;&nbsp;• <strong>Motion</strong> (0-20): tiny natural movements between frames (pixel delta ≥0.8) → up to 20pts. Frozen or replayed video fails.<br />
+                  &nbsp;&nbsp;• <strong>Challenges</strong> (0-30): 15pts each for turning head left/right or looking up/down — checks the nose has actually moved relative to the face center.<br />
+                  &nbsp;&nbsp;• <strong>Blinks</strong> (0-10): how many times eyes close naturally (EAR ≤0.2 counts as a blink); ≥2 blinks → 6-10pts.<br />
                   <strong style={{ color: '#4ade80' }}>Passive</strong>: Single-frame analysis. Three methods available:<br />
                   &nbsp;&nbsp;• <strong>Face++</strong>: Trained ML model, high accuracy, requires internet<br />
                   &nbsp;&nbsp;• <strong>AWS DetectFaces</strong>: Heuristic from face attributes (eyes, mouth, sharpness, lighting)<br />

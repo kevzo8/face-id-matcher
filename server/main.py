@@ -170,6 +170,10 @@ class DetectFacesResponse(BaseModel):
     quality_brightness: float
     quality_sharpness: float
     score: int
+    age_low: int | None = None
+    age_high: int | None = None
+    gender: str | None = None
+    expression: str | None = None
     error: str | None = None
 
 
@@ -271,16 +275,25 @@ async def detect_faces_liveness(request: Request):
         brightness = quality.get("Brightness", 0)
         sharpness = quality.get("Sharpness", 0)
 
+        age_range = face.get("AgeRange", {})
+        gender = face.get("Gender", {}).get("Value")
+        emotions = face.get("Emotions", [])
+        expression = max(emotions, key=lambda e: e.get("Confidence", 0)).get("Type") if emotions else None
+
         score = 0
-        if confidence > 90: score += 5
-        if eyes_open and eyes_open_conf > 80: score += 5
-        if brightness > 40: score += 5
-        if sharpness > 40: score += 5
+        breakdown_items = {"Face Confidence": 0, "Eyes Open": 0, "Lighting": 0, "Sharpness": 0}
+        if confidence > 90: breakdown_items["Face Confidence"] = 5
+        if eyes_open and eyes_open_conf > 80: breakdown_items["Eyes Open"] = 5
+        if brightness > 40: breakdown_items["Lighting"] = 5
+        if sharpness > 40: breakdown_items["Sharpness"] = 5
+        score = sum(breakdown_items.values())
 
         return DetectFacesResponse(
             face_detected=True, confidence=confidence, eyes_open=eyes_open,
             eyes_open_confidence=eyes_open_conf,
             quality_brightness=brightness, quality_sharpness=sharpness,
+            age_low=age_range.get("Low"), age_high=age_range.get("High"),
+            gender=gender, expression=expression,
             score=score,
         )
     except Exception as e:
@@ -320,9 +333,39 @@ async def passive_liveness(request: Request):
         provider_used = None
         
         if provider == "faceplusplus" and liveness_faceplusplus:
+            # Standalone Face++ heuristic
             result = liveness_faceplusplus.predict(image_bytes, bbox)
             provider_used = "Face++ Liveness"
-        elif provider == "aws" and liveness_aws and liveness_passive:
+        elif provider == "faceplusplus_hybrid" and liveness_faceplusplus and liveness_passive:
+            # Hybrid: merge Face++ cloud attributes (40%) with pixel-level analysis (60%)
+            fpp_result = liveness_faceplusplus.predict(image_bytes, bbox)
+            heuristic_result = liveness_passive.predict(image_bytes, bbox)
+
+            if fpp_result.get("error"):
+                result = heuristic_result
+                provider_used = "Heuristic Liveness (Face++ unavailable)"
+            elif heuristic_result.get("error"):
+                result = fpp_result
+                provider_used = "Face++ Liveness (heuristic unavailable)"
+            else:
+                combined_conf = fpp_result.get("confidence", 0) * 0.40 + heuristic_result.get("confidence", 0) * 0.60
+                score = max(1, min(20, int(combined_conf * 20)))
+                is_real = combined_conf > 0.75
+
+                result = {
+                    "is_real": is_real,
+                    "confidence": round(combined_conf, 4),
+                    "score": score,
+                    "breakdown": (fpp_result.get("breakdown") or []) + (heuristic_result.get("breakdown") or []),
+                    "info": fpp_result.get("info") or [],
+                    "error": None,
+                }
+                provider_used = "Face++ + Heuristic"
+        elif provider == "aws" and liveness_aws:
+            # Standalone AWS DetectFaces heuristic
+            result = liveness_aws.predict(image_bytes, bbox)
+            provider_used = "AWS Rekognition"
+        elif provider == "aws_hybrid" and liveness_aws and liveness_passive:
             # Hybrid: merge AWS face attributes (40%) with pixel-level analysis (60%)
             aws_result = liveness_aws.predict(image_bytes, bbox)
             heuristic_result = liveness_passive.predict(image_bytes, bbox)
