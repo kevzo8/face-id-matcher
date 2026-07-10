@@ -748,25 +748,31 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
               body: JSON.stringify({ image: b64 }),
             });
             const data = await res.json();
-            if (data.score > 0) {
-              backendScore = data.score;
-              reasons.push(`AWS:${data.score}pts`);
-              // Predictions from AWS
-              awsInfo = [];
+            // AWS DetectFaces is informational only — it detects faces and attributes,
+            // but does NOT detect spoofs/replays. It is not a liveness detector.
+            awsInfo = [];
+            if (data.face_detected) {
               if (data.age_low != null && data.age_high != null) awsInfo.push({ label: 'Age', value: `${data.age_low}-${data.age_high}` });
               if (data.gender) awsInfo.push({ label: 'Gender', value: data.gender });
               if (data.expression) awsInfo.push({ label: 'Expression', value: data.expression });
+              awsInfo.push({ label: 'Face Confidence', value: `${data.confidence?.toFixed(1) ?? '?'}%` });
+              awsInfo.push({ label: 'Eyes Open', value: data.eyes_open ? `Yes (${data.eyes_open_confidence?.toFixed(0) ?? '?'}%)` : 'No' });
+              awsInfo.push({ label: 'Lighting', value: data.quality_brightness?.toFixed(0) ?? '?' });
+              awsInfo.push({ label: 'Sharpness', value: data.quality_sharpness?.toFixed(0) ?? '?' });
             } else {
-              reasons.push('AWS:no face');
+              awsInfo.push({ label: 'AWS', value: 'No face detected' });
             }
+            reasons.push(data.face_detected ? 'AWS:face detected (informational)' : 'AWS:no face');
           } catch {
             reasons.push('AWS:error');
           }
         }
       }
 
-      score += backendScore;
-      if (backendScore > 0) breakdown.push({ label: provider === 'openbiometrics' ? 'OpenBiometrics' : 'AWS Score', pts: backendScore });
+      // Note: AWS DetectFaces is intentionally NOT added to the score. It's a face
+      // attribute analyzer, not a liveness detector. Adding its score would let a
+      // printed photo pass because it has eyes open, good lighting, and high sharpness.
+      if (backendScore > 0) breakdown.push({ label: 'OpenBiometrics', pts: backendScore });
       score = Math.min(100, score);
       const pass = score >= LIVENESS_PASS_THRESHOLD;
       const details = reasons.join(', ');
@@ -810,7 +816,11 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       const spoofPrediction = isSpoof ? 'Likely Spoof' : 'Likely Real';
       const spoofInfo = [{ label: 'Prediction', value: spoofPrediction }, ...spoofSignals.map((s) => ({ label: 'Signal', value: s }))];
 
-      onComplete({ pass, score, details, recordingUrl, recordingDuration, breakdown, challenges, info: awsInfo ? [...awsInfo, ...spoofInfo] : spoofInfo });
+      // Pass decision: must meet score threshold AND must not be flagged as spoof
+      const finalPass = pass && !isSpoof;
+      if (isSpoof) reasons.push('SPOOF DETECTED');
+
+      onComplete({ pass: finalPass, score, details: reasons.join(', '), recordingUrl, recordingDuration, breakdown, challenges, info: awsInfo ? [...awsInfo, ...spoofInfo] : spoofInfo });
     }
 
     rafRef.current = requestAnimationFrame(checkFrame);
