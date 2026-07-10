@@ -303,6 +303,17 @@ async def detect_faces_liveness(request: Request):
         )
 
 
+class DetectObjectsResponse(BaseModel):
+    spoof_objects_detected: list[dict]
+    has_phone: bool
+    has_hand: bool
+    has_screen: bool
+    has_photo: bool
+    has_id: bool
+    spoof_risk: str
+    error: str | None = None
+
+
 @app.post("/liveness/detect-objects", response_model=DetectObjectsResponse)
 async def detect_objects_liveness(request: Request):
     body = await request.json()
@@ -373,17 +384,6 @@ async def detect_objects_liveness(request: Request):
             has_phone=False, has_hand=False, has_screen=False, has_photo=False, has_id=False,
             spoof_risk="unknown", error=str(e)
         )
-
-
-class DetectObjectsResponse(BaseModel):
-    spoof_objects_detected: list[dict]
-    has_phone: bool
-    has_hand: bool
-    has_screen: bool
-    has_photo: bool
-    has_id: bool
-    spoof_risk: str
-    error: str | None = None
 
 
 class PassiveLivenessResponse(BaseModel):
