@@ -803,8 +803,8 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
         }
       }
 
-      // Object detection for phone/screen/hand (spoof indicators)
-      if (serverUrl && canvasRef.current) {
+      // Object detection for phone/screen/hand (spoof indicators) — only for combined provider
+      if (provider === 'aws_detect_faces_objects' && serverUrl && canvasRef.current) {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         if (ctx && video) {

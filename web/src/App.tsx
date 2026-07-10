@@ -19,7 +19,7 @@ type ImageData = {
 type DetectionModel = 'fast' | 'accurate';
 type IdToFaceProvider = 'local' | 'rekognition' | 'megamatcher' | 'insightface' | 'faceplusplus';
 type OcrProvider = 'bedrock' | 'textract' | 'verihubs' | 'zoloz' | 'tencent' | 'google_docai' | 'mindee' | 'azure_di';
-type LivenessProvider = 'aws_rekognition' | 'aws_detect_faces' | 'faceplusplus' | 'azure_face' | 'hyperverge' | 'didit' | 'iproov' | 'open_face_liveness' | 'openbiometrics';
+type LivenessProvider = 'aws_rekognition' | 'aws_detect_faces' | 'aws_detect_faces_objects' | 'faceplusplus' | 'azure_face' | 'hyperverge' | 'didit' | 'iproov' | 'open_face_liveness' | 'openbiometrics';
 type FaceBox = { x: number; y: number; width: number; height: number; score: number };
 
 function checkOrientation(detection: faceapi.WithFaceLandmarks<{ detection: faceapi.FaceDetection }>): string | null {
@@ -820,10 +820,11 @@ export default function App() {
               <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Used when you click "Active Liveness"</div>
               <select value={livenessProvider} onChange={(e) => setLivenessProvider(e.target.value as LivenessProvider)}
                 style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12 }}>
-                <optgroup label="Functional">
-                  <option value="open_face_liveness">open-face-liveness (browser)</option>
-                  <option value="aws_detect_faces">AWS DetectFaces (server)</option>
-                </optgroup>
+<optgroup label="Functional">
+                    <option value="open_face_liveness">open-face-liveness (browser)</option>
+                    <option value="aws_detect_faces">AWS DetectFaces (server)</option>
+                    <option value="aws_detect_faces_objects">AWS DetectFaces + DetectObjects (server)</option>
+                  </optgroup>
                 <optgroup label="Not functional (trying later)">
                   <option value="aws_rekognition">AWS Rekog Liveness KVS</option>
                   <option value="faceplusplus">Face++ Liveness</option>
