@@ -76,7 +76,7 @@ export default function App() {
   const [livenessPassed, setLivenessPassed] = useState(false);
   const [livenessResult, setLivenessResult] = useState<{ pass: boolean; score: number; details: string } | null>(null);
   const [livenessTestStarted, setLivenessTestStarted] = useState(false);
-  const [livenessTestResult, setLivenessTestResult] = useState<{ pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[] } | null>(null);
+  const [livenessTestResult, setLivenessTestResult] = useState<{ pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[]; provider?: string } | null>(null);
   const [livenessTestVideo, setLivenessTestVideo] = useState<HTMLVideoElement | null>(null);
   const [livenessTestMode, setLivenessTestMode] = useState<'active' | 'passive' | 'upload' | null>(null);
   const [passiveLivenessResult, setPassiveLivenessResult] = useState<{ is_real: boolean; confidence: number; score: number; snapshotUrl?: string; details?: string; error?: string; breakdown?: { label: string; pts: number }[]; info?: { label: string; value: string }[] } | null>(null);
@@ -590,7 +590,7 @@ export default function App() {
                       <div style={{ marginTop: 4, fontSize: 10, color: '#94a3b8', fontStyle: 'italic' }}>
                         Note: Flash detection works best on mobile where screen directly illuminates face
                       </div>
-                      {livenessTestResult.objectInfo && livenessTestResult.objectInfo.length > 0 && (
+                      {livenessTestResult.objectInfo && livenessTestResult.objectInfo.length > 0 && livenessTestResult.provider === 'aws_detect_faces_objects' && (
                         <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left' }}>
                           <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Object Analysis</div>
                           {livenessTestResult.objectInfo.map((it, i) => (

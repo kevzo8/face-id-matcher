@@ -67,6 +67,7 @@ interface LivenessResult {
   info?: { label: string; value: string }[];
   colorAnalysis?: { label: string; value: string }[];
   objectInfo?: { label: string; value: string }[];
+  provider?: string;
 }
 
 interface LivenessCheckProps {
@@ -875,7 +876,6 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
         if (correctFlashes === 0) notes.push('The face did not reflect any flash');
         else if (correctFlashes === 1) notes.push('Weak light reflection (1 of 3 flashes detected)');
         else notes.push('Natural light reflection detected');
-        if (!isMobile) notes.push('Flash detection works best on mobile where screen directly illuminates face');
         colorAnalysis = [
           ...(colorAnalysis || []),
           ...notes.map(n => ({ label: 'Note', value: n })),
@@ -918,7 +918,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
         }
       }
 
-      onComplete({ pass: finalPass, score, details: reasons.join(', '), recordingUrl, recordingDuration, breakdown, challenges, info: awsInfo, colorAnalysis, objectInfo });
+      onComplete({ pass: finalPass, score, details: reasons.join(', '), recordingUrl, recordingDuration, breakdown, challenges, info: awsInfo, colorAnalysis, objectInfo, provider });
     }
 
     rafRef.current = requestAnimationFrame(checkFrame);
