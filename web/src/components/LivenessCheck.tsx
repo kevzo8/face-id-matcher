@@ -564,23 +564,15 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
 
                 challengeIdxRef.current++;
                 if (challengeIdxRef.current >= challengesRef.current.length) {
-                  // Challenges done — start flash liveness phase (mobile only)
-                  if (isMobile) {
-                    inChallengeRef.current = false;
-                    inFlashRef.current = true;
-                    flashStepRef.current = 0;
-                    flashFrameCountRef.current = 0;
-                    flashStepSamplesRef.current = [];
-                    setFlashColor('red');
-                    setStatus('Look at the screen — checking light reflection');
-                    setProgress(0);
-                  } else {
-                    // Desktop: skip flash, go straight to result
-                    cancelAnimationFrame(rafRef.current);
-                    runningRef.current = false;
-                    await computeResult();
-                    return;
-                  }
+                  // Challenges done — start flash liveness phase
+                  inChallengeRef.current = false;
+                  inFlashRef.current = true;
+                  flashStepRef.current = 0;
+                  flashFrameCountRef.current = 0;
+                  flashStepSamplesRef.current = [];
+                  setFlashColor('red');
+                  setStatus('Look at the screen — checking light reflection');
+                  setProgress(0);
                 } else {
                   challengeFrameRef.current = 0;
                   challengePassedRef.current = false;
@@ -826,9 +818,10 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       const challenges = challengeResultsRef.current.length > 0 ? challengeResultsRef.current : undefined;
       if (externalVideo) { video.pause(); }
 
-      // Color analysis (mobile only) - separate from score breakdown
+      // Color analysis - separate from score breakdown
+      // Flash detection works best on mobile where screen directly illuminates face
       let colorAnalysis: { label: string; value: string }[] | undefined;
-      if (isMobile && base && flashSamplesRef.current.length === 3) {
+      if (base && flashSamplesRef.current.length === 3) {
         const correctFlashes = flashSamplesRef.current.filter((s) => {
           const dr = s.r - base.r, dg = s.g - base.g, db = s.b - base.b;
           const pos = s.color === 'red' ? dr : s.color === 'green' ? dg : db;
@@ -839,9 +832,10 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
         if (correctFlashes === 0) notes.push('The face did not reflect any flash');
         else if (correctFlashes === 1) notes.push('Weak light reflection (1 of 3 flashes detected)');
         else notes.push('Natural light reflection detected');
+        if (!isMobile) notes.push('Flash detection works best on mobile');
         colorAnalysis = notes.map(n => ({ label: 'Note', value: n }));
-      } else if (isMobile) {
-        colorAnalysis = [{ label: 'Note', value: 'Flash liveness skipped — no baseline color captured' }];
+      } else {
+        colorAnalysis = [{ label: 'Note', value: isMobile ? 'Flash liveness skipped — no baseline color captured' : 'Flash liveness not available on desktop' }];
       }
 
       // Pass decision: score threshold only (spoof signals are informational)
