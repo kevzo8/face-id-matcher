@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import * as faceapi from 'face-api.js';
 
 interface PassiveResult {
@@ -21,33 +21,107 @@ interface Props {
   awsServerUrl?: string;
 }
 
+const btnStyle: React.CSSProperties = {
+  padding: '2px 8px', fontSize: 10, border: '1px solid #334155', borderRadius: 4,
+  cursor: 'pointer', background: '#1e293b', color: '#cbd5e1', lineHeight: 1.6,
+};
+
 export default function PassiveLivenessCheck({ onComplete, serverUrl, provider = 'heuristic', faceplusServerUrl, awsServerUrl }: Props) {
+  const [phase, setPhase] = useState<'preview' | 'detecting'>('preview');
   const [status, setStatus] = useState('Opening camera...');
   const [error, setError] = useState<string | null>(null);
+  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
+  const [selectedCamera, setSelectedCamera] = useState<string>('');
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const doneRef = useRef(false);
+  const detectingRef = useRef(false);
 
+  const refreshCameras = useCallback(async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter((d) => d.kind === 'videoinput');
+      setCameras(videoDevices);
+      if (videoDevices.length > 0 && !selectedCamera) {
+        setSelectedCamera(videoDevices[0].deviceId);
+      }
+    } catch {
+      // ignore
+    }
+  }, [selectedCamera]);
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+  }, []);
+
+  const startCamera = useCallback(async (deviceId?: string) => {
+    setError(null);
+    const constraints: MediaStreamConstraints[] = [];
+    if (deviceId) {
+      constraints.push({ video: { deviceId: { exact: deviceId } }, audio: false });
+    } else {
+      constraints.push(
+        { video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
+        { video: { width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
+        { video: true, audio: false },
+      );
+    }
+    let stream: MediaStream | null = null;
+    for (const c of constraints) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(c);
+        break;
+      } catch {
+        // try next constraint
+      }
+    }
+    if (!stream) {
+      setError('Camera access denied. No available camera found.');
+      return;
+    }
+    streamRef.current = stream;
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.muted = true;
+      videoRef.current.playsInline = true;
+      videoRef.current.play().catch(() => {});
+    }
+    refreshCameras();
+  }, [refreshCameras]);
+
+  const switchCamera = useCallback(async (deviceId: string) => {
+    setSelectedCamera(deviceId);
+    stopCamera();
+    await startCamera(deviceId);
+  }, [stopCamera, startCamera]);
+
+  // Open camera on mount in preview phase
   useEffect(() => {
+    startCamera(selectedCamera || undefined);
+    refreshCameras();
+    return () => stopCamera();
+  }, []);
+
+  // Run detection when phase transitions to 'detecting'
+  useEffect(() => {
+    if (phase !== 'detecting' || detectingRef.current) return;
+    detectingRef.current = true;
+
     let cancelled = false;
 
     async function run() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: false,
-        });
-        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
-
-        streamRef.current = stream;
+        const stream = streamRef.current;
+        if (!stream) {
+          setError('Camera stream lost');
+          return;
+        }
         const video = videoRef.current;
-        if (!video) { stream.getTracks().forEach(t => t.stop()); return; }
-
-        video.srcObject = stream;
-        video.muted = true;
-        video.playsInline = true;
-        await video.play();
+        if (!video) return;
 
         setStatus('Detecting face...');
 
@@ -55,7 +129,6 @@ export default function PassiveLivenessCheck({ onComplete, serverUrl, provider =
         const TIMEOUT_MS = 5_000;
         let frameCount = 0;
 
-        // Wait up to TIMEOUT_MS for a face
         while (Date.now() - startTime < TIMEOUT_MS) {
           if (cancelled || doneRef.current) return;
           await new Promise(r => setTimeout(r, 33));
@@ -67,7 +140,6 @@ export default function PassiveLivenessCheck({ onComplete, serverUrl, provider =
             const ctx = canvas.getContext('2d');
             if (!ctx) continue;
 
-            // Pick detection closest to center
             const cx = canvas.width / 2;
             const cy = canvas.height / 2;
             let best = detections[0];
@@ -80,18 +152,14 @@ export default function PassiveLivenessCheck({ onComplete, serverUrl, provider =
             const det = best;
             const box = det.detection.box;
 
-            // Draw full video frame
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Draw green bounding box around the detected face
             ctx.strokeStyle = '#00ff00';
             ctx.lineWidth = 3;
             ctx.strokeRect(box.x, box.y, box.width, box.height);
 
-            // Capture the frame with bounding box as snapshot
             const snapshotUrl = canvas.toDataURL('image/jpeg', 0.7);
 
-            // Send full frame (without box) to backend
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             const fullB64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
@@ -101,7 +169,6 @@ export default function PassiveLivenessCheck({ onComplete, serverUrl, provider =
             setStatus('Analyzing...');
             doneRef.current = true;
 
-            // Stop camera
             stream.getTracks().forEach(t => t.stop());
 
             const res = await fetch(`${(provider === 'faceplusplus' && faceplusServerUrl) || (provider === 'aws' && awsServerUrl) || serverUrl.replace(/\/+$/, '')}/liveness/passive`, {
@@ -115,20 +182,19 @@ export default function PassiveLivenessCheck({ onComplete, serverUrl, provider =
           }
         }
 
-        // No face found in time
         if (!cancelled) {
           setStatus('No face detected');
           stream.getTracks().forEach(t => t.stop());
           onComplete({ is_real: false, confidence: 0, score: 0, error: 'No face detected' });
         }
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Camera error');
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Detection error');
       }
     }
 
     run();
-    return () => { cancelled = true; if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop()); };
-  }, [serverUrl, onComplete, provider]);
+    return () => { cancelled = true; };
+  }, [phase, onComplete, provider, serverUrl, faceplusServerUrl, awsServerUrl]);
 
   if (error) {
     return <div style={{ textAlign: 'center', padding: 12, color: '#ef4444', fontSize: 13 }}>Error: {error}</div>;
@@ -137,8 +203,68 @@ export default function PassiveLivenessCheck({ onComplete, serverUrl, provider =
   return (
     <div style={{ textAlign: 'center' }}>
       <canvas ref={canvasRef} style={{ display: 'none' }} width={640} height={480} />
-      <video ref={videoRef} style={{ width: '100%', maxWidth: 280, borderRadius: 6, display: 'block', margin: '0 auto 8px', transform: 'scaleX(-1)' }} playsInline muted />
-      <div style={{ color: '#3b82f6', fontSize: 13, fontWeight: 600 }}>{status}</div>
+      <div style={{
+        position: 'relative',
+        borderRadius: 8,
+        overflow: 'hidden',
+        background: '#000',
+        minHeight: 200,
+        marginBottom: 8,
+      }}>
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          style={{ width: '100%', display: 'block', transform: 'scaleX(-1)' }}
+        />
+      </div>
+      {phase === 'preview' && (
+        <>
+          {cameras.length > 1 && (
+            <div style={{ marginBottom: 8 }}>
+              <select
+                value={selectedCamera}
+                onChange={(e) => switchCamera(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: 6,
+                  background: '#0f172a',
+                  color: '#e2e8f0',
+                  border: '1px solid #334155',
+                  borderRadius: 6,
+                  fontSize: 12,
+                }}
+              >
+                {cameras.map((cam, i) => (
+                  <option key={cam.deviceId} value={cam.deviceId}>
+                    {cam.label || `Camera ${i + 1}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <button
+            onClick={() => setPhase('detecting')}
+            style={{
+              padding: '10px 28px',
+              fontSize: 14,
+              fontWeight: 600,
+              border: 'none',
+              borderRadius: 8,
+              cursor: 'pointer',
+              background: 'linear-gradient(135deg, #14532d, #16a34a)',
+              color: '#bbf7d0',
+              marginTop: 4,
+            }}
+          >
+            Start Check
+          </button>
+        </>
+      )}
+      {phase === 'detecting' && (
+        <div style={{ color: '#3b82f6', fontSize: 13, fontWeight: 600 }}>{status}</div>
+      )}
     </div>
   );
 }

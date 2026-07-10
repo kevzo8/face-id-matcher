@@ -322,9 +322,31 @@ async def passive_liveness(request: Request):
         if provider == "faceplusplus" and liveness_faceplusplus:
             result = liveness_faceplusplus.predict(image_bytes, bbox)
             provider_used = "Face++ Liveness"
-        elif provider == "aws" and liveness_aws:
-            result = liveness_aws.predict(image_bytes, bbox)
-            provider_used = "AWS Rekognition"
+        elif provider == "aws" and liveness_aws and liveness_passive:
+            # Hybrid: merge AWS face attributes (40%) with pixel-level analysis (60%)
+            aws_result = liveness_aws.predict(image_bytes, bbox)
+            heuristic_result = liveness_passive.predict(image_bytes, bbox)
+
+            if aws_result.get("error"):
+                result = heuristic_result
+                provider_used = "Heuristic Liveness (AWS unavailable)"
+            elif heuristic_result.get("error"):
+                result = aws_result
+                provider_used = "AWS Rekognition (heuristic unavailable)"
+            else:
+                combined_conf = aws_result.get("confidence", 0) * 0.40 + heuristic_result.get("confidence", 0) * 0.60
+                score = max(1, min(20, int(combined_conf * 20)))
+                is_real = combined_conf > 0.75
+
+                result = {
+                    "is_real": is_real,
+                    "confidence": round(combined_conf, 4),
+                    "score": score,
+                    "breakdown": (aws_result.get("breakdown") or []) + (heuristic_result.get("breakdown") or []),
+                    "info": aws_result.get("info") or [],
+                    "error": None,
+                }
+                provider_used = "AWS Rekognition + Heuristic"
         elif provider == "heuristic" and liveness_passive:
             result = liveness_passive.predict(image_bytes, bbox)
             provider_used = "Heuristic Liveness"

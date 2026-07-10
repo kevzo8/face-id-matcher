@@ -18,7 +18,7 @@ interface LivenessCheckProps {
   obServerUrl?: string;
 }
 
-const LIVENESS_PASS_THRESHOLD = 70; // 0-100
+const LIVENESS_PASS_THRESHOLD = 70;
 
 function eyeAspectRatio(landmarks: faceapi.Point[]): number {
   if (landmarks.length < 8) return 0;
@@ -93,10 +93,12 @@ const CHALLENGE_LABELS: Record<Challenge, string> = {
 };
 
 export default function LivenessCheck({ onComplete, externalVideo, autoStart = true, provider, serverUrl, obServerUrl }: LivenessCheckProps) {
-  const [status, setStatus] = useState(externalVideo ? 'Analyzing video...' : 'Starting camera...');
+  const [phase, setPhase] = useState<'preview' | 'running'>(externalVideo ? 'running' : 'preview');
+  const [status, setStatus] = useState(externalVideo ? 'Analyzing video...' : 'Camera preview');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [started, setStarted] = useState(autoStart);
+  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
+  const [selectedCamera, setSelectedCamera] = useState<string>('');
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -116,7 +118,6 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
   const startTimeRef = useRef(Date.now());
   const TIMEOUT_MS = 20_000;
 
-  // Challenge-response state
   const challengesRef = useRef<Challenge[]>([]);
   const challengeIdxRef = useRef(-1);
   const challengeFrameRef = useRef(0);
@@ -136,6 +137,62 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
   }, []);
 
+  const refreshCameras = useCallback(async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter((d) => d.kind === 'videoinput');
+      setCameras(videoDevices);
+      if (videoDevices.length > 0 && !selectedCamera) {
+        setSelectedCamera(videoDevices[0].deviceId);
+      }
+    } catch {
+      // ignore
+    }
+  }, [selectedCamera]);
+
+  const startCamera = useCallback(async (deviceId?: string) => {
+    setError(null);
+    const constraints: MediaStreamConstraints[] = [];
+    if (deviceId) {
+      constraints.push({ video: { deviceId: { exact: deviceId } }, audio: false });
+    } else {
+      constraints.push(
+        { video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
+        { video: { width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
+        { video: true, audio: false },
+      );
+    }
+    let stream: MediaStream | null = null;
+    for (const c of constraints) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(c);
+        break;
+      } catch {
+        // try next constraint
+      }
+    }
+    if (!stream) {
+      setError('Camera access denied. No available camera found.');
+      return;
+    }
+    streamRef.current = stream;
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.muted = true;
+      videoRef.current.playsInline = true;
+      videoRef.current.play().catch(() => {});
+    }
+    refreshCameras();
+  }, [refreshCameras]);
+
+  const switchCamera = useCallback(async (deviceId: string) => {
+    setSelectedCamera(deviceId);
+    if (phase === 'preview') {
+      stopCamera();
+      await startCamera(deviceId);
+    }
+  }, [phase, stopCamera, startCamera]);
+
   function startRecording(stream: MediaStream) {
     recordedChunksRef.current = [];
     try {
@@ -148,8 +205,16 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
     }
   }
 
+  // Open camera in preview phase
   useEffect(() => {
-    if (!started) return;
+    if (phase !== 'preview' || externalVideo) return;
+    startCamera(selectedCamera || undefined);
+    return () => stopCamera();
+  }, []);
+
+  // Run analysis when phase transitions to 'running'
+  useEffect(() => {
+    if (phase !== 'running') return;
 
     if (externalVideo) {
       setStatus('Analyzing video...');
@@ -168,32 +233,21 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
     let cancelled = false;
 
     async function init() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: false,
-        });
-        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
-
-        streamRef.current = stream;
-        startRecording(stream);
-        const video = videoRef.current;
-        if (!video) { stream.getTracks().forEach(t => t.stop()); return; }
-
-        video.srcObject = stream;
-        video.muted = true;
-        video.playsInline = true;
-        await video.play();
-        setStatus('Analyzing face...');
-        startAnalysis(video);
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Camera access denied');
+      const stream = streamRef.current;
+      if (!stream) {
+        if (!cancelled) setError('Camera stream lost');
+        return;
       }
+      startRecording(stream);
+      const video = videoRef.current;
+      if (!video) { return; }
+      setStatus('Analyzing face...');
+      startAnalysis(video);
     }
 
     init();
     return () => { cancelled = true; runningRef.current = false; stopCamera(); };
-  }, [started, externalVideo, stopCamera]);
+  }, [phase, externalVideo, stopCamera]);
 
   function startAnalysis(video: HTMLVideoElement) {
     if (analysisStartedRef.current) return;
@@ -219,7 +273,6 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
         const canvas = canvasRef.current;
 
         if (detections.length > 0 && canvas) {
-          // Pick detection closest to center
           const cx = canvas.width / 2;
           const cy = canvas.height / 2;
           let bestDist = Infinity;
@@ -236,7 +289,6 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
           const ear = eyeAspectRatio(det.landmarks.getLeftEye());
           faceSizesRef.current.push(faceW);
 
-          // Blink detection via EAR state transitions
           if (ear < 0.2) {
             if (!wasEyeClosedRef.current) {
               blinkCountRef.current++;
@@ -246,7 +298,6 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
             wasEyeClosedRef.current = false;
           }
 
-          // Texture analysis
           const vx = Math.max(0, Math.floor(box.x));
           const vy = Math.max(0, Math.floor(box.y));
           const vw = Math.min(canvas.width - vx, Math.ceil(box.width));
@@ -261,7 +312,6 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
 
           frameCountRef.current++;
 
-          // === Phase 1: Baseline collection ===
           if (!inChallengeRef.current) {
             const faceBoxCenter = box.x + box.width / 2;
             const nose = det.landmarks.getNose()[0];
@@ -270,7 +320,6 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
             const eyeMidX = (leftEye[0].x + rightEye[0].x) / 2;
             const eyeMidY = (leftEye[0].y + rightEye[0].y) / 2;
 
-            // Store baseline on first valid frame
             if (!baselineNoseRef.current) {
               baselineNoseRef.current = {
                 offsetX: (nose.x - faceBoxCenter) / box.width,
@@ -283,7 +332,6 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
             setStatus('Hold still — collecting baseline');
 
             if (frameCountRef.current >= COLLECT_FRAMES) {
-              // Move to challenges
               inChallengeRef.current = true;
               challengesRef.current = pickChallenges(2);
               challengeIdxRef.current = 0;
@@ -294,12 +342,10 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
               setProgress(0);
             }
           } else {
-            // === Phase 2: Challenges ===
             const challenge = challengesRef.current[challengeIdxRef.current];
             if (challenge) {
               challengeFrameRef.current++;
 
-              // Compute current nose offset vs baseline
               const faceBoxCenter = box.x + box.width / 2;
               const nose = det.landmarks.getNose()[0];
               const leftEye = det.landmarks.getLeftEye();
@@ -325,16 +371,13 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
                 }
               }
 
-              // Per-challenge progress
               const cPct = Math.min(100, Math.round((challengeFrameRef.current / CHALLENGE_FRAMES) * 100));
               setProgress(cPct);
 
-              // Check if challenge complete
               if (challengeFrameRef.current >= CHALLENGE_FRAMES) {
                 if (challengePassedRef.current) challengeScoreRef.current += 15;
 
                 challengeIdxRef.current++;
-                // Move to next challenge or done
                 if (challengeIdxRef.current >= challengesRef.current.length) {
                   await computeResult();
                   return;
@@ -377,7 +420,6 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       const reasons: string[] = [];
       const breakdown: { label: string; pts: number }[] = [];
 
-      // Face size (up to 20 pts, continuous)
       let sizePts = 0;
       if (avgFaceSize >= MIN_FACE_WIDTH) {
         sizePts = Math.round(Math.min(20, 12 + (avgFaceSize - MIN_FACE_WIDTH) / 5) * 10) / 10;
@@ -391,7 +433,6 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       score += sizePts;
       breakdown.push({ label: 'Face Size', pts: sizePts });
 
-      // Texture variance (up to 20 pts, continuous)
       let texPts = 0;
       if (avgTexture > TEXTURE_VARIANCE_THRESHOLD) {
         texPts = Math.round(Math.min(20, 12 + (avgTexture - TEXTURE_VARIANCE_THRESHOLD) * 40) * 10) / 10;
@@ -405,7 +446,6 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       score += texPts;
       breakdown.push({ label: 'Texture', pts: texPts });
 
-      // Frame-to-frame change (up to 20 pts, continuous)
       let motionPts = 0;
       if (avgDelta > FRAME_DELTA_THRESHOLD) {
         motionPts = Math.round(Math.min(20, 12 + (avgDelta - FRAME_DELTA_THRESHOLD) * 30) * 10) / 10;
@@ -419,13 +459,11 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       score += motionPts;
       breakdown.push({ label: 'Motion', pts: motionPts });
 
-      // Challenge-response (up to 30 pts, 15 per challenge)
       const chalPts = challengeScoreRef.current;
       if (chalPts > 0) reasons.push(`${chalPts}pts challenges`);
       score += chalPts;
       breakdown.push({ label: 'Challenges', pts: chalPts });
 
-      // Blink bonus (up to 10 pts, continuous)
       let blinkPts = 0;
       if (blinkCountRef.current >= 2) {
         blinkPts = Math.min(10, 6 + (blinkCountRef.current - 2) * 2);
@@ -467,7 +505,6 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
         }
       } else if (provider === 'aws_detect_faces' && serverUrl && canvasRef.current) {
         const canvas = canvasRef.current;
-        // Draw the latest video frame onto canvas if not already there
         const ctx = canvas.getContext('2d');
         if (ctx && video) {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -517,8 +554,78 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
     rafRef.current = requestAnimationFrame(checkFrame);
   }
 
+  useEffect(() => {
+    return () => stopCamera();
+  }, [stopCamera]);
+
   if (error) {
     return <div style={{ textAlign: 'center', padding: 12, color: '#ef4444', fontSize: 13 }}>Camera error: {error}</div>;
+  }
+
+  if (phase === 'preview' && !externalVideo) {
+    return (
+      <div style={{ textAlign: 'center' }}>
+        <canvas ref={canvasRef} style={{ display: 'none' }} width={640} height={480} />
+        <div style={{
+          position: 'relative',
+          borderRadius: 8,
+          overflow: 'hidden',
+          background: '#000',
+          minHeight: 200,
+          marginBottom: 8,
+        }}>
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            style={{ width: '100%', display: 'block', transform: 'scaleX(-1)' }}
+          />
+        </div>
+        {cameras.length > 1 && (
+          <div style={{ marginBottom: 8 }}>
+            <select
+              value={selectedCamera}
+              onChange={(e) => switchCamera(e.target.value)}
+              style={{
+                width: '100%',
+                padding: 6,
+                background: '#0f172a',
+                color: '#e2e8f0',
+                border: '1px solid #334155',
+                borderRadius: 6,
+                fontSize: 12,
+              }}
+            >
+              {cameras.map((cam, i) => (
+                <option key={cam.deviceId} value={cam.deviceId}>
+                  {cam.label || `Camera ${i + 1}`}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        <button
+          onClick={() => {
+            setPhase('running');
+            setStatus('Analyzing face...');
+          }}
+          style={{
+            padding: '10px 28px',
+            fontSize: 14,
+            fontWeight: 600,
+            border: 'none',
+            borderRadius: 8,
+            cursor: 'pointer',
+            background: 'linear-gradient(135deg, #581c87, #7c3aed)',
+            color: '#e9d5ff',
+            marginTop: 4,
+          }}
+        >
+          Start Liveness
+        </button>
+      </div>
+    );
   }
 
   return (
