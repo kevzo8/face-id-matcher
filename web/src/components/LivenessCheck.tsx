@@ -129,14 +129,27 @@ function frameDelta(canvas: HTMLCanvasElement, prev: ImageData | null, x: number
   return diff / (len / 16);
 }
 
+function meanRGB(canvas: HTMLCanvasElement, x: number, y: number, w: number, h: number): { r: number; g: number; b: number } {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return { r: 0, g: 0, b: 0 };
+  const img = ctx.getImageData(x, y, w, h);
+  let r = 0, g = 0, b = 0, n = 0;
+  for (let i = 0; i < img.data.length; i += 16) {
+    r += img.data[i]; g += img.data[i + 1]; b += img.data[i + 2]; n++;
+  }
+  return n > 0 ? { r: r / n, g: g / n, b: b / n } : { r: 0, g: 0, b: 0 };
+}
+
 const CHALLENGE_POOL = ['turn_left', 'turn_right', 'look_up', 'look_down'] as const;
 type Challenge = typeof CHALLENGE_POOL[number];
 
-const COLLECT_FRAMES = 20;
-const CHALLENGE_FRAMES = 15;
+const COLLECT_FRAMES = 40;
+const CHALLENGE_FRAMES = 30;
+const FLASH_FRAMES = 10;
 const MIN_FACE_WIDTH = 80;
 const TEXTURE_VARIANCE_THRESHOLD = 20;
 const FRAME_DELTA_THRESHOLD = 0.8;
+const FRAME_RATE = 20;
 
 function pickChallenges(count: number): Challenge[] {
   const shuffled = [...CHALLENGE_POOL].sort(() => Math.random() - 0.5);
@@ -175,7 +188,16 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
   const recordedChunksRef = useRef<Blob[]>([]);
   const recordingStartRef = useRef(0);
   const startTimeRef = useRef(Date.now());
-  const TIMEOUT_MS = 20_000;
+  const TIMEOUT_MS = 30_000;
+
+  const [flashColor, setFlashColor] = useState<'red' | 'green' | 'blue' | null>(null);
+  const flashStepRef = useRef(0);
+  const flashFrameCountRef = useRef(0);
+  const flashBaselineRef = useRef<{ r: number; g: number; b: number } | null>(null);
+  const flashSamplesRef = useRef<{ color: string; r: number; g: number; b: number }[]>([]);
+  const flashStepSamplesRef = useRef<{ r: number; g: number; b: number }[]>([]);
+  const baselineRGBSamplesRef = useRef<{ r: number; g: number; b: number }[]>([]);
+  const inFlashRef = useRef(false);
 
   const challengesRef = useRef<Challenge[]>([]);
   const challengeIdxRef = useRef(-1);
@@ -418,11 +440,19 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
             const delta = frameDelta(canvas, prevFrameRef.current, vx, vy, vw, vh);
             frameDeltasRef.current.push(delta);
             prevFrameRef.current = canvas.getContext('2d')?.getImageData(vx, vy, vw, vh) ?? null;
+            // Capture baseline face RGB during collection phase (for flash liveness)
+            if (!inChallengeRef.current && !inFlashRef.current) {
+              baselineRGBSamplesRef.current.push(meanRGB(canvas, vx, vy, vw, vh));
+            }
+            // Capture flash-lit face RGB during flash phase
+            if (inFlashRef.current) {
+              flashStepSamplesRef.current.push(meanRGB(canvas, vx, vy, vw, vh));
+            }
           }
 
           frameCountRef.current++;
 
-          if (!inChallengeRef.current) {
+          if (!inChallengeRef.current && !inFlashRef.current) {
             const faceBoxCenter = box.x + box.width / 2;
             const nose = det.landmarks.getNose()[0];
             const leftEye = det.landmarks.getLeftEye();
@@ -437,9 +467,9 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
               });
             }
 
-            const basePct = Math.min(100, Math.round((frameCountRef.current / COLLECT_FRAMES) * 100));
-            setProgress(basePct);
-            setStatus('Hold still — collecting baseline');
+            const remainSec = Math.max(0, (COLLECT_FRAMES - frameCountRef.current) / FRAME_RATE);
+            setProgress(Math.min(100, Math.round((frameCountRef.current / COLLECT_FRAMES) * 100)));
+            setStatus(`Hold still — keep your face centered (${remainSec.toFixed(1)}s left)`);
 
             if (frameCountRef.current >= COLLECT_FRAMES) {
               // Compute median baseline from collected samples
@@ -452,6 +482,15 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
                   eyeNoseY: sortedY.length % 2 === 0 ? (sortedY[mid - 1] + sortedY[mid]) / 2 : sortedY[mid],
                 };
               }
+              // Compute baseline face RGB (average of collection frames)
+              if (baselineRGBSamplesRef.current.length > 0) {
+                const n = baselineRGBSamplesRef.current.length;
+                flashBaselineRef.current = {
+                  r: baselineRGBSamplesRef.current.reduce((a, s) => a + s.r, 0) / n,
+                  g: baselineRGBSamplesRef.current.reduce((a, s) => a + s.g, 0) / n,
+                  b: baselineRGBSamplesRef.current.reduce((a, s) => a + s.b, 0) / n,
+                };
+              }
               inChallengeRef.current = true;
               challengesRef.current = pickChallenges(2);
               challengeIdxRef.current = 0;
@@ -462,7 +501,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
               setStatus(CHALLENGE_LABELS[c]);
               setProgress(0);
             }
-          } else {
+          } else if (inChallengeRef.current) {
             const challenge = challengesRef.current[challengeIdxRef.current];
             if (challenge) {
               challengeFrameRef.current++;
@@ -494,32 +533,71 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
               setProgress(cPct);
 
               if (challengeFrameRef.current >= CHALLENGE_FRAMES) {
-                const passed = challengeMovementFramesRef.current >= 10;
+                const passed = challengeMovementFramesRef.current >= 8;
                 if (passed) challengeScoreRef.current += 15;
                 challengeResultsRef.current.push({ label: CHALLENGE_LABELS[challenge], pts: passed ? 15 : 0 });
 
                 challengeIdxRef.current++;
                 if (challengeIdxRef.current >= challengesRef.current.length) {
-                  cancelAnimationFrame(rafRef.current);
-                  runningRef.current = false;
-                  await computeResult();
-                  return;
+                  // Challenges done — start flash liveness phase
+                  inChallengeRef.current = false;
+                  inFlashRef.current = true;
+                  flashStepRef.current = 0;
+                  flashFrameCountRef.current = 0;
+                  flashStepSamplesRef.current = [];
+                  setFlashColor('red');
+                  setStatus('Look at the screen — checking light reflection');
+                  setProgress(0);
+                } else {
+                  challengeFrameRef.current = 0;
+                  challengePassedRef.current = false;
+                  challengeMovementFramesRef.current = 0;
+                  const next = challengesRef.current[challengeIdxRef.current];
+                  setStatus(CHALLENGE_LABELS[next]);
+                  setProgress(0);
                 }
-                challengeFrameRef.current = 0;
-                challengePassedRef.current = false;
-                challengeMovementFramesRef.current = 0;
-                const next = challengesRef.current[challengeIdxRef.current];
-                setStatus(CHALLENGE_LABELS[next]);
-                setProgress(0);
               } else {
-                const remaining = CHALLENGE_FRAMES - challengeFrameRef.current;
+                const remainSec = Math.max(0, (CHALLENGE_FRAMES - challengeFrameRef.current) / FRAME_RATE);
                 setStatus(
-                  challengePassedRef.current
-                    ? `Good! Keep position (${remaining})`
-                    : `${CHALLENGE_LABELS[challenge]} (${remaining})`
+                  challengeMovementFramesRef.current >= 8
+                    ? `Good! Hold position (${remainSec.toFixed(1)}s left)`
+                    : `${CHALLENGE_LABELS[challenge]} (${remainSec.toFixed(1)}s left)`
                 );
               }
             }
+          } else if (inFlashRef.current) {
+            // Flash liveness phase: cycle red/green/blue, measure face color response
+            const colors: ('red' | 'green' | 'blue')[] = ['red', 'green', 'blue'];
+            flashFrameCountRef.current++;
+
+            if (flashFrameCountRef.current >= FLASH_FRAMES) {
+              // Average this color's samples (skip first 2 frames to let screen settle)
+              const samples = flashStepSamplesRef.current.slice(2);
+              if (samples.length > 0) {
+                const n = samples.length;
+                flashSamplesRef.current.push({
+                  color: colors[flashStepRef.current],
+                  r: samples.reduce((a, s) => a + s.r, 0) / n,
+                  g: samples.reduce((a, s) => a + s.g, 0) / n,
+                  b: samples.reduce((a, s) => a + s.b, 0) / n,
+                });
+              }
+              flashStepRef.current++;
+              flashFrameCountRef.current = 0;
+              flashStepSamplesRef.current = [];
+
+              if (flashStepRef.current >= colors.length) {
+                // Flash sequence complete
+                cancelAnimationFrame(rafRef.current);
+                runningRef.current = false;
+                setFlashColor(null);
+                await computeResult();
+                return;
+              }
+              setFlashColor(colors[flashStepRef.current]);
+            }
+            const flashPct = Math.round((flashStepRef.current / colors.length) * 100 + (flashFrameCountRef.current / FLASH_FRAMES) * (100 / colors.length));
+            setProgress(Math.min(100, flashPct));
           }
         } else {
           setStatus(frameCountRef.current > 15 ? 'Face lost — stay centered' : 'Position face in center');
@@ -600,6 +678,32 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       }
       score += blinkPts;
       breakdown.push({ label: 'Blinks', pts: blinkPts });
+
+      // Flash liveness: verify face reflects colored flashes
+      let flashPts = 0;
+      const base = flashBaselineRef.current;
+      if (base && flashSamplesRef.current.length === 3) {
+        const flashDetails: { label: string; pts: number }[] = [];
+        for (const sample of flashSamplesRef.current) {
+          // A real face will see its dominant channel rise relative to the others
+          // For a print/screen replay, all channels shift together (flat response)
+          const dr = sample.r - base.r;
+          const dg = sample.g - base.g;
+          const db = sample.b - base.b;
+          const positiveChannel = sample.color === 'red' ? dr : sample.color === 'green' ? dg : db;
+          const otherAvg = sample.color === 'red' ? (dg + db) / 2 : sample.color === 'green' ? (dr + db) / 2 : (dr + dg) / 2;
+          // Real face: target channel rises significantly above the average of the other two
+          const discrimination = positiveChannel - otherAvg;
+          const passed = discrimination > 8; // 8/255 ≈ 3% color shift
+          if (passed) flashPts += 7;
+          flashDetails.push({ label: `${sample.color.toUpperCase()} flash`, pts: passed ? 7 : 0 });
+        }
+        breakdown.push(...flashDetails);
+        reasons.push(`flash:${flashPts}/21`);
+      } else {
+        reasons.push('flash:skipped');
+      }
+      score += flashPts;
 
       let backendScore = 0;
       if (provider === 'openbiometrics' && serverUrl && canvasRef.current) {
@@ -682,7 +786,31 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       const recordingDuration = externalVideo ? undefined : Math.round((Date.now() - recordingStartRef.current) / 1000);
       const challenges = challengeResultsRef.current.length > 0 ? challengeResultsRef.current : undefined;
       if (externalVideo) { video.pause(); }
-      onComplete({ pass, score, details, recordingUrl, recordingDuration, breakdown, challenges, info: awsInfo });
+
+      // Spoof prediction: based on flash response + challenge + motion
+      const spoofSignals: string[] = [];
+      let spoofScore = 0;
+      if (base && flashSamplesRef.current.length === 3) {
+        const correctFlashes = flashSamplesRef.current.filter((s) => {
+          const dr = s.r - base.r, dg = s.g - base.g, db = s.b - base.b;
+          const pos = s.color === 'red' ? dr : s.color === 'green' ? dg : db;
+          const other = s.color === 'red' ? (dg + db) / 2 : s.color === 'green' ? (dr + db) / 2 : (dr + dg) / 2;
+          return pos - other > 8;
+        }).length;
+        if (correctFlashes === 0) { spoofSignals.push('no light reflection on any flash'); spoofScore += 2; }
+        else if (correctFlashes === 1) { spoofSignals.push('weak light reflection (1/3)'); spoofScore += 1; }
+        else spoofSignals.push('natural light reflection');
+      }
+      const passesPassed = challengeResultsRef.current.filter((c) => c.pts > 0).length;
+      if (passesPassed === 0) { spoofSignals.push('no challenges completed'); spoofScore += 1; }
+      const totalChallengeFrames = challengeResultsRef.current.length;
+      if (avgDelta < 0.3 && totalChallengeFrames > 0) { spoofSignals.push('unnatural stillness'); spoofScore += 1; }
+      if (avgTexture < 15) { spoofSignals.push('flat skin texture'); spoofScore += 1; }
+      const isSpoof = spoofScore >= 2;
+      const spoofPrediction = isSpoof ? 'Likely Spoof' : 'Likely Real';
+      const spoofInfo = [{ label: 'Prediction', value: spoofPrediction }, ...spoofSignals.map((s) => ({ label: 'Signal', value: s }))];
+
+      onComplete({ pass, score, details, recordingUrl, recordingDuration, breakdown, challenges, info: awsInfo ? [...awsInfo, ...spoofInfo] : spoofInfo });
     }
 
     rafRef.current = requestAnimationFrame(checkFrame);
@@ -703,16 +831,28 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       <canvas ref={canvasRef} style={{ display: 'none' }} width={640} height={480} />
       <div style={isPreview ? {
         position: 'relative', borderRadius: 8, overflow: 'hidden', background: '#000', minHeight: 200, marginBottom: 8,
-      } : {}}>
+      } : {
+        position: 'relative', maxWidth: 480, margin: '0 auto 8px',
+      }}>
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
           style={isPreview ? { width: '100%', display: 'block', transform: 'scaleX(-1)' } : {
-            width: '100%', maxWidth: 280, borderRadius: 6, display: 'block', margin: '0 auto 8px', transform: externalVideo ? 'none' : 'scaleX(-1)',
+            width: '100%', borderRadius: 6, display: 'block', margin: '0 auto 8px', transform: externalVideo ? 'none' : 'scaleX(-1)',
           }}
         />
+        {flashColor && (
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            background: flashColor === 'red' ? 'rgba(255, 0, 0, 0.55)' :
+                         flashColor === 'green' ? 'rgba(0, 255, 0, 0.55)' :
+                         'rgba(0, 100, 255, 0.55)',
+            mixBlendMode: 'screen',
+            transition: 'background 0.05s linear',
+          }} />
+        )}
       </div>
       {isPreview && cameras.length > 1 && (
         <div style={{ marginBottom: 8 }}>
