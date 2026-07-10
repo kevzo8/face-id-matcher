@@ -321,11 +321,19 @@ async def detect_objects_liveness(request: Request):
 
         # Objects that suggest a phone/screen presentation attack
         spoof_indicators = {
+            # Phone/device
             "Mobile Phone": 0, "Cell Phone": 0, "Smartphone": 0, "Phone": 0,
             "Hand": 0, "Finger": 0, "Arm": 0,
-            "Screen": 0, "Display": 0, "Monitor": 0,
-            "Electronics": 0, "Device": 0, "Gadget": 0,
-            "Camera": 0, "Lens": 0,
+            "Screen": 0, "Display": 0, "Monitor": 0, "Television": 0, "TV": 0,
+            "Electronics": 0, "Device": 0, "Gadget": 0, "Camera": 0, "Lens": 0,
+            # Photo/print indicators
+            "Photo": 0, "Photograph": 0, "Picture": 0, "Picture Frame": 0,
+            "Frame": 0, "Border": 0, "Paper": 0, "Printed Material": 0,
+            "Flat": 0, "Two-Dimensional": 0, "Poster": 0, "Print": 0,
+            # ID/document indicators
+            "ID Card": 0, "Identification Card": 0, "Driver's License": 0,
+            "Passport": 0, "License": 0, "Credit Card": 0, "Card": 0,
+            "Identification": 0, "Document": 0, "ID": 0,
         }
         detected_spoof_objects = []
 
@@ -339,19 +347,30 @@ async def detect_objects_liveness(request: Request):
         # Check for phone-like rectangular objects with high confidence
         has_phone = any(v > 0 for k, v in spoof_indicators.items() if k in ["Mobile Phone", "Cell Phone", "Smartphone", "Phone"])
         has_hand = any(v > 0 for k, v in spoof_indicators.items() if k in ["Hand", "Finger", "Arm"])
-        has_screen = any(v > 0 for k, v in spoof_indicators.items() if k in ["Screen", "Display", "Monitor"])
+        has_screen = any(v > 0 for k, v in spoof_indicators.items() if k in ["Screen", "Display", "Monitor", "Television", "TV"])
+        has_photo = any(v > 0 for k, v in spoof_indicators.items() if k in ["Photo", "Photograph", "Picture", "Picture Frame", "Frame", "Border", "Paper", "Printed Material", "Flat", "Two-Dimensional", "Poster", "Print"])
+        has_id = any(v > 0 for k, v in spoof_indicators.items() if k in ["ID Card", "Identification Card", "Driver's License", "Passport", "License", "Credit Card", "Card", "Identification", "Document", "ID"])
+
+        # Determine risk: phone/hand+screen = high, photo/ID = high, screen = medium
+        spoof_risk = "low"
+        if has_phone or (has_hand and has_screen) or has_photo or has_id:
+            spoof_risk = "high"
+        elif has_screen:
+            spoof_risk = "medium"
 
         return DetectObjectsResponse(
             spoof_objects_detected=detected_spoof_objects,
             has_phone=has_phone,
             has_hand=has_hand,
             has_screen=has_screen,
-            spoof_risk="high" if (has_phone or (has_hand and has_screen)) else "medium" if has_screen else "low"
+            has_photo=has_photo,
+            has_id=has_id,
+            spoof_risk=spoof_risk
         )
     except Exception as e:
         return DetectObjectsResponse(
             spoof_objects_detected=[],
-            has_phone=False, has_hand=False, has_screen=False,
+            has_phone=False, has_hand=False, has_screen=False, has_photo=False, has_id=False,
             spoof_risk="unknown", error=str(e)
         )
 
@@ -361,6 +380,8 @@ class DetectObjectsResponse(BaseModel):
     has_phone: bool
     has_hand: bool
     has_screen: bool
+    has_photo: bool
+    has_id: bool
     spoof_risk: str
     error: str | None = None
 
