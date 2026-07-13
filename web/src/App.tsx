@@ -76,7 +76,7 @@ export default function App() {
   const [livenessPassed, setLivenessPassed] = useState(false);
   const [livenessResult, setLivenessResult] = useState<{ pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[]; provider?: string } | null>(null);
   const [livenessTestStarted, setLivenessTestStarted] = useState(false);
-  const [livenessTestResult, setLivenessTestResult] = useState<{ pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[]; provider?: string } | null>(null);
+  const [livenessTestResult, setLivenessTestResult] = useState<{ pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[]; rawLabels?: { label: string; confidence: number }[]; objectSnapshotUrl?: string; provider?: string } | null>(null);
   const [livenessTestVideo, setLivenessTestVideo] = useState<HTMLVideoElement | null>(null);
   const [livenessTestMode, setLivenessTestMode] = useState<'active' | 'passive' | 'upload' | null>(null);
   const [passiveLivenessResult, setPassiveLivenessResult] = useState<{ is_real: boolean; confidence: number; score: number; snapshotUrl?: string; details?: string; error?: string; breakdown?: { label: string; pts: number }[]; info?: { label: string; value: string }[] } | null>(null);
@@ -510,7 +510,7 @@ export default function App() {
               )}
               {livenessTestMode === 'active' && !livenessTestResult && (
                 <div style={{ background: '#1e293b', borderRadius: 8, padding: 16, border: '1px solid #475569', marginTop: 12 }}>
-                  <LivenessCheck onComplete={(r) => { setLivenessTestResult(r as { pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[]; provider?: string }); setLivenessTestStarted(false); setLivenessTestMode(null); }} autoStart={true} provider={livenessProvider} serverUrl={livenessServerUrl} obServerUrl={obServerUrl} />
+                  <LivenessCheck onComplete={(r) => { setLivenessTestResult(r as { pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[]; rawLabels?: { label: string; confidence: number }[]; objectSnapshotUrl?: string; provider?: string }); setLivenessTestStarted(false); setLivenessTestMode(null); }} autoStart={true} provider={livenessProvider} serverUrl={livenessServerUrl} obServerUrl={obServerUrl} />
                 </div>
               )}
               {livenessTestMode === 'passive' && !passiveLivenessResult && (
@@ -525,7 +525,7 @@ export default function App() {
               )}
               {livenessTestStarted && !livenessTestResult && livenessTestMode === 'upload' && (
                 <div style={{ background: '#1e293b', borderRadius: 8, padding: 16, border: '1px solid #475569', marginTop: 12 }}>
-                  <LivenessCheck onComplete={(r) => { setLivenessTestResult(r as { pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[]; provider?: string }); setLivenessTestStarted(false); setLivenessTestMode(null); }} externalVideo={livenessTestVideo} autoStart={true} provider={livenessProvider} serverUrl={livenessServerUrl} obServerUrl={obServerUrl} />
+                  <LivenessCheck onComplete={(r) => { setLivenessTestResult(r as { pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[]; rawLabels?: { label: string; confidence: number }[]; objectSnapshotUrl?: string; provider?: string }); setLivenessTestStarted(false); setLivenessTestMode(null); }} externalVideo={livenessTestVideo} autoStart={true} provider={livenessProvider} serverUrl={livenessServerUrl} obServerUrl={obServerUrl} />
                 </div>
               )}
               {livenessTestResult && (
@@ -540,6 +540,12 @@ export default function App() {
                         {livenessTestResult.recordingDuration != null && (
                           <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
                             Duration: {Math.floor(livenessTestResult.recordingDuration / 60)}:{String(Math.floor(livenessTestResult.recordingDuration % 60)).padStart(2, '0')}
+                          </div>
+                        )}
+                        {livenessTestResult.objectSnapshotUrl && (
+                          <div style={{ marginTop: 8 }}>
+                            <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>AWS Snapshot</div>
+                            <img src={livenessTestResult.objectSnapshotUrl} alt="AWS Snapshot" style={{ width: '100%', borderRadius: 6, border: '1px solid #475569' }} />
                           </div>
                         )}
                       </div>
@@ -599,6 +605,15 @@ export default function App() {
                               <span style={{ fontWeight: 600, color: it.label.includes('HIGH') ? '#f87171' : it.label.includes('MEDIUM') ? '#fbbf24' : it.label.includes('LOW') ? '#86efac' : '#fbbf24' }}>{it.value}</span>
                             </div>
                           ))}
+                        </div>
+                      )}
+                      {livenessTestResult.rawLabels && livenessTestResult.rawLabels.length > 0 && (
+                        <div style={{ marginTop: 4, fontSize: 10, color: '#94a3b8' }}>Raw AWS Labels:
+                          <ul style={{ marginLeft: 16, fontSize: 10 }}>
+                            {livenessTestResult.rawLabels.map((lbl, i) => (
+                              <li key={i}>{lbl.label}: {lbl.confidence.toFixed(0)}%</li>
+                            ))}
+                          </ul>
                         </div>
                       )}
                       {livenessTestResult.info && livenessTestResult.info.length > 0 && (

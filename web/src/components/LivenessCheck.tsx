@@ -67,6 +67,8 @@ interface LivenessResult {
   info?: { label: string; value: string }[];
   colorAnalysis?: { label: string; value: string }[];
   objectInfo?: { label: string; value: string }[];
+  rawLabels?: { label: string; confidence: number }[];
+  objectSnapshotUrl?: string;
   provider?: string;
 }
 
@@ -195,6 +197,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
   const TIMEOUT_MS = 60_000;
 
   const [flashColor, setFlashColor] = useState<'red' | 'green' | 'blue' | null>(null);
+  const [awsFlash, setAwsFlash] = useState(false);
   const flashStepRef = useRef(0);
   const flashFrameCountRef = useRef(0);
   const flashBaselineRef = useRef<{ r: number; g: number; b: number } | null>(null);
@@ -748,6 +751,8 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       // Color analysis & object detection (declared here for use in flash analysis below)
       let colorAnalysis: { label: string; value: string }[] | undefined;
       let objectInfo: { label: string; value: string }[] | undefined;
+      let rawLabels: { label: string; confidence: number }[] | undefined;
+      let objectSnapshotUrl: string | undefined;
 
       // Flash liveness: verify face reflects colored flashes
       let flashPts = 0;
@@ -821,8 +826,9 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
             age_low?: number; age_high?: number; gender?: string; expression?: string;
           } | null;
           if (!data) {
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const b64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const fullB64 = canvas.toDataURL('image/jpeg', 0.8);
+          const b64 = fullB64.split(',')[1];
             try {
               const res = await fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/detect-faces`, {
                 method: 'POST',
@@ -901,11 +907,18 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
 
       // Object detection for phone/screen/hand (spoof indicators) - only for combined provider
       if (provider === 'aws_detect_faces_objects' && serverUrl && canvasRef.current) {
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
-        if (ctx && video) {
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const b64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+        const snapCanvas = document.createElement('canvas');
+        snapCanvas.width = video.videoWidth || 640;
+        snapCanvas.height = video.videoHeight || 480;
+        snapCanvas.style.position = 'fixed';
+        snapCanvas.style.left = '-9999px';
+        snapCanvas.style.top = '-9999px';
+        document.body.appendChild(snapCanvas);
+        const snapCtx = snapCanvas.getContext('2d');
+        if (snapCtx && video) {
+          snapCtx.drawImage(video, 0, 0, snapCanvas.width, snapCanvas.height);
+          const b64 = snapCanvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+          document.body.removeChild(snapCanvas);
           try {
             const res = await fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/detect-objects`, {
               method: 'POST',
@@ -913,6 +926,10 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
               body: JSON.stringify({ image: b64 }),
             });
             const data = await res.json();
+            rawLabels = data.raw_labels;
+            objectSnapshotUrl = data.snapshot;
+            setAwsFlash(true);
+            setTimeout(() => setAwsFlash(false), 150);
             if (data.spoof_objects_detected && data.spoof_objects_detected.length > 0) {
               objectInfo = [
                 { label: 'Spoof Risk', value: data.spoof_risk ?? 'unknown' },
@@ -940,7 +957,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       const finalPass = pass;
       const details = reasons.join(', ');
 
-      onComplete({ pass: finalPass, score: Math.round(score * 100) / 100, details, recordingUrl, recordingDuration, breakdown, challenges, info: awsInfo, colorAnalysis, objectInfo, provider });
+        onComplete({ pass: finalPass, score: Math.round(score * 100) / 100, details, recordingUrl, recordingDuration, breakdown, challenges, info: awsInfo, colorAnalysis, objectInfo, rawLabels, objectSnapshotUrl, provider });
     }
 
     rafRef.current = requestAnimationFrame(checkFrame);
@@ -1030,6 +1047,13 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
                          'rgba(0, 100, 255, 0.55)',
             mixBlendMode: 'screen',
             transition: 'background 0.05s linear',
+          }} />
+        )}
+        {awsFlash && (
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            background: 'white',
+            transition: 'opacity 0.1s linear',
           }} />
         )}
       </div>

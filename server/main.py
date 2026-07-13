@@ -312,6 +312,7 @@ class DetectObjectsResponse(BaseModel):
     has_id: bool
     spoof_risk: str
     raw_labels: list[dict] = []
+    snapshot: str | None = None
     error: str | None = None
 
 
@@ -398,12 +399,13 @@ async def detect_objects_liveness(request: Request):
             has_id=has_id,
             spoof_risk=spoof_risk,
             raw_labels=raw_labels,
+            snapshot=f"data:image/jpeg;base64,{image_b64}",
         )
     except Exception as e:
         return DetectObjectsResponse(
             spoof_objects_detected=[],
             has_phone=False, has_hand=False, has_screen=False, has_photo=False, has_id=False,
-            spoof_risk="unknown", raw_labels=[], error=str(e)
+            spoof_risk="unknown", raw_labels=[], snapshot=None, error=str(e)
         )
 
 
