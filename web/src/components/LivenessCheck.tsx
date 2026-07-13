@@ -162,10 +162,10 @@ function pickChallenges(count: number): Challenge[] {
 }
 
 const CHALLENGE_LABELS: Record<Challenge, string> = {
-  turn_left: 'Turn your head to the left',
-  turn_right: 'Turn your head to the right',
-  look_up: 'Look up toward the ceiling',
-  look_down: 'Look down toward the floor',
+  turn_left: 'Turn Head Left',
+  turn_right: 'Turn Head Right',
+  look_up: 'Look Up (Ceiling)',
+  look_down: 'Look Down (Floor)',
 };
 
 export default function LivenessCheck({ onComplete, externalVideo, autoStart = true, provider, serverUrl, obServerUrl }: LivenessCheckProps) {
@@ -432,7 +432,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       initialObjectDataRef.current = data;
       initialSnapshotUrlRef.current = data.snapshot;
       setAwsFlash(true);
-      setTimeout(() => setAwsFlash(false), 150);
+      setTimeout(() => setAwsFlash(false), 600);
     } catch {
       // snapshot capture failed, proceed without it
     }
@@ -454,7 +454,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
     const flashTimer = window.setTimeout(() => {
       if (!runningRef.current) return;
       setAwsFlash(true);
-      setTimeout(() => setAwsFlash(false), 150);
+      setTimeout(() => setAwsFlash(false), 600);
     }, randomFlashDelay);
     const originalStop = stopCamera;
     const cleanupFlash = () => { clearTimeout(flashTimer); };
@@ -1077,10 +1077,11 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
         {awsFlash && (
           <div style={{
             position: 'absolute', inset: 0, pointerEvents: 'none',
-            background: 'white',
-            transition: 'opacity 0.1s linear',
+            background: 'rgba(255,255,255,0.35)',
+            animation: 'awsFlashFade 0.6s ease-out forwards',
           }} />
         )}
+        <style>{`@keyframes awsFlashFade { from { opacity: 1 } to { opacity: 0 } }`}</style>
       </div>
       {isPreview && cameras.length > 1 && (
         <div style={{ marginBottom: 8 }}>

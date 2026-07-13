@@ -841,7 +841,7 @@ export default function App() {
 <optgroup label="Functional">
                     <option value="open_face_liveness">open-face-liveness (browser)</option>
                     <option value="aws_detect_faces">AWS DetectFaces (server)</option>
-                    <option value="aws_detect_faces_objects">AWS DetectFaces + DetectObjects (server)</option>
+                    <option value="aws_detect_faces_objects">AWS DetectLabels (server)</option>
                   </optgroup>
                 <optgroup label="Not functional (trying later)">
                   <option value="aws_rekognition">AWS Rekog Liveness KVS</option>
