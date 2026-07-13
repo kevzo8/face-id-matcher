@@ -16,7 +16,7 @@ interface PassiveResult {
 interface Props {
   onComplete: (result: PassiveResult) => void;
   serverUrl: string;
-  provider?: 'faceplusplus' | 'faceplusplus_hybrid' | 'aws' | 'aws_hybrid' | 'heuristic';
+  provider?: 'faceplusplus' | 'faceplusplus_hybrid' | 'aws' | 'aws_hybrid' | 'heuristic' | 'aws_detect_labels';
   faceplusServerUrl?: string;
   awsServerUrl?: string;
 }
@@ -212,6 +212,33 @@ export default function PassiveLivenessCheck({ onComplete, serverUrl, provider =
             doneRef.current = true;
 
             stream.getTracks().forEach(t => t.stop());
+
+            if (provider === 'aws_detect_labels') {
+              const res = await fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/detect-objects`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: fullB64 }),
+              });
+              const data = await res.json();
+              const info: { label: string; value: string }[] = [];
+              if (data.raw_labels) {
+                for (const lbl of data.raw_labels) {
+                  info.push({ label: lbl.label, value: `${lbl.confidence.toFixed(0)}%` });
+                }
+              }
+              const spoofRisk = data.spoof_risk || 'low';
+              const isSpoof = spoofRisk === 'high' || spoofRisk === 'medium';
+              onComplete({
+                is_real: !isSpoof,
+                confidence: isSpoof ? 0.2 : 0.9,
+                score: isSpoof ? 0 : 18,
+                details: isSpoof ? `Spoof risk: ${spoofRisk}. ${data.spoof_objects_detected?.map((o: any) => o.label).join(', ') || ''}` : 'No spoof objects detected',
+                snapshotUrl,
+                info: info.length > 0 ? info : undefined,
+                provider: 'aws_detect_labels',
+              });
+              return;
+            }
 
             const res = await fetch(`${(provider === 'faceplusplus' && faceplusServerUrl) || (provider === 'aws' && awsServerUrl) || serverUrl.replace(/\/+$/, '')}/liveness/passive`, {
               method: 'POST',

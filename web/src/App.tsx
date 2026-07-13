@@ -80,7 +80,7 @@ export default function App() {
   const [livenessTestVideo, setLivenessTestVideo] = useState<HTMLVideoElement | null>(null);
   const [livenessTestMode, setLivenessTestMode] = useState<'active' | 'passive' | 'upload' | null>(null);
   const [passiveLivenessResult, setPassiveLivenessResult] = useState<{ is_real: boolean; confidence: number; score: number; snapshotUrl?: string; details?: string; error?: string; breakdown?: { label: string; pts: number }[]; info?: { label: string; value: string }[] } | null>(null);
-  const [passiveLivenessProvider, setPassiveLivenessProvider] = useState<'faceplusplus' | 'faceplusplus_hybrid' | 'aws' | 'aws_hybrid' | 'heuristic'>('heuristic');
+  const [passiveLivenessProvider, setPassiveLivenessProvider] = useState<'faceplusplus' | 'faceplusplus_hybrid' | 'aws' | 'aws_hybrid' | 'heuristic' | 'aws_detect_labels'>('heuristic');
   const livenessTestVideoRef = useRef<HTMLVideoElement>(null);
   const playbackRef = useRef<HTMLVideoElement>(null);
 
@@ -888,6 +888,7 @@ export default function App() {
                 <option value="heuristic">Heuristic Passive ($0)</option>
                 <option value="aws">AWS DetectFaces ($0.001/check)</option>
                 <option value="aws_hybrid">AWS + Heuristic ($0.001/check)</option>
+                <option value="aws_detect_labels">AWS DetectLabels ($0.001/check)</option>
                 <option value="faceplusplus">Face++ Passive ($0.00019/check)</option>
                 <option value="faceplusplus_hybrid">Face++ + Heuristic ($0.00019/check)</option>
               </select>
@@ -952,6 +953,19 @@ export default function App() {
                   </>
                 )}
                 
+                {passiveLivenessProvider === 'aws_detect_labels' && (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Server URL</div>
+                    <input type="text" value={livenessServerUrl} onChange={(e) => setLivenessServerUrl(e.target.value)}
+                    style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box', marginBottom: 8 }} />
+                    <strong style={{ color: '#22c55e' }}>AWS DetectLabels</strong> &mdash; Object/spoof detection ($0.001/check).
+                    <br />
+                    <span style={{ fontSize: 10, color: '#64748b', marginTop: 4, display: 'block' }}>
+                      Captures a single frame and runs AWS Rekognition <strong>DetectLabels</strong>. Scans for phones, screens, hands, photos, and ID documents. Shows all detected labels with confidence scores.<br />
+                      <span style={{ color: '#22c55e' }}>✓ Good for verifying what AWS sees in the frame.</span>
+                    </span>
+                  </>
+                )}
                 {passiveLivenessProvider === 'heuristic' && (
                   <>
                     <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Server URL</div>
