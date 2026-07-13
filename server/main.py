@@ -461,6 +461,26 @@ async def ocr_detect(request: Request):
             textract = boto3.client("textract", region_name=os.environ.get("AWS_DEFAULT_REGION", "ap-southeast-1"))
             text_response = textract.detect_document_text(Document={"Bytes": image_bytes})
             text_lines = [item["DetectedText"] for item in text_response.get("Blocks", []) if item["BlockType"] == "LINE"]
+        elif provider == "bedrock":
+            bedrock = boto3.client("bedrock-runtime", region_name=os.environ.get("AWS_DEFAULT_REGION", "ap-southeast-1"))
+            body = json.dumps({
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 4096,
+                "messages": [{
+                    "role": "user",
+                    "content": [
+                        {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": image_b64}},
+                        {"type": "text", "text": "Extract all visible text from this ID document image. Return only the extracted text lines, one per line. Do not add any explanation or formatting."}
+                    ]
+                }]
+            })
+            response = bedrock.invoke_model(modelId="anthropic.claude-3-haiku-20240307-v1:0", body=body)
+            result = json.loads(response["body"].read())
+            text_content = ""
+            for block in result.get("content", []):
+                if block.get("type") == "text":
+                    text_content += block.get("text", "")
+            text_lines = [l.strip() for l in text_content.strip().split("\n") if l.strip()]
         else:
             # Default: use Rekognition DetectText
             text_response = rekognition.detect_text(Image={"Bytes": image_bytes})
