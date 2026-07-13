@@ -430,14 +430,15 @@ class OcrDetectResponse(BaseModel):
 async def ocr_detect(request: Request):
     body = await request.json()
     image_b64 = body.get("image")
+    provider = body.get("provider", "aws_rekognition_ocr")
     if not image_b64:
         raise HTTPException(status_code=400, detail="No image provided")
     try:
         import boto3
-        rekognition = boto3.client("rekognition", region_name=os.environ.get("AWS_DEFAULT_REGION", "ap-southeast-1"))
         image_bytes = base64.b64decode(image_b64)
+        rekognition = boto3.client("rekognition", region_name=os.environ.get("AWS_DEFAULT_REGION", "ap-southeast-1"))
         
-        # DetectLabels to identify ID document type
+        # DetectLabels to identify ID document type (always use Rekognition for this)
         label_response = rekognition.detect_labels(
             Image={"Bytes": image_bytes},
             MaxLabels=50,
@@ -454,9 +455,16 @@ async def ocr_detect(request: Request):
                 if not id_type:
                     id_type = name
 
-        # DetectText for OCR
-        text_response = rekognition.detect_text(Image={"Bytes": image_bytes})
-        text_lines = [item["DetectedText"] for item in text_response.get("TextDetections", []) if item["Type"] == "LINE"]
+        # OCR text extraction based on provider
+        text_lines = []
+        if provider == "textract":
+            textract = boto3.client("textract", region_name=os.environ.get("AWS_DEFAULT_REGION", "ap-southeast-1"))
+            text_response = textract.detect_document_text(Document={"Bytes": image_bytes})
+            text_lines = [item["DetectedText"] for item in text_response.get("Blocks", []) if item["BlockType"] == "LINE"]
+        else:
+            # Default: use Rekognition DetectText
+            text_response = rekognition.detect_text(Image={"Bytes": image_bytes})
+            text_lines = [item["DetectedText"] for item in text_response.get("TextDetections", []) if item["Type"] == "LINE"]
 
         return OcrDetectResponse(
             id_type=id_type,

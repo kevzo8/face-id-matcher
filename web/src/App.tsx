@@ -280,7 +280,7 @@ export default function App() {
       const res = await fetch(`${ocrServerUrl.replace(/\/+$/, '')}/ocr/detect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: b64 }),
+        body: JSON.stringify({ image: b64, provider: ocrProvider }),
       });
       const data = await res.json();
       if (data.error) { setOcrError(data.error); return; }
