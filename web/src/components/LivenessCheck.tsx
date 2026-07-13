@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as faceapi from 'face-api.js';
 
 async function fixWebmDuration(blob: Blob, durationMs: number): Promise<Blob> {
@@ -77,7 +77,6 @@ interface LivenessCheckProps {
   provider?: string;
   serverUrl?: string;
   obServerUrl?: string;
-  modelsLoaded?: boolean;
 }
 
 const LIVENESS_PASS_THRESHOLD = 75;
@@ -167,7 +166,7 @@ const CHALLENGE_LABELS: Record<Challenge, string> = {
   look_down: 'Look down toward the floor',
 };
 
-export default function LivenessCheck({ onComplete, externalVideo, autoStart = true, provider, serverUrl, obServerUrl, modelsLoaded }: LivenessCheckProps) {
+export default function LivenessCheck({ onComplete, externalVideo, autoStart = true, provider, serverUrl, obServerUrl }: LivenessCheckProps) {
   const [phase, setPhase] = useState<'preview' | 'running'>(externalVideo ? 'running' : 'preview');
   const [status, setStatus] = useState(externalVideo ? 'Analyzing video...' : 'Camera preview');
   const [progress, setProgress] = useState(0);
@@ -192,7 +191,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const recordingStartRef = useRef(0);
-  const startTimeRef = useRef(0);
+  const startTimeRef = useRef(Date.now());
   const TIMEOUT_MS = 60_000;
 
   const [flashColor, setFlashColor] = useState<'red' | 'green' | 'blue' | null>(null);
@@ -370,13 +369,9 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
     let cancelled = false;
 
     async function init() {
-      // Wait for models to load
-      while (!modelsLoaded) {
-        await new Promise(r => setTimeout(r, 100));
-      }
       let stream = streamRef.current;
       if (!stream) {
-        // Stream lost between preview and running â€” try to reopen
+        // Stream lost between preview and running — try to reopen
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             video: selectedCamera
@@ -401,21 +396,6 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       startRecording(stream!);
       const video = videoRef.current;
       if (!video) { return; }
-
-      // Wait for face-api models to load
-      if (!modelsLoaded) {
-        setStatus('Loading face detection models...');
-        await new Promise<void>((resolve) => {
-          const checkLoaded = setInterval(() => {
-            if (modelsLoaded) {
-              clearInterval(checkLoaded);
-              resolve();
-            }
-          }, 100);
-        });
-        if (cancelled) return;
-      }
-      
       setStatus('Analyzing face...');
       startAnalysis(video);
     }
@@ -429,7 +409,6 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
     analysisStartedRef.current = true;
 
     runningRef.current = true;
-    startTimeRef.current = Date.now();
     const detOpts = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.15 });
 
     async function checkFrame() {
@@ -440,7 +419,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
         runningRef.current = false;
         stopCamera();
         if (externalVideo) video.pause();
-        onComplete({ pass: false, score: 0, details: `Timed out after ${elapsed}s â€” face not detected long enough` });
+        onComplete({ pass: false, score: 0, details: `Timed out after ${elapsed}s — face not detected long enough` });
         return;
       }
 
@@ -517,7 +496,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
 
             const remainSec = Math.max(0, (COLLECT_FRAMES - frameCountRef.current) / FRAME_RATE);
             setProgress(Math.min(100, Math.round((frameCountRef.current / COLLECT_FRAMES) * 100)));
-            setStatus(`Hold still â€” keep your face centered (${remainSec.toFixed(1)}s left)`);
+            setStatus(`Hold still — keep your face centered (${remainSec.toFixed(1)}s left)`);
 
             if (frameCountRef.current >= COLLECT_FRAMES) {
               // Compute median baseline from collected samples
@@ -587,14 +566,14 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
 
                 challengeIdxRef.current++;
                 if (challengeIdxRef.current >= challengesRef.current.length) {
-                  // Challenges done â€” start flash liveness phase
+                  // Challenges done — start flash liveness phase
                   inChallengeRef.current = false;
                   inFlashRef.current = true;
                   flashStepRef.current = 0;
                   flashFrameCountRef.current = 0;
                   flashStepSamplesRef.current = [];
                   setFlashColor('red');
-                  setStatus('Look at the screen â€” checking light reflection');
+                  setStatus('Look at the screen — checking light reflection');
                   setProgress(0);
                 } else {
                   challengeFrameRef.current = 0;
@@ -648,7 +627,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
             setProgress(Math.min(100, flashPct));
           }
         } else {
-          setStatus(frameCountRef.current > 15 ? 'Face lost â€” stay centered' : 'Position face in center');
+          setStatus(frameCountRef.current > 15 ? 'Face lost — stay centered' : 'Position face in center');
         }
       } catch { /* skip */ }
 
@@ -746,14 +725,14 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
           const otherAvg = sample.color === 'red' ? (dg + db) / 2 : sample.color === 'green' ? (dr + db) / 2 : (dr + dg) / 2;
           // Real face: target channel rises significantly above the average of the other two
           const discrimination = positiveChannel - otherAvg;
-          const passed = discrimination > 8; // 8/255 â‰ˆ 3% color shift
+          const passed = discrimination > 8; // 8/255 ≈ 3% color shift
           if (passed) flashPts += 7;
           flashDetails.push({ label: `${sample.color.toUpperCase()} flash`, pts: passed ? 7 : 0 });
         }
         // Add flash details to color analysis instead of breakdown
         colorAnalysis = [
           ...colorAnalysis || [],
-          ...flashDetails.map(d => ({ label: d.label, value: d.pts > 0 ? 'âœ“ Passed' : 'âœ— Failed' })),
+          ...flashDetails.map(d => ({ label: d.label, value: d.pts > 0 ? '✓ Passed' : '✗ Failed' })),
         ];
         reasons.push(`flash:${flashPts}/21`);
       } else {
@@ -804,7 +783,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
               body: JSON.stringify({ image: b64 }),
             });
             const data = await res.json();
-            // AWS DetectFaces is informational only â€” it detects faces and attributes,
+            // AWS DetectFaces is informational only — it detects faces and attributes,
             // but does NOT detect spoofs/replays. It is not a liveness detector.
             awsInfo = [];
             if (data.face_detected) {
@@ -825,7 +804,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
         }
       }
 
-      // Object detection for phone/screen/hand (spoof indicators) â€” only for combined provider
+      // Object detection for phone/screen/hand (spoof indicators) — only for combined provider
       if (provider === 'aws_detect_faces_objects' && serverUrl && canvasRef.current) {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
@@ -844,37 +823,26 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
               for (const obj of data.spoof_objects_detected) {
                 objectInfo.push({ label: obj.label, value: `${obj.confidence.toFixed(0)}%` });
               }
-              if (data.has_phone) objectInfo.push({ label: 'âš ï¸ Phone Detected', value: 'Potential presentation attack' });
+              if (data.has_phone) objectInfo.push({ label: '⚠️ Phone Detected', value: 'Potential presentation attack' });
               if (data.has_hand) objectInfo.push({ label: 'Hand Detected', value: 'Holding device?' });
               if (data.has_screen) objectInfo.push({ label: 'Screen Detected', value: 'Displaying image?' });
-              if (data.spoof_risk === 'high') objectInfo.push({ label: 'Spoof Risk', value: 'HIGH â€” phone/screen+hand detected' });
-              else if (data.spoof_risk === 'medium') objectInfo.push({ label: 'Spoof Risk', value: 'MEDIUM â€” screen detected' });
+              if (data.spoof_risk === 'high') objectInfo.push({ label: 'Spoof Risk', value: 'HIGH — phone/screen+hand detected' });
+              else if (data.spoof_risk === 'medium') objectInfo.push({ label: 'Spoof Risk', value: 'MEDIUM — screen detected' });
               else objectInfo.push({ label: 'Spoof Risk', value: 'LOW' });
             } else {
               objectInfo.push({ label: 'Spoof Objects', value: 'None detected' });
               objectInfo.push({ label: 'Spoof Risk', value: 'LOW' });
             }
             reasons.push(data.spoof_risk === 'high' ? 'OBJECT:HIGH_RISK' : data.spoof_risk === 'medium' ? 'OBJECT:MEDIUM_RISK' : 'OBJECT:LOW_RISK');
-
-          // Object detection spoof risk affects score (penalty)
-          let objectRiskPenalty = 0;
-          if (data.spoof_risk === 'high') objectRiskPenalty = 30;
-          else if (data.spoof_risk === 'medium') objectRiskPenalty = 15;
-          score -= objectRiskPenalty;
-          if (objectRiskPenalty > 0) {
-            breakdown.push({ label: 'Object Risk Penalty', pts: -objectRiskPenalty });
-            reasons.push(`object_risk_penalty:${objectRiskPenalty}`);
+          } catch {
+            reasons.push('OBJECT:error');
           }
-          score = Math.min(100, score);
-        } catch {
-          reasons.push('OBJECT:error');
         }
       }
 
       // Note: AWS DetectFaces is intentionally NOT added to the score. It's a face
       // attribute analyzer, not a liveness detector. Adding its score would let a
       // printed photo pass because it has eyes open, good lighting, and high sharpness.
-      if (backendScore > 0) breakdown.push({ label: 'OpenBiometrics', pts: backendScore });
       if (backendScore > 0) breakdown.push({ label: 'OpenBiometrics', pts: backendScore });
       score = Math.min(100, score);
       const pass = score >= LIVENESS_PASS_THRESHOLD;
@@ -915,7 +883,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       } else {
         colorAnalysis = [
           ...(colorAnalysis || []),
-          { label: 'Note', value: isMobile ? 'Flash liveness skipped â€” no baseline color captured' : 'Flash liveness not available on desktop' },
+          { label: 'Note', value: isMobile ? 'Flash liveness skipped — no baseline color captured' : 'Flash liveness not available on desktop' },
         ];
       }
 
@@ -955,7 +923,6 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
 
     rafRef.current = requestAnimationFrame(checkFrame);
   }
-}
 
   useEffect(() => {
     return () => stopCamera();
@@ -1098,4 +1065,3 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
     </div>
   );
 }
-
