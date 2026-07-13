@@ -55,7 +55,7 @@ export default function App() {
   const [detectionModel, setDetectionModel] = useState<DetectionModel>('accurate');
   const [idToFaceProvider, setIdToFaceProvider] = useState<IdToFaceProvider>('rekognition');
   const [serverUrl, setServerUrl] = useState('https://face-id-matcher.onrender.com');
-  const [ocrProvider, setOcrProvider] = useState<OcrProvider>('verihubs');
+  const [ocrProvider, setOcrProvider] = useState<OcrProvider>('textract');
   const [ocrServerUrl, setOcrServerUrl] = useState('https://face-id-matcher.onrender.com');
   const [ocrImage, setOcrImage] = useState<ImageData>(null);
   const [ocrResult, setOcrResult] = useState<{ id_type?: string; labels?: { label: string; confidence: number }[]; text_lines?: string[]; error?: string } | null>(null);
