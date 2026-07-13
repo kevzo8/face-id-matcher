@@ -449,6 +449,17 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       captureInitialSnapshot(video);
     }
 
+    // Random white flash during video to simulate AWS snapshot capture
+    const randomFlashDelay = 2000 + Math.random() * 6000;
+    const flashTimer = window.setTimeout(() => {
+      if (!runningRef.current) return;
+      setAwsFlash(true);
+      setTimeout(() => setAwsFlash(false), 150);
+    }, randomFlashDelay);
+    const originalStop = stopCamera;
+    const cleanupFlash = () => { clearTimeout(flashTimer); };
+    // We'll handle cleanup via the raf loop ending
+
     // Mid-session AWS capture: ~5s into the session, grab one frame and run
     // AWS object/face detection early (better chance to catch a presentation
     // attack while it's happening). Result is reused by computeResult() so AWS
