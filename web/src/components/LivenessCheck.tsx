@@ -214,6 +214,9 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
   const baselineNoseRef = useRef<{ offsetX: number; eyeNoseY: number } | null>(null);
   const inChallengeRef = useRef(false);
   const eyeOpenStreakRef = useRef(0);
+  const midScanTimerRef = useRef<number | null>(null);
+  const midScanObjectDataRef = useRef<unknown>(null);
+  const midScanFaceDataRef = useRef<unknown>(null);
 
   const stopCamera = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -409,6 +412,42 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
     analysisStartedRef.current = true;
 
     runningRef.current = true;
+
+    // Mid-session AWS capture: ~5s into the session, grab one frame and run
+    // AWS object/face detection early (better chance to catch a presentation
+    // attack while it's happening). Result is reused by computeResult() so AWS
+    // is still called only once per session.
+    if ((provider === 'aws_detect_faces_objects' || provider === 'aws_detect_faces') && serverUrl && canvasRef.current) {
+      midScanTimerRef.current = window.setTimeout(() => {
+        if (!runningRef.current || !videoRef.current || !canvasRef.current) return;
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        const b64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+        if (provider === 'aws_detect_faces_objects') {
+          fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/detect-objects`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: b64 }),
+          })
+            .then((r) => r.json())
+            .then((data) => { midScanObjectDataRef.current = data; })
+            .catch(() => {});
+        }
+        if (provider === 'aws_detect_faces') {
+          fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/detect-faces`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: b64 }),
+          })
+            .then((r) => r.json())
+            .then((data) => { midScanFaceDataRef.current = data; })
+            .catch(() => {});
+        }
+      }, 5000);
+    }
+
     const detOpts = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.15 });
 
     async function checkFrame() {
@@ -774,15 +813,29 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         if (ctx && video) {
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const b64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
-          try {
-            const res = await fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/detect-faces`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ image: b64 }),
-            });
-            const data = await res.json();
+          // Prefer the ~5s mid-session capture; fall back to a fresh call only if
+          // the timer hasn't fired yet (very short session).
+          let data = midScanFaceDataRef.current as {
+            face_detected?: boolean; confidence?: number; eyes_open?: boolean;
+            eyes_open_confidence?: number; quality_brightness?: number; quality_sharpness?: number;
+            age_low?: number; age_high?: number; gender?: string; expression?: string;
+          } | null;
+          if (!data) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const b64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+            try {
+              const res = await fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/detect-faces`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: b64 }),
+              });
+              data = await res.json();
+            } catch {
+              reasons.push('AWS:error');
+              data = null;
+            }
+          }
+          if (data) {
             // AWS DetectFaces is informational only — it detects faces and attributes,
             // but does NOT detect spoofs/replays. It is not a liveness detector.
             awsInfo = [];
@@ -798,11 +851,9 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
               awsInfo.push({ label: 'AWS', value: 'No face detected' });
             }
             reasons.push(data.face_detected ? 'AWS:face detected (informational)' : 'AWS:no face');
-} catch {
-             reasons.push('AWS:error');
-           }
-         }
-       }
+          }
+        }
+      }
 
       // Note: AWS DetectFaces is intentionally NOT added to the score. It's a face
       // attribute analyzer, not a liveness detector. Adding its score would let a
@@ -872,6 +923,7 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
               if (data.has_screen) reasons.push('Screen detected');
             } else {
               objectInfo = [{ label: 'Spoof Risk', value: 'low' }, { label: 'Objects', value: 'none detected' }];
+            reasons.push('no spoof objects detected');
             }
             if (data.spoof_risk === 'high') {
               score -= 30;

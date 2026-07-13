@@ -311,6 +311,7 @@ class DetectObjectsResponse(BaseModel):
     has_photo: bool
     has_id: bool
     spoof_risk: str
+    raw_labels: list[dict] = []
     error: str | None = None
 
 
@@ -382,6 +383,12 @@ async def detect_objects_liveness(request: Request):
         elif has_screen:
             spoof_risk = "medium"
 
+        # Capture all raw AWS labels for debugging/verification.
+        raw_labels = [
+            {"label": label.get("Name", ""), "confidence": label.get("Confidence", 0)}
+            for label in response.get("Labels", [])
+        ]
+
         return DetectObjectsResponse(
             spoof_objects_detected=detected_spoof_objects,
             has_phone=has_phone,
@@ -389,13 +396,14 @@ async def detect_objects_liveness(request: Request):
             has_screen=has_screen,
             has_photo=has_photo,
             has_id=has_id,
-            spoof_risk=spoof_risk
+            spoof_risk=spoof_risk,
+            raw_labels=raw_labels,
         )
     except Exception as e:
         return DetectObjectsResponse(
             spoof_objects_detected=[],
             has_phone=False, has_hand=False, has_screen=False, has_photo=False, has_id=False,
-            spoof_risk="unknown", error=str(e)
+            spoof_risk="unknown", raw_labels=[], error=str(e)
         )
 
 
