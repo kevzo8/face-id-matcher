@@ -54,7 +54,6 @@ export default function App() {
   const [ocrError, setOcrError] = useState<string | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [aiParserProvider, setAiParserProvider] = useState<'groq' | 'openai'>('groq');
-  const [aiApiKey, setAiApiKey] = useState(() => localStorage.getItem('ai_api_key') || '');
   const [aiResult, setAiResult] = useState<{ id_type?: string; fields?: { label: string; value: string }[] } | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [livenessProvider, setLivenessProvider] = useState<LivenessProvider>('open_face_liveness');
@@ -288,38 +287,26 @@ export default function App() {
     }
   }, [ocrImage, ocrServerUrl, ocrProvider]);
 
-  useEffect(() => { localStorage.setItem('ai_api_key', aiApiKey); }, [aiApiKey]);
-
   const parseWithAi = useCallback(async () => {
     const text = ocrResult?.text_lines?.join('\n');
-    if (!text || !aiApiKey) return;
+    if (!text) return;
     setAiLoading(true);
     setAiResult(null);
     try {
-      const baseUrl = aiParserProvider === 'groq' ? 'https://api.groq.com/openai/v1' : 'https://api.openai.com/v1';
-      const model = aiParserProvider === 'groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini';
-      const res = await fetch(`${baseUrl}/chat/completions`, {
+      const res = await fetch(`${ocrServerUrl.replace(/\/+$/, '')}/ocr/parse`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${aiApiKey}` },
-        body: JSON.stringify({
-          model,
-          messages: [{
-            role: 'user',
-            content: `Extract structured information from this ID document text. Return ONLY valid JSON with no markdown or explanation. Format: {"id_type": "type of ID document", "fields": [{"label": "field name", "value": "field value"}]}. Extract fields like full name, date of birth, ID number, address, gender, nationality, expiry date, issue date, etc.\n\nText:\n${text}`
-          }],
-          temperature: 0.1,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, provider: aiParserProvider }),
       });
       const data = await res.json();
-      const content = data.choices?.[0]?.message?.content || '';
-      const parsed = JSON.parse(content.replace(/```json|```/g, '').trim());
-      setAiResult(parsed);
+      if (data.error) { setAiResult({ id_type: 'Error', fields: [{ label: 'Parse error', value: data.error }] }); return; }
+      setAiResult(data);
     } catch (e) {
       setAiResult({ id_type: 'Error', fields: [{ label: 'Parse error', value: e instanceof Error ? e.message : 'Unknown error' }] });
     } finally {
       setAiLoading(false);
     }
-  }, [ocrResult, aiApiKey, aiParserProvider]);
+  }, [ocrResult, ocrServerUrl, aiParserProvider]);
 
   const handleLivenessComplete = useCallback((result: { pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[]; provider?: string }) => {
     setLivenessResult(result);
@@ -803,8 +790,8 @@ export default function App() {
                     {ocrResult.error && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 8 }}>{ocrResult.error}</div>}
                     {ocrResult.text_lines && ocrResult.text_lines.length > 0 && (
                       <div style={{ marginTop: 8 }}>
-                        <button onClick={parseWithAi} disabled={aiLoading || !aiApiKey}
-                          style={{ padding: '8px 16px', fontSize: 12, fontWeight: 600, border: 'none', borderRadius: 6, cursor: aiLoading || !aiApiKey ? 'wait' : 'pointer', background: aiLoading || !aiApiKey ? '#334155' : 'linear-gradient(135deg, #6d28d9, #8b5cf6)', color: '#ddd6fe' }}>
+                        <button onClick={parseWithAi} disabled={aiLoading}
+                          style={{ padding: '8px 16px', fontSize: 12, fontWeight: 600, border: 'none', borderRadius: 6, cursor: aiLoading ? 'wait' : 'pointer', background: aiLoading ? '#334155' : 'linear-gradient(135deg, #6d28d9, #8b5cf6)', color: '#ddd6fe' }}>
                           {aiLoading ? 'Parsing...' : 'Parse with AI'}
                         </button>
                         {aiResult && (
@@ -1192,13 +1179,11 @@ export default function App() {
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa' }}>AI PARSER</div>
                 <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4 }}>Extract structured fields from OCR text</div>
                 <select value={aiParserProvider} onChange={(e) => setAiParserProvider(e.target.value as any)}
-                  style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, marginBottom: 4 }}>
+                  style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12 }}>
                   <option value="groq">GROQ (fast/free)</option>
                   <option value="openai">OpenAI</option>
                 </select>
-                <input type="password" value={aiApiKey} onChange={(e) => setAiApiKey(e.target.value)}
-                  placeholder="API Key"
-                  style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box' }} />
+                <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Set <strong>{aiParserProvider.toUpperCase()}_API_KEY</strong> env var on server.</div>
               </div>
             </div>
           )}

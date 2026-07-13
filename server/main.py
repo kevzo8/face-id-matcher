@@ -498,6 +498,52 @@ async def ocr_detect(request: Request):
         return OcrDetectResponse(error=str(e))
 
 
+class OcrParseResponse(BaseModel):
+    id_type: str | None = None
+    fields: list[dict] = []
+    error: str | None = None
+
+
+@app.post("/ocr/parse", response_model=OcrParseResponse)
+async def ocr_parse(request: Request):
+    body = await request.json()
+    text = body.get("text", "")
+    provider = body.get("provider", "groq")
+    if not text:
+        raise HTTPException(status_code=400, detail="No text provided")
+    try:
+        api_key = os.environ.get(f"{provider.upper()}_API_KEY")
+        if not api_key:
+            return OcrParseResponse(error=f"{provider.upper()}_API_KEY env var not set")
+        
+        base_url = "https://api.groq.com/openai/v1" if provider == "groq" else "https://api.openai.com/v1"
+        model = "llama-3.3-70b-versatile" if provider == "groq" else "gpt-4o-mini"
+        
+        res = http_requests.post(f"{base_url}/chat/completions", json={
+            "model": model,
+            "messages": [{
+                "role": "user",
+                "content": f"Extract structured information from this ID document text. Return ONLY valid JSON with no markdown or explanation. Format: {{\"id_type\": \"type of ID document\", \"fields\": [{{\"label\": \"field name\", \"value\": \"field value\"}}]}}. Extract fields like full name, date of birth, ID number, address, gender, nationality, expiry date, issue date, etc.\n\nText:\n{text}"
+            }],
+            "temperature": 0.1,
+        }, headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        }, timeout=30)
+        
+        data = res.json()
+        content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        import re
+        json_str = re.sub(r'```json|```', '', content).strip()
+        parsed = json.loads(json_str)
+        return OcrParseResponse(
+            id_type=parsed.get("id_type"),
+            fields=parsed.get("fields", []),
+        )
+    except Exception as e:
+        return OcrParseResponse(error=str(e))
+
+
 @app.post("/liveness/passive")
 async def passive_liveness(request: Request):
     global liveness_passive, liveness_faceplusplus, liveness_aws
