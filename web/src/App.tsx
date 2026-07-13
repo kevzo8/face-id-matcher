@@ -1,20 +1,12 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import * as faceapi from 'face-api.js';
-import { ImageCapture, ImageData } from './components/ImageCapture';
+import { ImageCapture, CaptureImageData } from './components/ImageCapture';
 import { MatchResult } from './components/MatchResult';
 import { BatchMatcher } from './components/BatchMatcher';
 import { CsvViewer } from './components/CsvViewer';
 import Presentation from './components/Presentation';
 import LivenessCheck from './components/LivenessCheck';
 import PassiveLivenessCheck from './components/PassiveLivenessCheck';
-
-type ImageData = {
-  url: string;
-  element: HTMLImageElement;
-  width: number;
-  height: number;
-  size: number;
-} | null;
 
 type DetectionModel = 'fast' | 'accurate';
 type IdToFaceProvider = 'local' | 'rekognition' | 'megamatcher' | 'insightface' | 'faceplusplus';
@@ -40,8 +32,8 @@ function checkOrientation(detection: faceapi.WithFaceLandmarks<{ detection: face
 export default function App() {
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [idImage, setIdImage] = useState<ImageData>(null);
-  const [selfieImage, setSelfieImage] = useState<ImageData>(null);
+  const [idImage, setIdImage] = useState<CaptureImageData>(null);
+  const [selfieImage, setSelfieImage] = useState<CaptureImageData>(null);
   const [matching, setMatching] = useState(false);
   const [result, setResult] = useState<{
     distance: number;
@@ -57,7 +49,7 @@ export default function App() {
   const [serverUrl, setServerUrl] = useState('https://face-id-matcher.onrender.com');
   const [ocrProvider, setOcrProvider] = useState<OcrProvider>('aws_rekognition_ocr');
   const [ocrServerUrl, setOcrServerUrl] = useState('https://face-id-matcher.onrender.com');
-  const [ocrImage, setOcrImage] = useState<ImageData>(null);
+  const [ocrImage, setOcrImage] = useState<CaptureImageData>(null);
   const [ocrResult, setOcrResult] = useState<{ id_type?: string; labels?: { label: string; confidence: number }[]; text_lines?: string[]; error?: string } | null>(null);
   const [ocrError, setOcrError] = useState<string | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
@@ -258,13 +250,13 @@ export default function App() {
     setMatching(false);
   }, [idImage, selfieImage, modelsLoaded, threshold, detectionModel, idToFaceProvider, serverUrl]);
 
-  const handleIdCapture = useCallback((data: ImageData) => {
+  const handleIdCapture = useCallback((data: CaptureImageData) => {
     setIdImage(data);
     setIdFaceBox(null);
     setResult(null);
   }, []);
 
-  const handleSelfieCapture = useCallback((data: ImageData) => {
+  const handleSelfieCapture = useCallback((data: CaptureImageData) => {
     setSelfieImage(data);
     setSelfieFaceBox(null);
     setResult(null);

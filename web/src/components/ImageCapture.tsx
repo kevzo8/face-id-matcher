@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 
-export type ImageData = {
+export type CaptureImageData = {
   url: string;
   element: HTMLImageElement;
   width: number;
@@ -13,8 +13,8 @@ type FaceBox = { x: number; y: number; width: number; height: number; score: num
 interface ImageCaptureProps {
   title: string;
   subtitle: string;
-  image: ImageData;
-  onCapture: (data: ImageData) => void;
+  image: CaptureImageData;
+  onCapture: (data: CaptureImageData) => void;
   facingMode: 'user' | 'environment';
   accentColor: string;
   icon: 'card' | 'person';
