@@ -53,6 +53,10 @@ export default function App() {
   const [ocrResult, setOcrResult] = useState<{ id_type?: string; labels?: { label: string; confidence: number }[]; text_lines?: string[]; error?: string } | null>(null);
   const [ocrError, setOcrError] = useState<string | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
+  const [aiParserProvider, setAiParserProvider] = useState<'groq' | 'openai'>('groq');
+  const [aiApiKey, setAiApiKey] = useState('');
+  const [aiResult, setAiResult] = useState<{ id_type?: string; fields?: { label: string; value: string }[] } | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
   const [livenessProvider, setLivenessProvider] = useState<LivenessProvider>('open_face_liveness');
   const [livenessServerUrl, setLivenessServerUrl] = useState('https://face-id-matcher.onrender.com');
   const [obServerUrl, setObServerUrl] = useState('https://openbiometrics.onrender.com');
@@ -283,6 +287,37 @@ export default function App() {
       setOcrLoading(false);
     }
   }, [ocrImage, ocrServerUrl, ocrProvider]);
+
+  const parseWithAi = useCallback(async () => {
+    const text = ocrResult?.text_lines?.join('\n');
+    if (!text || !aiApiKey) return;
+    setAiLoading(true);
+    setAiResult(null);
+    try {
+      const baseUrl = aiParserProvider === 'groq' ? 'https://api.groq.com/openai/v1' : 'https://api.openai.com/v1';
+      const model = aiParserProvider === 'groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini';
+      const res = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${aiApiKey}` },
+        body: JSON.stringify({
+          model,
+          messages: [{
+            role: 'user',
+            content: `Extract structured information from this ID document text. Return ONLY valid JSON with no markdown or explanation. Format: {"id_type": "type of ID document", "fields": [{"label": "field name", "value": "field value"}]}. Extract fields like full name, date of birth, ID number, address, gender, nationality, expiry date, issue date, etc.\n\nText:\n${text}`
+          }],
+          temperature: 0.1,
+        }),
+      });
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content || '';
+      const parsed = JSON.parse(content.replace(/```json|```/g, '').trim());
+      setAiResult(parsed);
+    } catch (e) {
+      setAiResult({ id_type: 'Error', fields: [{ label: 'Parse error', value: e instanceof Error ? e.message : 'Unknown error' }] });
+    } finally {
+      setAiLoading(false);
+    }
+  }, [ocrResult, aiApiKey, aiParserProvider]);
 
   const handleLivenessComplete = useCallback((result: { pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[]; provider?: string }) => {
     setLivenessResult(result);
@@ -764,6 +799,31 @@ export default function App() {
                       </div>
                     )}
                     {ocrResult.error && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 8 }}>{ocrResult.error}</div>}
+                    {ocrResult.text_lines && ocrResult.text_lines.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <button onClick={parseWithAi} disabled={aiLoading || !aiApiKey}
+                          style={{ padding: '8px 16px', fontSize: 12, fontWeight: 600, border: 'none', borderRadius: 6, cursor: aiLoading || !aiApiKey ? 'wait' : 'pointer', background: aiLoading || !aiApiKey ? '#334155' : 'linear-gradient(135deg, #6d28d9, #8b5cf6)', color: '#ddd6fe' }}>
+                          {aiLoading ? 'Parsing...' : 'Parse with AI'}
+                        </button>
+                        {aiResult && (
+                          <div style={{ marginTop: 8, padding: 8, background: 'rgba(0,0,0,0.2)', borderRadius: 4 }}>
+                            <div style={{ fontSize: 10, fontWeight: 600, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Parsed ID Fields</div>
+                            {aiResult.id_type && (
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#cbd5e1', padding: '2px 4px' }}>
+                                <span>ID Type</span>
+                                <span style={{ fontWeight: 600, color: '#fbbf24' }}>{aiResult.id_type}</span>
+                              </div>
+                            )}
+                            {aiResult.fields?.map((f, i) => (
+                              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#cbd5e1', padding: '2px 4px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                <span>{f.label}</span>
+                                <span style={{ fontWeight: 600, color: '#93c5fd', textAlign: 'right', maxWidth: '60%' }}>{f.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1125,6 +1185,18 @@ export default function App() {
                 {ocrProvider === 'google_docai' && <><strong style={{ color: '#94a3b8' }}>Google Doc AI</strong> &mdash; Custom PH extractor.</>}
                 {ocrProvider === 'mindee' && <><strong style={{ color: '#94a3b8' }}>Mindee</strong> &mdash; International ID OCR.</>}
                 {ocrProvider === 'azure_di' && <><strong style={{ color: '#94a3b8' }}>Azure DI</strong> &mdash; Fast custom model training.</>}
+              </div>
+              <div style={{ marginTop: 8, borderTop: '1px solid #334155', paddingTop: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa' }}>AI PARSER</div>
+                <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4 }}>Extract structured fields from OCR text</div>
+                <select value={aiParserProvider} onChange={(e) => setAiParserProvider(e.target.value as any)}
+                  style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, marginBottom: 4 }}>
+                  <option value="groq">GROQ (fast/free)</option>
+                  <option value="openai">OpenAI</option>
+                </select>
+                <input type="password" value={aiApiKey} onChange={(e) => setAiApiKey(e.target.value)}
+                  placeholder="API Key"
+                  style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box' }} />
               </div>
             </div>
           )}
