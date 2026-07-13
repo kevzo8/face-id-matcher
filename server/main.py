@@ -327,16 +327,22 @@ async def detect_objects_liveness(request: Request):
         response = rekognition.detect_labels(
             Image={"Bytes": base64.b64decode(image_b64)},
             MaxLabels=50,
-            MinConfidence=50,
+            MinConfidence=70,
         )
 
-        # Objects that suggest a phone/screen presentation attack
+        # Objects that strongly suggest a phone/screen presentation attack.
+        # NOTE: Generic labels (Device, Electronics, Gadget, Camera, Lens, Arm, Finger)
+        # are intentionally EXCLUDED or gated — AWS detect_labels returns them for almost
+        # any normal photo. "Hand" is kept but ONLY counts when combined with a screen/phone
+        # at high confidence (see risk logic below), since a hand gripping a device is a
+        # strong replay signal.
         spoof_indicators = {
-            # Phone/device
+            # Phone/device (specific, not generic "Device")
             "Mobile Phone": 0, "Cell Phone": 0, "Smartphone": 0, "Phone": 0,
-            "Hand": 0, "Finger": 0, "Arm": 0,
+            # Hand holding a device (only meaningful with a screen/phone present)
+            "Hand": 0, "Finger": 0,
+            # Screen showing a replayed face
             "Screen": 0, "Display": 0, "Monitor": 0, "Television": 0, "TV": 0,
-            "Electronics": 0, "Device": 0, "Gadget": 0, "Camera": 0, "Lens": 0,
             # Photo/print indicators
             "Photo": 0, "Photograph": 0, "Picture": 0, "Picture Frame": 0,
             "Frame": 0, "Border": 0, "Paper": 0, "Printed Material": 0,
@@ -351,18 +357,25 @@ async def detect_objects_liveness(request: Request):
         for label in response.get("Labels", []):
             name = label.get("Name", "")
             confidence = label.get("Confidence", 0)
-            if name in spoof_indicators and confidence >= 40:
+            # Require high confidence to avoid false positives from generic labels
+            if name in spoof_indicators and confidence >= 80:
                 spoof_indicators[name] = confidence
                 detected_spoof_objects.append({"label": name, "confidence": confidence})
 
         # Check for phone-like rectangular objects with high confidence
         has_phone = any(v > 0 for k, v in spoof_indicators.items() if k in ["Mobile Phone", "Cell Phone", "Smartphone", "Phone"])
         has_hand = any(v > 0 for k, v in spoof_indicators.items() if k in ["Hand", "Finger", "Arm"])
-        has_screen = any(v > 0 for k, v in spoof_indicators.items() if k in ["Screen", "Display", "Monitor", "Television", "TV", "Electronics", "Device", "Computer", "Laptop", "Tablet"])
+        has_screen = any(v > 0 for k, v in spoof_indicators.items() if k in ["Screen", "Display", "Monitor", "Television", "TV"])
         has_photo = any(v > 0 for k, v in spoof_indicators.items() if k in ["Photo", "Photograph", "Picture", "Picture Frame", "Frame", "Border", "Paper", "Printed Material", "Flat", "Two-Dimensional", "Poster", "Print"])
         has_id = any(v > 0 for k, v in spoof_indicators.items() if k in ["ID Card", "Identification Card", "Driver's License", "Passport", "License", "Credit Card", "Card", "Identification", "Document", "ID"])
 
-        # Determine risk: phone/hand+screen = high, photo/ID = high, screen = medium
+        # Determine risk:
+        #   - phone present            -> high (clear replay device)
+        #   - hand gripping a screen    -> high (holding a device showing a face)
+        #   - photo / ID document       -> high (printed attack)
+        #   - screen alone (no hand)     -> medium (ambiguous, not definitive)
+        # All indicators require >=80% confidence, so a casual hand in a normal selfie
+        # (typically ~50%) will NOT trip this.
         spoof_risk = "low"
         if has_phone or (has_hand and has_screen) or has_photo or has_id:
             spoof_risk = "high"
