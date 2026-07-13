@@ -907,49 +907,50 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
 
       // Object detection for phone/screen/hand (spoof indicators) - only for combined provider
       if (provider === 'aws_detect_faces_objects' && serverUrl && canvasRef.current) {
-        const snapCanvas = document.createElement('canvas');
-        snapCanvas.width = video.videoWidth || 640;
-        snapCanvas.height = video.videoHeight || 480;
-        snapCanvas.style.position = 'fixed';
-        snapCanvas.style.left = '-9999px';
-        snapCanvas.style.top = '-9999px';
-        document.body.appendChild(snapCanvas);
-        const snapCtx = snapCanvas.getContext('2d');
-        if (snapCtx && video) {
-          snapCtx.drawImage(video, 0, 0, snapCanvas.width, snapCanvas.height);
-          const b64 = snapCanvas.toDataURL('image/jpeg', 0.8).split(',')[1];
-          document.body.removeChild(snapCanvas);
-          try {
-            const res = await fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/detect-objects`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ image: b64 }),
-            });
-            const data = await res.json();
-            rawLabels = data.raw_labels;
-            objectSnapshotUrl = data.snapshot;
-            setAwsFlash(true);
-            setTimeout(() => setAwsFlash(false), 150);
-            if (data.spoof_objects_detected && data.spoof_objects_detected.length > 0) {
-              objectInfo = [
-                { label: 'Spoof Risk', value: data.spoof_risk ?? 'unknown' },
-                ...data.spoof_objects_detected.map((o: { label: string; confidence: number }) => ({ label: o.label, value: `${o.confidence.toFixed(0)}%` })),
-              ];
-              if (data.has_phone) reasons.push('Phone detected');
-              if (data.has_hand) reasons.push('Hand detected');
-              if (data.has_screen) reasons.push('Screen detected');
-            } else {
-              objectInfo = [{ label: 'Spoof Risk', value: 'low' }, { label: 'Objects', value: 'none detected' }];
+        try {
+          const bitmap = await createImageBitmap(video, { resizeWidth: 640, resizeHeight: 480 });
+          const snapCanvas = document.createElement('canvas');
+          snapCanvas.width = bitmap.width;
+          snapCanvas.height = bitmap.height;
+          const snapCtx = snapCanvas.getContext('2d');
+          if (snapCtx) {
+            snapCtx.drawImage(bitmap, 0, 0);
+            bitmap.close();
+            const b64 = snapCanvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+            try {
+              const res = await fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/detect-objects`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: b64 }),
+              });
+              const data = await res.json();
+              rawLabels = data.raw_labels;
+              objectSnapshotUrl = data.snapshot;
+              setAwsFlash(true);
+              setTimeout(() => setAwsFlash(false), 150);
+              if (data.spoof_objects_detected && data.spoof_objects_detected.length > 0) {
+                objectInfo = [
+                  { label: 'Spoof Risk', value: data.spoof_risk ?? 'unknown' },
+                  ...data.spoof_objects_detected.map((o: { label: string; confidence: number }) => ({ label: o.label, value: `${o.confidence.toFixed(0)}%` })),
+                ];
+                if (data.has_phone) reasons.push('Phone detected');
+                if (data.has_hand) reasons.push('Hand detected');
+                if (data.has_screen) reasons.push('Screen detected');
+              } else {
+                objectInfo = [{ label: 'Spoof Risk', value: 'low' }, { label: 'Objects', value: 'none detected' }];
             reasons.push('no spoof objects detected');
+              }
+              if (data.spoof_risk === 'high') {
+                score -= 30;
+                breakdown.push({ label: 'Object Risk Penalty', pts: -30 });
+                reasons.push('high_spoof_risk_penalty:30');
+              }
+            } catch {
+              objectInfo = [{ label: 'Spoof Risk', value: 'error' }, { label: 'Objects', value: 'detection failed' }];
             }
-            if (data.spoof_risk === 'high') {
-              score -= 30;
-              breakdown.push({ label: 'Object Risk Penalty', pts: -30 });
-              reasons.push('high_spoof_risk_penalty:30');
-            }
-          } catch {
-            objectInfo = [{ label: 'Spoof Risk', value: 'error' }, { label: 'Objects', value: 'detection failed' }];
           }
+        } catch {
+          // createImageBitmap failed
         }
       }
 
