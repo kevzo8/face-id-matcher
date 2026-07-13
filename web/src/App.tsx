@@ -715,28 +715,25 @@ export default function App() {
 
           {/* ==================== OCR ==================== */}
           <div style={{ display: feature === 'ocr' ? 'block' : 'none' }}>
-            {!ocrResult && (
-              <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginTop: 12 }}>
-                <div style={{ flex: '0 0 280px', textAlign: 'center' }}>
-                  <ImageCapture title="ID Document" subtitle="Upload or take a photo of an ID card" image={ocrImage} onCapture={(d) => setOcrImage(d)} facingMode="environment" accentColor="#22c55e" icon="card" />
-                </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {ocrImage?.url && (
+            <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginTop: 12 }}>
+              <div style={{ flex: '0 0 280px', textAlign: 'center' }}>
+                <ImageCapture title="ID Document" subtitle="Upload or take a photo of an ID card" image={ocrImage} onCapture={(d) => setOcrImage(d)} facingMode="environment" accentColor="#22c55e" icon="card" />
+              </div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {ocrImage?.url && (
+                  <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={runOcr} disabled={ocrLoading}
-                      style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: 'none', borderRadius: 8, cursor: ocrLoading ? 'wait' : 'pointer', background: ocrLoading ? '#334155' : 'linear-gradient(135deg, #14532d, #16a34a)', color: '#bbf7d0', alignSelf: 'flex-start' }}>
+                      style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: 'none', borderRadius: 8, cursor: ocrLoading ? 'wait' : 'pointer', background: ocrLoading ? '#334155' : 'linear-gradient(135deg, #14532d, #16a34a)', color: '#bbf7d0' }}>
                       {ocrLoading ? 'Processing...' : 'Run OCR'}
                     </button>
-                  )}
-                  {ocrError && <div style={{ color: '#ef4444', fontSize: 12 }}>{ocrError}</div>}
-                </div>
-              </div>
-            )}
-            {ocrResult && (
-              <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
-                <div style={{ flex: '0 0 280px', textAlign: 'center' }}>
-                  {ocrImage?.url && <img src={ocrImage.url} alt="ID Document" style={{ width: '100%', borderRadius: 6, border: '1px solid #475569' }} />}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
+                    <button onClick={() => { setOcrResult(null); setOcrError(null); }}
+                      style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: '1px solid #475569', borderRadius: 8, cursor: 'pointer', background: 'transparent', color: '#e2e8f0' }}>
+                      &#8634; Reset
+                    </button>
+                  </div>
+                )}
+                {ocrError && <div style={{ color: '#ef4444', fontSize: 12 }}>{ocrError}</div>}
+                {ocrResult && (
                   <div style={{ padding: '14px 16px', borderRadius: 8, background: '#1e293b', border: '1px solid #475569' }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: '#4ade80', marginBottom: 8 }}>OCR Results</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left' }}>
@@ -768,13 +765,9 @@ export default function App() {
                     )}
                     {ocrResult.error && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 8 }}>{ocrResult.error}</div>}
                   </div>
-                  <button onClick={() => { setOcrResult(null); setOcrImage(null); setOcrError(null); }}
-                    style={{ padding: '8px 20px', fontSize: 13, fontWeight: 600, border: '1px solid #475569', borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#e2e8f0', marginTop: 8 }}>
-                    &#8634; Reset
-                  </button>
-                </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
 
         </div>
