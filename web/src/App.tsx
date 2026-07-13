@@ -18,7 +18,7 @@ type ImageData = {
 
 type DetectionModel = 'fast' | 'accurate';
 type IdToFaceProvider = 'local' | 'rekognition' | 'megamatcher' | 'insightface' | 'faceplusplus';
-type OcrProvider = 'bedrock' | 'textract' | 'verihubs' | 'zoloz' | 'tencent' | 'google_docai' | 'mindee' | 'azure_di';
+type OcrProvider = 'aws_rekognition_ocr' | 'bedrock' | 'textract' | 'verihubs' | 'zoloz' | 'tencent' | 'google_docai' | 'mindee' | 'azure_di';
 type LivenessProvider = 'aws_rekognition' | 'aws_detect_faces' | 'aws_detect_faces_objects' | 'faceplusplus' | 'azure_face' | 'hyperverge' | 'didit' | 'iproov' | 'open_face_liveness' | 'openbiometrics';
 type FaceBox = { x: number; y: number; width: number; height: number; score: number };
 
@@ -55,7 +55,7 @@ export default function App() {
   const [detectionModel, setDetectionModel] = useState<DetectionModel>('accurate');
   const [idToFaceProvider, setIdToFaceProvider] = useState<IdToFaceProvider>('rekognition');
   const [serverUrl, setServerUrl] = useState('https://face-id-matcher.onrender.com');
-  const [ocrProvider, setOcrProvider] = useState<OcrProvider>('textract');
+  const [ocrProvider, setOcrProvider] = useState<OcrProvider>('aws_rekognition_ocr');
   const [ocrServerUrl, setOcrServerUrl] = useState('https://face-id-matcher.onrender.com');
   const [ocrImage, setOcrImage] = useState<ImageData>(null);
   const [ocrResult, setOcrResult] = useState<{ id_type?: string; labels?: { label: string; confidence: number }[]; text_lines?: string[]; error?: string } | null>(null);
@@ -1118,6 +1118,7 @@ export default function App() {
               <div style={{ fontSize: 11, fontWeight: 700, color: '#22c55e' }}>OCR PROVIDER</div>
               <select value={ocrProvider} onChange={(e) => setOcrProvider(e.target.value as OcrProvider)}
                 style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12 }}>
+                <option value="aws_rekognition_ocr">AWS Rekognition OCR (working)</option>
                 <option value="verihubs">Verihubs OCR (PH IDs)</option>
                 <option value="bedrock">Amazon Bedrock Claude</option>
                 <option value="textract">AWS Textract</option>
@@ -1130,6 +1131,7 @@ export default function App() {
               <input type="text" value={ocrServerUrl} onChange={(e) => setOcrServerUrl(e.target.value)}
                 style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box' }} />
               <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.5 }}>
+                {ocrProvider === 'aws_rekognition_ocr' && <><strong style={{ color: '#94a3b8' }}>AWS Rekognition</strong> &mdash; Uses DetectLabels + DetectText for ID type + OCR.</>}
                 {ocrProvider === 'verihubs' && <><strong style={{ color: '#94a3b8' }}>Verihubs</strong> &mdash; 9+ PH IDs, auto-detect.</>}
                 {ocrProvider === 'bedrock' && <><strong style={{ color: '#94a3b8' }}>Bedrock Claude</strong> &mdash; any ID via prompt.</>}
                 {ocrProvider === 'textract' && <><strong style={{ color: '#94a3b8' }}>Textract</strong> &mdash; AWS OCR, limited PH support.</>}
