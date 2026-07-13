@@ -54,7 +54,7 @@ export default function App() {
   const [ocrError, setOcrError] = useState<string | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [aiParserProvider, setAiParserProvider] = useState<'groq' | 'openai'>('groq');
-  const [aiApiKey, setAiApiKey] = useState('');
+  const [aiApiKey, setAiApiKey] = useState(() => localStorage.getItem('ai_api_key') || '');
   const [aiResult, setAiResult] = useState<{ id_type?: string; fields?: { label: string; value: string }[] } | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [livenessProvider, setLivenessProvider] = useState<LivenessProvider>('open_face_liveness');
@@ -287,6 +287,8 @@ export default function App() {
       setOcrLoading(false);
     }
   }, [ocrImage, ocrServerUrl, ocrProvider]);
+
+  useEffect(() => { localStorage.setItem('ai_api_key', aiApiKey); }, [aiApiKey]);
 
   const parseWithAi = useCallback(async () => {
     const text = ocrResult?.text_lines?.join('\n');
