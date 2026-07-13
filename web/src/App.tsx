@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import * as faceapi from 'face-api.js';
-import { ImageCapture } from './components/ImageCapture';
+import { ImageCapture, ImageData } from './components/ImageCapture';
 import { MatchResult } from './components/MatchResult';
 import { BatchMatcher } from './components/BatchMatcher';
 import { CsvViewer } from './components/CsvViewer';
@@ -57,6 +57,10 @@ export default function App() {
   const [serverUrl, setServerUrl] = useState('https://face-id-matcher.onrender.com');
   const [ocrProvider, setOcrProvider] = useState<OcrProvider>('verihubs');
   const [ocrServerUrl, setOcrServerUrl] = useState('https://face-id-matcher.onrender.com');
+  const [ocrImage, setOcrImage] = useState<ImageData>(null);
+  const [ocrResult, setOcrResult] = useState<{ id_type?: string; labels?: { label: string; confidence: number }[]; text_lines?: string[]; error?: string } | null>(null);
+  const [ocrError, setOcrError] = useState<string | null>(null);
+  const [ocrLoading, setOcrLoading] = useState(false);
   const [livenessProvider, setLivenessProvider] = useState<LivenessProvider>('open_face_liveness');
   const [livenessServerUrl, setLivenessServerUrl] = useState('https://face-id-matcher.onrender.com');
   const [obServerUrl, setObServerUrl] = useState('https://openbiometrics.onrender.com');
@@ -265,6 +269,28 @@ export default function App() {
     setSelfieFaceBox(null);
     setResult(null);
   }, []);
+
+  const runOcr = useCallback(async () => {
+    if (!ocrImage?.url) return;
+    setOcrLoading(true);
+    setOcrError(null);
+    setOcrResult(null);
+    try {
+      const b64 = ocrImage.url.split(',')[1];
+      const res = await fetch(`${ocrServerUrl.replace(/\/+$/, '')}/ocr/detect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: b64 }),
+      });
+      const data = await res.json();
+      if (data.error) { setOcrError(data.error); return; }
+      setOcrResult(data);
+    } catch (e) {
+      setOcrError(e instanceof Error ? e.message : 'OCR request failed');
+    } finally {
+      setOcrLoading(false);
+    }
+  }, [ocrImage, ocrServerUrl]);
 
   const handleLivenessComplete = useCallback((result: { pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[]; provider?: string }) => {
     setLivenessResult(result);
@@ -697,10 +723,66 @@ export default function App() {
 
           {/* ==================== OCR ==================== */}
           <div style={{ display: feature === 'ocr' ? 'block' : 'none' }}>
-            <div style={{ textAlign: 'center', padding: 40 }}>
-              <h3 style={{ color: '#e2e8f0', fontWeight: 600, fontSize: 15, marginBottom: 8 }}>OCR &amp; Auto-Detect ID Type</h3>
-              <p style={{ color: '#64748b', fontSize: 13 }}>Provider selected in the right sidebar. Implementation coming soon.</p>
-            </div>
+            {!ocrResult && (
+              <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginTop: 12 }}>
+                <div style={{ flex: '0 0 280px', textAlign: 'center' }}>
+                  <ImageCapture title="ID Document" subtitle="Upload or take a photo of an ID card" image={ocrImage} onCapture={(d) => setOcrImage(d)} facingMode="environment" accentColor="#22c55e" icon="card" />
+                </div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {ocrImage?.url && (
+                    <button onClick={runOcr} disabled={ocrLoading}
+                      style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: 'none', borderRadius: 8, cursor: ocrLoading ? 'wait' : 'pointer', background: ocrLoading ? '#334155' : 'linear-gradient(135deg, #14532d, #16a34a)', color: '#bbf7d0', alignSelf: 'flex-start' }}>
+                      {ocrLoading ? 'Processing...' : 'Run OCR'}
+                    </button>
+                  )}
+                  {ocrError && <div style={{ color: '#ef4444', fontSize: 12 }}>{ocrError}</div>}
+                </div>
+              </div>
+            )}
+            {ocrResult && (
+              <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
+                <div style={{ flex: '0 0 280px', textAlign: 'center' }}>
+                  {ocrImage?.url && <img src={ocrImage.url} alt="ID Document" style={{ width: '100%', borderRadius: 6, border: '1px solid #475569' }} />}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ padding: '14px 16px', borderRadius: 8, background: '#1e293b', border: '1px solid #475569' }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#4ade80', marginBottom: 8 }}>OCR Results</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '2px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3 }}>
+                        <span>Detected ID Type</span>
+                        <span style={{ fontWeight: 600, color: '#fbbf24' }}>{ocrResult.id_type || 'Unknown'}</span>
+                      </div>
+                    </div>
+                    {ocrResult.labels && ocrResult.labels.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>AWS Labels</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          {ocrResult.labels.slice(0, 20).map((l, i) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94a3b8', padding: '1px 4px' }}>
+                              <span>{l.label}</span>
+                              <span style={{ fontWeight: 600, color: '#93c5fd' }}>{l.confidence.toFixed(0)}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {ocrResult.text_lines && ocrResult.text_lines.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Extracted Text</div>
+                        <div style={{ fontSize: 11, color: '#e2e8f0', background: 'rgba(0,0,0,0.3)', padding: 8, borderRadius: 4, maxHeight: 200, overflow: 'auto', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
+                          {ocrResult.text_lines.join('\n')}
+                        </div>
+                      </div>
+                    )}
+                    {ocrResult.error && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 8 }}>{ocrResult.error}</div>}
+                  </div>
+                  <button onClick={() => { setOcrResult(null); setOcrImage(null); setOcrError(null); }}
+                    style={{ padding: '8px 20px', fontSize: 13, fontWeight: 600, border: '1px solid #475569', borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#e2e8f0', marginTop: 8 }}>
+                    &#8634; Reset
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
         </div>

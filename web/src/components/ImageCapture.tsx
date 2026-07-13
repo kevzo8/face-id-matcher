@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 
-type ImageData = {
+export type ImageData = {
   url: string;
   element: HTMLImageElement;
   width: number;

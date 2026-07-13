@@ -419,6 +419,54 @@ class PassiveLivenessResponse(BaseModel):
     info: list[dict] | None = None
 
 
+class OcrDetectResponse(BaseModel):
+    id_type: str | None = None
+    labels: list[dict] = []
+    text_lines: list[str] = []
+    error: str | None = None
+
+
+@app.post("/ocr/detect", response_model=OcrDetectResponse)
+async def ocr_detect(request: Request):
+    body = await request.json()
+    image_b64 = body.get("image")
+    if not image_b64:
+        raise HTTPException(status_code=400, detail="No image provided")
+    try:
+        import boto3
+        rekognition = boto3.client("rekognition", region_name=os.environ.get("AWS_DEFAULT_REGION", "ap-southeast-1"))
+        image_bytes = base64.b64decode(image_b64)
+        
+        # DetectLabels to identify ID document type
+        label_response = rekognition.detect_labels(
+            Image={"Bytes": image_bytes},
+            MaxLabels=50,
+            MinConfidence=70,
+        )
+        
+        id_type = None
+        id_labels = []
+        for label in label_response.get("Labels", []):
+            name = label.get("Name", "")
+            conf = label.get("Confidence", 0)
+            id_labels.append({"label": name, "confidence": conf})
+            if name in ["ID Card", "Identification Card", "Driver's License", "Passport", "License", "ID"] and conf >= 70:
+                if not id_type:
+                    id_type = name
+
+        # DetectText for OCR
+        text_response = rekognition.detect_text(Image={"Bytes": image_bytes})
+        text_lines = [item["DetectedText"] for item in text_response.get("TextDetections", []) if item["Type"] == "LINE"]
+
+        return OcrDetectResponse(
+            id_type=id_type,
+            labels=id_labels,
+            text_lines=text_lines,
+        )
+    except Exception as e:
+        return OcrDetectResponse(error=str(e))
+
+
 @app.post("/liveness/passive")
 async def passive_liveness(request: Request):
     global liveness_passive, liveness_faceplusplus, liveness_aws
