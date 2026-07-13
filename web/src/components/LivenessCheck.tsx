@@ -220,6 +220,8 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
   const midScanTimerRef = useRef<number | null>(null);
   const midScanObjectDataRef = useRef<unknown>(null);
   const midScanFaceDataRef = useRef<unknown>(null);
+  const initialObjectDataRef = useRef<unknown>(null);
+  const initialSnapshotUrlRef = useRef<string | undefined>(undefined);
 
   const stopCamera = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -410,11 +412,42 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
     return () => { cancelled = true; runningRef.current = false; stopCamera(); };
   }, [phase, externalVideo, stopCamera]);
 
+  async function captureInitialSnapshot(video: HTMLVideoElement) {
+    try {
+      const bitmap = await createImageBitmap(video, { resizeWidth: 640, resizeHeight: 480 });
+      const snapCanvas = document.createElement('canvas');
+      snapCanvas.width = bitmap.width;
+      snapCanvas.height = bitmap.height;
+      const snapCtx = snapCanvas.getContext('2d');
+      if (!snapCtx) { bitmap.close(); return; }
+      snapCtx.drawImage(bitmap, 0, 0);
+      bitmap.close();
+      const b64 = snapCanvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+      const res = await fetch(`${serverUrl!.replace(/\/+$/, '')}/liveness/detect-objects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: b64 }),
+      });
+      const data = await res.json();
+      initialObjectDataRef.current = data;
+      initialSnapshotUrlRef.current = data.snapshot;
+      setAwsFlash(true);
+      setTimeout(() => setAwsFlash(false), 150);
+    } catch {
+      // snapshot capture failed, proceed without it
+    }
+  }
+
   function startAnalysis(video: HTMLVideoElement) {
     if (analysisStartedRef.current) return;
     analysisStartedRef.current = true;
 
     runningRef.current = true;
+
+    // Capture initial snapshot for object detection right when analysis starts
+    if (provider === 'aws_detect_faces_objects' && serverUrl) {
+      captureInitialSnapshot(video);
+    }
 
     // Mid-session AWS capture: ~5s into the session, grab one frame and run
     // AWS object/face detection early (better chance to catch a presentation
@@ -906,51 +939,31 @@ export default function LivenessCheck({ onComplete, externalVideo, autoStart = t
       }
 
       // Object detection for phone/screen/hand (spoof indicators) - only for combined provider
-      if (provider === 'aws_detect_faces_objects' && serverUrl && canvasRef.current) {
-        try {
-          const bitmap = await createImageBitmap(video, { resizeWidth: 640, resizeHeight: 480 });
-          const snapCanvas = document.createElement('canvas');
-          snapCanvas.width = bitmap.width;
-          snapCanvas.height = bitmap.height;
-          const snapCtx = snapCanvas.getContext('2d');
-          if (snapCtx) {
-            snapCtx.drawImage(bitmap, 0, 0);
-            bitmap.close();
-            const b64 = snapCanvas.toDataURL('image/jpeg', 0.8).split(',')[1];
-            try {
-              const res = await fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/detect-objects`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: b64 }),
-              });
-              const data = await res.json();
-              rawLabels = data.raw_labels;
-              objectSnapshotUrl = data.snapshot;
-              setAwsFlash(true);
-              setTimeout(() => setAwsFlash(false), 150);
-              if (data.spoof_objects_detected && data.spoof_objects_detected.length > 0) {
-                objectInfo = [
-                  { label: 'Spoof Risk', value: data.spoof_risk ?? 'unknown' },
-                  ...data.spoof_objects_detected.map((o: { label: string; confidence: number }) => ({ label: o.label, value: `${o.confidence.toFixed(0)}%` })),
-                ];
-                if (data.has_phone) reasons.push('Phone detected');
-                if (data.has_hand) reasons.push('Hand detected');
-                if (data.has_screen) reasons.push('Screen detected');
-              } else {
-                objectInfo = [{ label: 'Spoof Risk', value: 'low' }, { label: 'Objects', value: 'none detected' }];
+      if (provider === 'aws_detect_faces_objects' && serverUrl) {
+        const data = initialObjectDataRef.current as any;
+        objectSnapshotUrl = initialSnapshotUrlRef.current;
+        if (data) {
+          rawLabels = data.raw_labels;
+          if (data.spoof_objects_detected && data.spoof_objects_detected.length > 0) {
+            objectInfo = [
+              { label: 'Spoof Risk', value: data.spoof_risk ?? 'unknown' },
+              ...data.spoof_objects_detected.map((o: { label: string; confidence: number }) => ({ label: o.label, value: `${o.confidence.toFixed(0)}%` })),
+            ];
+            if (data.has_phone) reasons.push('Phone detected');
+            if (data.has_hand) reasons.push('Hand detected');
+            if (data.has_screen) reasons.push('Screen detected');
+          } else {
+            objectInfo = [{ label: 'Spoof Risk', value: 'low' }, { label: 'Objects', value: 'none detected' }];
             reasons.push('no spoof objects detected');
-              }
-              if (data.spoof_risk === 'high') {
-                score -= 30;
-                breakdown.push({ label: 'Object Risk Penalty', pts: -30 });
-                reasons.push('high_spoof_risk_penalty:30');
-              }
-            } catch {
-              objectInfo = [{ label: 'Spoof Risk', value: 'error' }, { label: 'Objects', value: 'detection failed' }];
-            }
           }
-        } catch {
-          // createImageBitmap failed
+          if (data.spoof_risk === 'high') {
+            score -= 30;
+            breakdown.push({ label: 'Object Risk Penalty', pts: -30 });
+            reasons.push('high_spoof_risk_penalty:30');
+          }
+        } else {
+          objectInfo = [{ label: 'Spoof Risk', value: 'low' }, { label: 'Objects', value: 'none detected' }];
+          reasons.push('no spoof objects detected');
         }
       }
 
