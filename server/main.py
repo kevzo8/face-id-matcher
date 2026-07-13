@@ -475,7 +475,7 @@ async def ocr_detect(request: Request):
                         ]
                     }]
                 })
-                response = bedrock.invoke_model(modelId="anthropic.claude-3-5-haiku-20241022-v1:0", body=body)
+                response = bedrock.invoke_model(modelId="anthropic.claude-3-sonnet-20240229-v1:0", body=body)
                 result = json.loads(response["body"].read())
                 text_content = ""
                 for block in result.get("content", []):

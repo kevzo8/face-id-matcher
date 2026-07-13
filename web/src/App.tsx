@@ -282,7 +282,7 @@ export default function App() {
     } finally {
       setOcrLoading(false);
     }
-  }, [ocrImage, ocrServerUrl]);
+  }, [ocrImage, ocrServerUrl, ocrProvider]);
 
   const handleLivenessComplete = useCallback((result: { pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[]; provider?: string }) => {
     setLivenessResult(result);
