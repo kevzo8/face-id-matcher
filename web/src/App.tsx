@@ -335,14 +335,12 @@ export default function App() {
       });
       const data = await res.json();
       if (data.error) { setOcrError(data.error); return; }
-      const textLines = data.text_lines || [];
-      const linesPerImage = Math.ceil(textLines.length / images.length);
-      images.forEach((img, i) => {
-        const side = img.side;
-        const entryKey = img.entryKey;
-        const slice = textLines.slice(i * linesPerImage, (i + 1) * linesPerImage);
-        setOcrEntries(prev => prev.map(e => e.key === entryKey ? { ...e, [side === 'front' ? 'frontResult' : 'backResult']: { ...data, text_lines: slice } } : e));
-      });
+      const mergedLabel = images.map(i => i.label).join(' + ');
+      setOcrEntries(prev => prev.map(e => {
+        const match = images.find(i => i.entryKey === e.key);
+        if (!match) return e;
+        return { ...e, frontResult: match.side === 'front' ? { ...data, text_lines: data.text_lines || [] } : e.frontResult, backResult: match.side === 'back' ? { ...data, text_lines: data.text_lines || [] } : e.backResult };
+      }));
     } catch (e) {
       setOcrError(e instanceof Error ? e.message : 'OCR request failed');
     } finally {
@@ -351,13 +349,18 @@ export default function App() {
   }, [ocrEntries, ocrServerUrl, ocrProvider]);
 
   const parseAllWithAi = useCallback(async () => {
+    const seen = new Set<string>();
     const texts: { label: string; text: string }[] = [];
     for (const entry of ocrEntries) {
-      if (entry.frontResult?.text_lines?.length) {
-        texts.push({ label: `ID ${entry.key} Front`, text: entry.frontResult.text_lines.join('\n') });
-      }
-      if (entry.backResult?.text_lines?.length) {
-        texts.push({ label: `ID ${entry.key} Back`, text: entry.backResult.text_lines.join('\n') });
+      for (const side of ['front', 'back'] as const) {
+        const result = side === 'front' ? entry.frontResult : entry.backResult;
+        if (result?.text_lines?.length) {
+          const text = result.text_lines.join('\n');
+          if (!seen.has(text)) {
+            seen.add(text);
+            texts.push({ label: `ID ${entry.key} ${side === 'front' ? 'Front' : 'Back'}`, text });
+          }
+        }
       }
     }
     if (!texts.length) return;

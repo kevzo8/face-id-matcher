@@ -550,7 +550,7 @@ Extract ALL visible fields. Omit any field with an empty value.
 Group into three categories:
 1. personal_data — name and birth. Exact: first_name, middle_name, last_name, birth_date (yyyy-mm-dd)
 2. other_fields — everything else: id_number, gender, nationality, address, expiry_date, issue_date, blood_type, religion, civil_status, occupation, mother_maiden_name, father_name, place_of_birth, height, weight, eye_color, restrictions
-3. id_information — per-ID info when multiple IDs uploaded: [{"id_label":"ID 1","id_type_code":1,"id_type_name":"Philippines Passport","id_number":"P123456"}]. Omit if only one ID.
+3. id_information — per-ID info when multiple IDs uploaded. Format: [{{"id_label":"ID 1","id_type_code":1,"id_type_name":"Philippines Passport","id_number":"P123456"}}]
 
 If text from multiple sides/IDs is provided, cross-reference and reconcile any discrepancies. Use the most complete/correct data. Put shared/cross-referenced fields in personal_data or other_fields, and per-ID specific data in id_information.
 
