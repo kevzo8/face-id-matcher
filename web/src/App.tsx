@@ -49,12 +49,14 @@ export default function App() {
   const [serverUrl, setServerUrl] = useState('https://face-id-matcher.onrender.com');
   const [ocrProvider, setOcrProvider] = useState<OcrProvider>('aws_rekognition_ocr');
   const [ocrServerUrl, setOcrServerUrl] = useState('https://face-id-matcher.onrender.com');
-  const [ocrImage, setOcrImage] = useState<CaptureImageData>(null);
-  const [ocrResult, setOcrResult] = useState<{ id_type?: string; labels?: { label: string; confidence: number }[]; text_lines?: string[]; error?: string } | null>(null);
+  const [ocrEntries, setOcrEntries] = useState<{ key: number; front: CaptureImageData; back: CaptureImageData; frontResult?: any; backResult?: any; frontLoading?: boolean; backLoading?: boolean }[]>([
+    { key: 1, front: null, back: null }
+  ]);
+  const [nextEntryKey, setNextEntryKey] = useState(2);
   const [ocrError, setOcrError] = useState<string | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [aiParserProvider, setAiParserProvider] = useState<'groq' | 'openai'>('groq');
-  const [aiResult, setAiResult] = useState<{ id_type?: string; fields?: { label: string; value: string }[] } | null>(null);
+  const [aiResult, setAiResult] = useState<{ id_type_code?: number; id_type_name?: string; fields?: { label: string; value: string }[] } | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [livenessProvider, setLivenessProvider] = useState<LivenessProvider>('open_face_liveness');
   const [livenessServerUrl, setLivenessServerUrl] = useState('https://face-id-matcher.onrender.com');
@@ -265,13 +267,39 @@ export default function App() {
     setResult(null);
   }, []);
 
-  const runOcr = useCallback(async () => {
-    if (!ocrImage?.url) return;
+  const stitchImages = useCallback(async (urls: string[]): Promise<string> => {
+    const loadImage = (url: string): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = url;
+    });
+    const imgs = await Promise.all(urls.map(loadImage));
+    const maxW = Math.max(...imgs.map(i => i.width));
+    const totalH = imgs.reduce((s, i) => s + i.height, 0) + (imgs.length - 1) * 10;
+    const canvas = document.createElement('canvas');
+    canvas.width = maxW;
+    canvas.height = totalH;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    let y = 0;
+    for (const img of imgs) {
+      const x = Math.floor((maxW - img.width) / 2);
+      ctx.drawImage(img, x, y);
+      y += img.height + 10;
+    }
+    return canvas.toDataURL('image/jpeg', 0.9);
+  }, []);
+
+  const runOcr = useCallback(async (entryKey: number, side: 'front' | 'back') => {
+    const entry = ocrEntries.find(e => e.key === entryKey);
+    const img = side === 'front' ? entry?.front : entry?.back;
+    if (!img?.url) return;
     setOcrLoading(true);
     setOcrError(null);
-    setOcrResult(null);
     try {
-      const b64 = ocrImage.url.split(',')[1];
+      const b64 = img.url.split(',')[1];
       const res = await fetch(`${ocrServerUrl.replace(/\/+$/, '')}/ocr/detect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -279,34 +307,90 @@ export default function App() {
       });
       const data = await res.json();
       if (data.error) { setOcrError(data.error); return; }
-      setOcrResult(data);
+      setOcrEntries(prev => prev.map(e => e.key === entryKey ? { ...e, [side === 'front' ? 'frontResult' : 'backResult']: data } : e));
     } catch (e) {
       setOcrError(e instanceof Error ? e.message : 'OCR request failed');
     } finally {
       setOcrLoading(false);
     }
-  }, [ocrImage, ocrServerUrl, ocrProvider]);
+  }, [ocrServerUrl, ocrProvider]);
 
-  const parseWithAi = useCallback(async () => {
-    const text = ocrResult?.text_lines?.join('\n');
-    if (!text) return;
+  const runAllOcr = useCallback(async () => {
+    const images: { data: CaptureImageData; label: string; entryKey: number; side: 'front' | 'back' }[] = [];
+    for (const entry of ocrEntries) {
+      if (entry.front?.url) images.push({ data: entry.front, label: `ID ${entry.key} Front`, entryKey: entry.key, side: 'front' });
+      if (entry.back?.url) images.push({ data: entry.back, label: `ID ${entry.key} Back`, entryKey: entry.key, side: 'back' });
+    }
+    if (!images.length) return;
+    setOcrLoading(true);
+    setOcrError(null);
+    try {
+      const urls = images.map(i => (i.data as { url: string }).url);
+      const composite = await stitchImages(urls);
+      const b64 = composite.split(',')[1];
+      const res = await fetch(`${ocrServerUrl.replace(/\/+$/, '')}/ocr/detect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: b64, provider: ocrProvider }),
+      });
+      const data = await res.json();
+      if (data.error) { setOcrError(data.error); return; }
+      const textLines = data.text_lines || [];
+      const linesPerImage = Math.ceil(textLines.length / images.length);
+      images.forEach((img, i) => {
+        const side = img.side;
+        const entryKey = img.entryKey;
+        const slice = textLines.slice(i * linesPerImage, (i + 1) * linesPerImage);
+        setOcrEntries(prev => prev.map(e => e.key === entryKey ? { ...e, [side === 'front' ? 'frontResult' : 'backResult']: { ...data, text_lines: slice } } : e));
+      });
+    } catch (e) {
+      setOcrError(e instanceof Error ? e.message : 'OCR request failed');
+    } finally {
+      setOcrLoading(false);
+    }
+  }, [ocrEntries, ocrServerUrl, ocrProvider]);
+
+  const parseAllWithAi = useCallback(async () => {
+    const texts: { label: string; text: string }[] = [];
+    for (const entry of ocrEntries) {
+      if (entry.frontResult?.text_lines?.length) {
+        texts.push({ label: `ID ${entry.key} Front`, text: entry.frontResult.text_lines.join('\n') });
+      }
+      if (entry.backResult?.text_lines?.length) {
+        texts.push({ label: `ID ${entry.key} Back`, text: entry.backResult.text_lines.join('\n') });
+      }
+    }
+    if (!texts.length) return;
     setAiLoading(true);
     setAiResult(null);
     try {
       const res = await fetch(`${ocrServerUrl.replace(/\/+$/, '')}/ocr/parse`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, provider: aiParserProvider }),
+        body: JSON.stringify({ texts, provider: aiParserProvider }),
       });
       const data = await res.json();
-      if (data.error) { setAiResult({ id_type: 'Error', fields: [{ label: 'Parse error', value: data.error }] }); return; }
+      if (data.error) { setAiResult({ id_type_code: 0, id_type_name: 'Error', fields: [{ label: 'Parse error', value: data.error }] }); return; }
       setAiResult(data);
     } catch (e) {
-      setAiResult({ id_type: 'Error', fields: [{ label: 'Parse error', value: e instanceof Error ? e.message : 'Unknown error' }] });
+      setAiResult({ id_type_code: 0, id_type_name: 'Error', fields: [{ label: 'Parse error', value: e instanceof Error ? e.message : 'Unknown error' }] });
     } finally {
       setAiLoading(false);
     }
-  }, [ocrResult, ocrServerUrl, aiParserProvider]);
+  }, [ocrEntries, ocrServerUrl, aiParserProvider]);
+
+  const addIdEntry = useCallback(() => {
+    setOcrEntries(prev => [...prev, { key: nextEntryKey, front: null, back: null }]);
+    setNextEntryKey(k => k + 1);
+  }, [nextEntryKey]);
+
+  const removeIdEntry = useCallback((key: number) => {
+    setOcrEntries(prev => prev.filter(e => e.key !== key));
+  }, []);
+
+  const updateEntry = useCallback((key: number, side: 'front' | 'back', data: CaptureImageData) => {
+    setOcrEntries(prev => prev.map(e => e.key === key ? { ...e, [side]: data } : e));
+  }, []);
 
   const handleLivenessComplete = useCallback((result: { pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[]; provider?: string }) => {
     setLivenessResult(result);
@@ -739,84 +823,86 @@ export default function App() {
 
           {/* ==================== OCR ==================== */}
           <div style={{ display: feature === 'ocr' ? 'block' : 'none' }}>
-            <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginTop: 12 }}>
-              <div style={{ flex: '0 0 280px', textAlign: 'center' }}>
-                <ImageCapture title="ID Document" subtitle="Upload or take a photo of an ID card" image={ocrImage} onCapture={(d) => setOcrImage(d)} facingMode="environment" accentColor="#22c55e" icon="card" />
-              </div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {ocrImage?.url && (
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={runOcr} disabled={ocrLoading}
-                      style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: 'none', borderRadius: 8, cursor: ocrLoading ? 'wait' : 'pointer', background: ocrLoading ? '#334155' : 'linear-gradient(135deg, #14532d, #16a34a)', color: '#bbf7d0' }}>
-                      {ocrLoading ? 'Processing...' : 'Run OCR'}
-                    </button>
-                    <button onClick={() => { setOcrResult(null); setOcrError(null); }}
-                      style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, border: '1px solid #475569', borderRadius: 8, cursor: 'pointer', background: 'transparent', color: '#e2e8f0' }}>
-                      &#8634; Reset
-                    </button>
-                  </div>
-                )}
-                {ocrError && <div style={{ color: '#ef4444', fontSize: 12 }}>{ocrError}</div>}
-                {ocrResult && (
-                  <div style={{ padding: '14px 16px', borderRadius: 8, background: '#1e293b', border: '1px solid #475569' }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#4ade80', marginBottom: 8 }}>OCR Results</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '2px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3 }}>
-                        <span>Detected ID Type</span>
-                        <span style={{ fontWeight: 600, color: '#fbbf24' }}>{ocrResult.id_type || 'Unknown'}</span>
-                      </div>
-                    </div>
-                    {ocrResult.labels && ocrResult.labels.length > 0 && (
-                      <div style={{ marginTop: 8 }}>
-                        <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>AWS Labels</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          {ocrResult.labels.slice(0, 20).map((l, i) => (
-                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94a3b8', padding: '1px 4px' }}>
-                              <span>{l.label}</span>
-                              <span style={{ fontWeight: 600, color: '#93c5fd' }}>{l.confidence.toFixed(0)}%</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
+              {ocrEntries.map((entry, idx) => (
+                <div key={entry.key} style={{ display: 'flex', gap: 16, alignItems: 'flex-start', justifyContent: 'center', padding: 12, borderRadius: 8, background: '#1e293b', border: '1px solid #334155' }}>
+                  <div style={{ flex: '1 1 280px', maxWidth: 320, textAlign: 'center' }}>
+                    <ImageCapture title={`ID ${entry.key} Front`} subtitle="" image={entry.front} onCapture={(d) => updateEntry(entry.key, 'front', d)} facingMode="environment" accentColor="#22c55e" icon="card" mockup="id-front" />
+                    {entry.front?.url && (
+                      <button onClick={() => runOcr(entry.key, 'front')} disabled={ocrLoading}
+                        style={{ marginTop: 4, padding: '4px 12px', fontSize: 11, fontWeight: 600, border: 'none', borderRadius: 4, cursor: ocrLoading ? 'wait' : 'pointer', background: ocrLoading ? '#334155' : '#14532d', color: '#bbf7d0' }}>
+                        {ocrLoading ? '...' : 'OCR Front'}
+                      </button>
                     )}
-                    {ocrResult.text_lines && ocrResult.text_lines.length > 0 && (
-                      <div style={{ marginTop: 8 }}>
-                        <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Extracted Text</div>
-                        <div style={{ fontSize: 11, color: '#e2e8f0', background: 'rgba(0,0,0,0.3)', padding: 8, borderRadius: 4, maxHeight: 200, overflow: 'auto', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
-                          {ocrResult.text_lines.join('\n')}
-                        </div>
-                      </div>
-                    )}
-                    {ocrResult.error && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 8 }}>{ocrResult.error}</div>}
-                    {ocrResult.text_lines && ocrResult.text_lines.length > 0 && (
-                      <div style={{ marginTop: 8 }}>
-                        <button onClick={parseWithAi} disabled={aiLoading}
-                          style={{ padding: '8px 16px', fontSize: 12, fontWeight: 600, border: 'none', borderRadius: 6, cursor: aiLoading ? 'wait' : 'pointer', background: aiLoading ? '#334155' : 'linear-gradient(135deg, #6d28d9, #8b5cf6)', color: '#ddd6fe' }}>
-                          {aiLoading ? 'Parsing...' : 'Parse with AI'}
-                        </button>
-                        {aiResult && (
-                          <div style={{ marginTop: 8, padding: 8, background: 'rgba(0,0,0,0.2)', borderRadius: 4 }}>
-                            <div style={{ fontSize: 10, fontWeight: 600, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Parsed ID Fields</div>
-                            {aiResult.id_type && (
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#cbd5e1', padding: '2px 4px' }}>
-                                <span>ID Type</span>
-                                <span style={{ fontWeight: 600, color: '#fbbf24' }}>{aiResult.id_type}</span>
-                              </div>
-                            )}
-                            {aiResult.fields?.map((f, i) => (
-                              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#cbd5e1', padding: '2px 4px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                                <span>{f.label}</span>
-                                <span style={{ fontWeight: 600, color: '#93c5fd', textAlign: 'right', maxWidth: '60%' }}>{f.value}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                    {entry.frontResult?.text_lines && (
+                      <div style={{ marginTop: 4, fontSize: 10, color: '#4ade80', textAlign: 'left', maxHeight: 60, overflow: 'auto', background: 'rgba(0,0,0,0.3)', padding: 4, borderRadius: 3, fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
+                        {entry.frontResult.text_lines.join('\n').slice(0, 200)}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
+                  <div style={{ flex: '1 1 280px', maxWidth: 320, textAlign: 'center' }}>
+                    <ImageCapture title={`ID ${entry.key} Back`} subtitle="" image={entry.back} onCapture={(d) => updateEntry(entry.key, 'back', d)} facingMode="environment" accentColor="#22c55e" icon="card" mockup="id-back" />
+                    {entry.back?.url && (
+                      <button onClick={() => runOcr(entry.key, 'back')} disabled={ocrLoading}
+                        style={{ marginTop: 4, padding: '4px 12px', fontSize: 11, fontWeight: 600, border: 'none', borderRadius: 4, cursor: ocrLoading ? 'wait' : 'pointer', background: ocrLoading ? '#334155' : '#14532d', color: '#bbf7d0' }}>
+                        {ocrLoading ? '...' : 'OCR Back'}
+                      </button>
+                    )}
+                    {entry.backResult?.text_lines && (
+                      <div style={{ marginTop: 4, fontSize: 10, color: '#4ade80', textAlign: 'left', maxHeight: 60, overflow: 'auto', background: 'rgba(0,0,0,0.3)', padding: 4, borderRadius: 3, fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
+                        {entry.backResult.text_lines.join('\n').slice(0, 200)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <button onClick={addIdEntry}
+                style={{ padding: '6px 16px', fontSize: 12, fontWeight: 600, border: '1px dashed #22c55e', borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#22c55e' }}>
+                + Add Another ID
+              </button>
+              <button onClick={runAllOcr} disabled={ocrLoading}
+                style={{ padding: '6px 16px', fontSize: 12, fontWeight: 600, border: 'none', borderRadius: 6, cursor: ocrLoading ? 'wait' : 'pointer', background: ocrLoading ? '#334155' : 'linear-gradient(135deg, #14532d, #16a34a)', color: '#bbf7d0' }}>
+                {ocrLoading ? 'Processing...' : 'OCR All'}
+              </button>
+              <button onClick={() => { setOcrEntries([{ key: 1, front: null, back: null }]); setNextEntryKey(2); setAiResult(null); setOcrError(null); }}
+                style={{ padding: '6px 16px', fontSize: 12, fontWeight: 600, border: '1px solid #475569', borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#e2e8f0' }}>
+                &#8634; Reset All
+              </button>
+            </div>
+            {ocrError && <div style={{ color: '#ef4444', fontSize: 12 }}>{ocrError}</div>}
+            {ocrEntries.some(e => e.frontResult?.text_lines?.length || e.backResult?.text_lines?.length) && (
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <button onClick={parseAllWithAi} disabled={aiLoading}
+                  style={{ padding: '8px 16px', fontSize: 12, fontWeight: 600, border: 'none', borderRadius: 6, cursor: aiLoading ? 'wait' : 'pointer', background: aiLoading ? '#334155' : 'linear-gradient(135deg, #6d28d9, #8b5cf6)', color: '#ddd6fe' }}>
+                  {aiLoading ? 'Parsing...' : 'Parse All'}
+                </button>
+              </div>
+            )}
+            {aiResult && (
+              <div style={{ marginTop: 8, padding: 12, background: '#1e293b', borderRadius: 8, border: '1px solid #475569' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#a78bfa', marginBottom: 8 }}>AI Parsed Result</div>
+                {aiResult.id_type_name && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '4px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3, marginBottom: 4 }}>
+                    <span>id_type_name</span>
+                    <span style={{ fontWeight: 600, color: '#fbbf24' }}>{aiResult.id_type_name}</span>
+                  </div>
+                )}
+                {aiResult.id_type_code !== undefined && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '4px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3, marginBottom: 4 }}>
+                    <span>id_type_code</span>
+                    <span style={{ fontWeight: 600, color: '#fbbf24' }}>{aiResult.id_type_code}</span>
+                  </div>
+                )}
+                {aiResult.fields?.map((f, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '4px 6px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <span style={{ fontFamily: 'monospace', color: '#93c5fd' }}>{f.label}</span>
+                    <span style={{ fontWeight: 600, color: '#e2e8f0', textAlign: 'right', maxWidth: '60%' }}>{f.value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
         </div>

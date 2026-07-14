@@ -499,7 +499,8 @@ async def ocr_detect(request: Request):
 
 
 class OcrParseResponse(BaseModel):
-    id_type: str | None = None
+    id_type_code: int | None = None
+    id_type_name: str | None = None
     fields: list[dict] = []
     error: str | None = None
 
@@ -507,9 +508,9 @@ class OcrParseResponse(BaseModel):
 @app.post("/ocr/parse", response_model=OcrParseResponse)
 async def ocr_parse(request: Request):
     body = await request.json()
-    text = body.get("text", "")
+    texts = body.get("texts", [])  # array of {label: string, text: string}
     provider = body.get("provider", "groq")
-    if not text:
+    if not texts:
         raise HTTPException(status_code=400, detail="No text provided")
     try:
         api_key = os.environ.get(f"{provider.upper()}_API_KEY")
@@ -519,12 +520,49 @@ async def ocr_parse(request: Request):
         base_url = "https://api.groq.com/openai/v1" if provider == "groq" else "https://api.openai.com/v1"
         model = "llama-3.3-70b-versatile" if provider == "groq" else "gpt-4o-mini"
         
+        text_block = "\n\n".join([f"[{t['label']}]\n{t['text']}" for t in texts])
+        
+        prompt = f"""You are an AI ID document parser for the Philippines. Extract structured information from the following ID document text(s).
+
+PHILIPPINES ID TYPE REGISTRY (use id_type_code for responses):
+0 = Other (specify what was detected)
+1 = Philippines Passport
+2 = Philippines National ID (ePhilID)
+3 = Philippines National ID (PhilID Card)
+4 = Philippines UMID
+5 = Philippines PRC ID
+6 = Philippines SSS ID
+7 = Philippines GSIS ID
+8 = Philippines TIN Card
+9 = Philippines PWD ID
+10 = Philippines Senior Citizen ID
+11 = Philippines PhilHealth ID
+12 = Philippines Postal ID
+13 = Philippines Driver's License
+
+Return ONLY valid JSON with no markdown or explanation. Format:
+{{"id_type_code": <integer>, "id_type_name": "<full name from registry>", "fields": [{{"label": "<variable_name>", "value": "<value>"}}]}}
+
+Extract ALL visible fields. Use these variable names (snake_case, consistent):
+- id_number (government-issued ID number)
+- first_name
+- middle_name (if present, otherwise empty string)
+- last_name
+- birth_date (yyyy-mm-dd format)
+- gender
+- nationality
+- address
+- expiry_date
+- issue_date
+
+If text from multiple sides/IDs is provided, cross-reference and reconcile any discrepancies. Use the most complete/correct data.
+
+OCR Text:
+{text_block}"""
+        
         res = http_requests.post(f"{base_url}/chat/completions", json={
             "model": model,
-            "messages": [{
-                "role": "user",
-                "content": f"Extract structured information from this ID document text. Return ONLY valid JSON with no markdown or explanation. Format: {{\"id_type\": \"type of ID document\", \"fields\": [{{\"label\": \"field name\", \"value\": \"field value\"}}]}}. Extract fields like full name, date of birth, ID number, address, gender, nationality, expiry date, issue date, etc.\n\nText:\n{text}"
-            }],
+            "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.1,
         }, headers={
             "Content-Type": "application/json",
@@ -537,7 +575,8 @@ async def ocr_parse(request: Request):
         json_str = re.sub(r'```json|```', '', content).strip()
         parsed = json.loads(json_str)
         return OcrParseResponse(
-            id_type=parsed.get("id_type"),
+            id_type_code=parsed.get("id_type_code"),
+            id_type_name=parsed.get("id_type_name"),
             fields=parsed.get("fields", []),
         )
     except Exception as e:

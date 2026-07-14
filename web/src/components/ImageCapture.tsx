@@ -19,9 +19,10 @@ interface ImageCaptureProps {
   accentColor: string;
   icon: 'card' | 'person';
   faceBox?: FaceBox | null;
+  mockup?: 'id-front' | 'id-back';
 }
 
-export function ImageCapture({ title, subtitle, image, onCapture, facingMode, accentColor, icon, faceBox }: ImageCaptureProps) {
+export function ImageCapture({ title, subtitle, image, onCapture, facingMode, accentColor, icon, faceBox, mockup }: ImageCaptureProps) {
   const [mode, setMode] = useState<'idle' | 'camera' | 'preview'>(
     image ? 'preview' : 'idle',
   );
@@ -316,6 +317,39 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
 
       {mode === 'idle' && (
         <div>
+          {mockup && (
+            <div style={{ marginBottom: 12, padding: 8, background: '#0f172a', borderRadius: 8, border: '1px solid #334155' }}>
+              <svg viewBox="0 0 300 190" style={{ width: '100%', height: 'auto', display: 'block' }}>
+                <rect x="2" y="2" width="296" height="186" rx="10" fill="none" stroke="#475569" strokeWidth="1.5" strokeDasharray="6 4" />
+                {mockup === 'id-front' ? (
+                  <>
+                    <rect x="12" y="20" width="70" height="90" rx="6" fill="#334155" stroke="#475569" strokeWidth="1" />
+                    <rect x="12" y="20" width="70" height="90" rx="6" fill="none" stroke="#64748b" strokeWidth="1" strokeDasharray="3 3" />
+                    <line x1="100" y1="30" x2="280" y2="30" stroke="#475569" strokeWidth="3" strokeLinecap="round" />
+                    <line x1="100" y1="44" x2="250" y2="44" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="100" y1="58" x2="220" y2="58" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="100" y1="72" x2="260" y2="72" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="100" y1="86" x2="200" y2="86" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="12" y1="130" x2="280" y2="130" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="12" y1="144" x2="250" y2="144" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="12" y1="158" x2="200" y2="158" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="12" y1="172" x2="270" y2="172" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
+                  </>
+                ) : null}
+                {mockup === 'id-back' && (
+                  <>
+                    <line x1="30" y1="50" x2="270" y2="50" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="30" y1="64" x2="200" y2="64" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="30" y1="78" x2="250" y2="78" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="30" y1="92" x2="180" y2="92" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="30" y1="120" x2="270" y2="120" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeDasharray="4 3" />
+                    <line x1="30" y1="120" x2="270" y2="120" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeDasharray="4 3" />
+                    <text x="150" y="115" textAnchor="middle" fill="#64748b" fontSize="8" fontFamily="sans-serif">SIGNATURE</text>
+                  </>
+                )}
+              </svg>
+            </div>
+          )}
           {cameras.length > 1 && (
             <div style={{ marginBottom: 12 }}>
               <select
