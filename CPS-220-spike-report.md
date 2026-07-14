@@ -15,6 +15,7 @@
 | **🥉 Cheapest cloud** | **Tencent Cloud** | $0.001–$0.01/doc, separate APIs for each PH ID type, low latency (1-3s) | ~$10–$100 |
 | **🆓 Best OSS** | **PaddleOCR** | Zero per-doc cost, best Asian language support, GPU-capable, no vendor lock-in | ~$20–$100 (server) |
 | **🏆 Best all-in-one** | **OpenBiometrics** | Covers CPS-220 (OCR) + CPS-221 (face) + CPS-222 (liveness) in one open-source platform | ~$20–$100 (server) |
+| **✅ Current Implementation** | **AWS Rekognition + GROQ/OpenAI** | Raw OCR via AWS Rekognition, structured extraction via GROQ (llama-3.3-70b) or OpenAI (gpt-4o-mini). Multi-ID cross-referencing, PH ID type registry 0-13. | ~$1–$5 (Rekognition) + ~$0.50 (GROQ) |
 
 ---
 
@@ -412,124 +413,89 @@ def extract_id_data(image_base64: str) -> dict:
 
 ## 7. Integration into Existing App
 
-### Complete KYC Flow (CPS-220 + CPS-221 + CPS-222)
+### Actual Implementation: Face ID Matcher POC
 
-The three spikes compose into a single onboarding flow:
+The spike resulted in a working POC at `face-id-matcher` with the following architecture:
 
-```
-┌────────────────────────────────────────────────────────────────────┐
-│                    Unified KYC Onboarding Flow                      │
-├────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────────┐    │
-│  │  STEP 1   │   │  STEP 2   │   │  STEP 3   │   │   STEP 4     │   │
-│  │  Capture  │──▶│   OCR     │──▶│ Liveness  │──▶│ Face Match   │   │
-│  │  ID Photo │   │ Extract   │   │  Check    │   │ ID vs Selfie │   │
-│  └──────────┘   └──────────┘   └──────────┘   └──────────────┘    │
-│       │              │              │               │              │
-│       ▼              ▼              ▼               ▼              │
-│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────────┐    │
-│  │ Camera + │   │ Auto-fill│   │ Amplify  │   │ Compare      │    │
-│  │ Upload   │   │ Form     │   │ SDK /    │   │ Faces        │    │
-│  │ (exists) │   │ Fields   │   │ WebRTC   │   │ (exists)     │    │
-│  └──────────┘   └──────────┘   └──────────┘   └──────────────┘    │
-│                                                                     │
-│  STRICT RULE: If ANY step fails → block onboarding, discard data   │
-└────────────────────────────────────────────────────────────────────┘
-```
-
-### New Files Needed for CPS-220
-
-| File | Purpose |
-|------|---------|
-| `server/providers/ocr_base.py` | Base interface for OCR providers |
-| `server/providers/bedrock_ocr.py` | Amazon Bedrock multimodal OCR |
-| `server/providers/textract_ocr.py` | AWS Textract OCR provider |
-| `server/providers/verihubs_ocr.py` | Verihubs Philippine ID OCR provider |
-| `server/routes/ocr.py` | FastAPI routes: `POST /ocr/extract` |
-| `web/src/components/IDScanner.tsx` | Camera capture with real-time guidance overlay |
-| `web/src/components/OCRResultForm.tsx` | Auto-filled form with editable fields |
-| `web/src/data/id_types.ts` | Philippine ID type definitions + field mappings |
-
-### Architecture
+#### OCR Pipeline
 
 ```
-┌──────────────────────────────────────────────────┐
-│                  Frontend (React)                  │
-│                                                    │
-│  ┌─────────────┐  ┌──────────────┐  ┌──────────┐ │
-│  │ IDScanner    │  │ OCRResultForm│  │ Existing │ │
-│  │ (capture UI) │  │ (auto-fill)  │  │ Capture  │ │
-│  └──────┬──────┘  └──────┬───────┘  └──────────┘ │
-│         │                │                         │
-└─────────┼────────────────┼─────────────────────────┘
-          │ POST /ocr      │ POST /compare
-          ▼                ▼
-┌──────────────────────────────────────────────────┐
-│               Python Server (FastAPI)              │
-│                                                    │
-│  ┌──────────┐  ┌──────────┐  ┌───────────────┐   │
-│  │ Bedrock  │  │ Textract │  │  Verihubs     │   │
-│  │ OCR      │  │ OCR      │  │  OCR          │   │
-│  └──────────┘  └──────────┘  └───────────────┘   │
-│                                                    │
-│  Feature flag: ocr.backend = bedrock | textract |  │
-│                 verihubs                           │
-└──────────────────────────────────────────────────┘
+ID Images (single or multiple entries) → AWS Rekognition (/ocr/detect) → raw text_lines
+Raw text → GROQ or OpenAI (/ocr/parse) → structured JSON with PH ID type registry
 ```
 
-### Feature Flag Design
+- **Raw OCR:** AWS Rekognition `DetectText` API (`/ocr/detect` endpoint)
+- **AI Parsing:** GROQ (llama-3.3-70b-versatile) or OpenAI (gpt-4o-mini) via `/ocr/parse`
+- **Multi-ID Support:** "OCR All" captures each image individually (not stitched), results merged per entry
+- **PH ID Type Registry:** 14 types (0-13) from Other → Philippines Driver's License
+- **Field Validation:** AI prompt enforces valid blood_type (A/B/AB/O ±), gender (M/F), civil_status (S/M/D/W), birth_date (yyyy-mm-dd)
+- **Cross-Referencing:** When multiple IDs uploaded, AI reconciles discrepancies across entries
 
-```python
-# server/config.py
-OCR_CONFIG = {
-    "backend": os.getenv("OCR_BACKEND", "bedrock"),
-    "bedrock": {
-        "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
-        "max_tokens": 4096,
-    },
-    "textract": {
-        "region": "ap-southeast-1",
-    },
-    "verihubs": {
-        "api_key": os.getenv("VERIHUBS_API_KEY"),
-        "app_id": os.getenv("VERIHUBS_APP_ID"),
-    }
-}
-```
+#### Frontend (React/TypeScript)
+
+| Component | Purpose |
+|-----------|---------|
+| `ImageCapture.tsx` | Camera capture with ID mockups (front: photo box + lines; back: signature line; selfie: head silhouette) |
+| `App.tsx` (OCR tab) | Multi-ID entry management, per-entry OCR buttons, OCR All / Parse All, 2-column raw+AI result display |
+| `App.tsx` (Liveness tab) | Selfie mockup with 3 side-by-side test type buttons (Active, Passive, Upload), Back navigation |
+
+#### Backend (Python/FastAPI)
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /ocr/detect` | Takes base64 image + provider, returns raw text lines from AWS Rekognition |
+| `POST /ocr/parse` | Takes texts array + provider + optional api_key, returns structured JSON via GROQ/OpenAI |
+
+#### Sidebar Configuration
+
+- OCR provider selector (AWS Rekognition, Google Doc AI, Azure DI, Tencent, Mindee, etc.)
+- AI parser selector (GROQ or OpenAI) — API keys set via `GROQ_API_KEY` / `OPENAI_API_KEY` env vars
+
+#### Key Design Decisions
+
+1. **Per-image OCR instead of stitching** — Each ID image is OCR'd individually to avoid composite image quality loss
+2. **Deduplication** — OCR results are deduplicated before sending to AI to prevent redundant parsing
+3. **Field validation in prompt** — AI is instructed to only extract values that literally appear in OCR text, never invent
+4. **Separate raw + AI display** — User sees both the raw OCR text (unedited) and the AI-parsed result side by side
 
 ---
 
 ## 8. POC Plan
 
-### Phase 1: Bedrock Baseline
+### ✅ Phase 1: AWS Rekognition Baseline (COMPLETED)
 
-1. Create the strict JSON prompt template (see Section 6)
-2. Implement `POST /ocr/extract` with Bedrock Claude Sonnet 4
-3. Test with 10+ sample images of each Philippine ID type
-4. Benchmark: accuracy by field, latency, cost per document
-5. Document failure modes per ID type
+1. ✅ Implement `POST /ocr/detect` with AWS Rekognition `DetectText`
+2. ✅ Test with Philippine National ID (ePhilID), Driver's License, Passport, Postal ID
+3. ✅ Frontend: ID capture with mockups (front/back), per-entry OCR buttons, "OCR All" bulk processing
+4. ✅ Raw OCR text displayed in full (no truncation) alongside AI result
 
-### Phase 2: Textract Comparison
+### ✅ Phase 2: AI Structured Extraction (COMPLETED)
 
-1. Implement hybrid Textract + Bedrock pipeline (Textract for raw OCR → Bedrock for structured extraction)
-2. Compare accuracy vs pure Bedrock
-3. Benchmark: does Textract preprocessing improve results?
+1. ✅ Implement `POST /ocr/parse` with GROQ (llama-3.3-70b-versatile) as primary, OpenAI (gpt-4o-mini) as fallback
+2. ✅ PH ID Type Registry (0-13) hardcoded in prompt for accurate classification
+3. ✅ Strict JSON schema output with personal_data, other_fields, id_information categories
+4. ✅ Field validation: blood_type (A/B/AB/O ±), gender (M/F), civil_status (S/M/D/W), birth_date (yyyy-mm-dd)
+5. ✅ Cross-referencing: multiple IDs reconciled, discrepancies flagged
+6. ✅ Anti-hallucination: AI instructed to only extract values literally present in OCR text
 
-### Phase 3: Verihubs / Third-Party
+### ✅ Phase 3: Multi-ID & UI (COMPLETED)
 
-1. Sign up for Verihubs API access
-2. Implement Verihubs provider
-3. Compare accuracy on the same test dataset
-4. Evaluate capture SDK (if available for web) for real-time guidance
+1. ✅ Multi-ID entry with dynamic add/remove
+2. ✅ Each ID has front + back capture with SVG mockups
+3. ✅ "OCR All" processes each image individually, results merged per entry
+4. ✅ "Parse All" deduplicates OCR text, sends to AI for structured extraction
+5. ✅ 2-column layout: raw OCR result (left) + AI parsed result (right) below buttons
+6. ✅ OCR provider selector in sidebar (AWS Rekognition, Google Doc AI, Azure DI, Tencent, Mindee)
+7. ✅ AI parser selector (GROQ / OpenAI) with env var API keys
 
-### Phase 4: UI Integration
+### 🔲 Phase 4: Production Hardening (PENDING)
 
-1. Create `IDScanner.tsx` with camera capture + guidance overlay (auto-detect edges, glare check)
-2. Create `OCRResultForm.tsx` showing extracted data in editable form fields
-3. Wire OCR into the existing flow: after ID capture → auto-extract → auto-fill form
-4. Add provider selector (feature flag) in the settings sidebar
-5. Add error handling: if OCR confidence low → prompt user to retake
+1. Improve low-quality image handling (preprocessing before OCR)
+2. Add confidence scores per extracted field
+3. Add retake prompts when OCR confidence is low
+4. Implement auto-fill form from OCR results
+5. Add more PH ID types to test dataset
+6. Evaluate Verihubs / ZOLOZ for production-grade PH ID OCR
 
 ---
 
