@@ -573,6 +573,8 @@ OCR Text:
         
         data = res.json()
         content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        if not content:
+            return OcrParseResponse(error=f"Empty response from {provider}. Check API key and model access.")
         import re
         json_str = re.sub(r'```json|```', '', content).strip()
         parsed = json.loads(json_str)
