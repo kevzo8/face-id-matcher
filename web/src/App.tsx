@@ -325,21 +325,29 @@ export default function App() {
     setOcrLoading(true);
     setOcrError(null);
     try {
-      const urls = images.map(i => (i.data as { url: string }).url);
-      const composite = await stitchImages(urls);
-      const b64 = composite.split(',')[1];
-      const res = await fetch(`${ocrServerUrl.replace(/\/+$/, '')}/ocr/detect`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: b64, provider: ocrProvider }),
-      });
-      const data = await res.json();
-      if (data.error) { setOcrError(data.error); return; }
-      const mergedLabel = images.map(i => i.label).join(' + ');
+      const allTextLines: string[] = [];
+      const results: { entryKey: number; side: 'front' | 'back'; text_lines: string[] }[] = [];
+      for (const img of images) {
+        const b64 = (img.data as { url: string }).url.split(',')[1];
+        const res = await fetch(`${ocrServerUrl.replace(/\/+$/, '')}/ocr/detect`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: b64, provider: ocrProvider }),
+        });
+        const data = await res.json();
+        if (data.error) { setOcrError(data.error); return; }
+        const lines = data.text_lines || [];
+        allTextLines.push(...lines);
+        results.push({ entryKey: img.entryKey, side: img.side, text_lines: lines });
+      }
       setOcrEntries(prev => prev.map(e => {
-        const match = images.find(i => i.entryKey === e.key);
-        if (!match) return e;
-        return { ...e, frontResult: match.side === 'front' ? { ...data, text_lines: data.text_lines || [] } : e.frontResult, backResult: match.side === 'back' ? { ...data, text_lines: data.text_lines || [] } : e.backResult };
+        const front = results.find(r => r.entryKey === e.key && r.side === 'front');
+        const back = results.find(r => r.entryKey === e.key && r.side === 'back');
+        return {
+          ...e,
+          frontResult: front ? { text_lines: front.text_lines } : e.frontResult,
+          backResult: back ? { text_lines: back.text_lines } : e.backResult,
+        };
       }));
     } catch (e) {
       setOcrError(e instanceof Error ? e.message : 'OCR request failed');
@@ -880,16 +888,19 @@ export default function App() {
             </div>
             {ocrError && <div style={{ color: '#ef4444', fontSize: 12 }}>{ocrError}</div>}
             {(() => {
-              const rawEntry = ocrEntries.find(e => e.frontResult?.text_lines?.length || e.backResult?.text_lines?.length);
-              const rawLines = rawEntry?.frontResult?.text_lines || rawEntry?.backResult?.text_lines || null;
-              if (!rawLines && !aiResult) return null;
+              const allLines: string[] = [];
+              for (const e of ocrEntries) {
+                if (e.frontResult?.text_lines?.length) allLines.push(`--- ID ${e.key} Front ---`, ...e.frontResult.text_lines);
+                if (e.backResult?.text_lines?.length) allLines.push(`--- ID ${e.key} Back ---`, ...e.backResult.text_lines);
+              }
+              if (!allLines.length && !aiResult) return null;
               return (
                 <div style={{ display: 'flex', gap: 12, marginTop: 8, alignItems: 'flex-start' }}>
-                  {rawLines && (
+                  {allLines.length > 0 && (
                     <div style={{ flex: 1, minWidth: 0, padding: 12, background: '#1e293b', borderRadius: 8, border: '1px solid #475569' }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#4ade80', marginBottom: 6 }}>OCR Raw Result</div>
                       <div style={{ fontSize: 11, color: '#e2e8f0', fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 400, overflow: 'auto', lineHeight: 1.5 }}>
-                        {rawLines.join('\n')}
+                        {allLines.join('\n')}
                       </div>
                     </div>
                   )}
