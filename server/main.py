@@ -547,8 +547,13 @@ Return ONLY valid JSON with no markdown or explanation. Format:
 
 Extract ALL visible fields. Omit any field with an empty value.
 
-Group into three categories:
-1. personal_data — name and birth. Exact: first_name, middle_name, last_name, birth_date (yyyy-mm-dd)
+Group into three categories. Validate field values intelligently:
+- blood_type: only A, B, AB, O (with optional +/-), ignore impossible values
+- gender: Male/Female
+- civil_status: Single/Married/Divorced/Widowed
+- birth_date: yyyy-mm-dd format
+
+1. personal_data — name and birth. Exact: first_name, middle_name, last_name, birth_date
 2. other_fields — everything else: id_number, gender, nationality, address, expiry_date, issue_date, blood_type, religion, civil_status, occupation, mother_maiden_name, father_name, place_of_birth, height, weight, eye_color, restrictions
 3. id_information — per-ID info when multiple IDs uploaded. Format: [{{"id_label":"ID 1","id_type_code":1,"id_type_name":"Philippines Passport","id_number":"P123456"}}]
 

@@ -837,11 +837,6 @@ export default function App() {
                         {ocrLoading ? '...' : 'OCR Front'}
                       </button>
                     )}
-                    {entry.frontResult?.text_lines && (
-                      <div style={{ marginTop: 4, fontSize: 10, color: '#4ade80', textAlign: 'left', maxHeight: 60, overflow: 'auto', background: 'rgba(0,0,0,0.3)', padding: 4, borderRadius: 3, fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
-                        {entry.frontResult.text_lines.join('\n').slice(0, 200)}
-                      </div>
-                    )}
                   </div>
                   <div style={{ flex: '1 1 280px', maxWidth: 320, textAlign: 'center' }}>
                     <ImageCapture title={`ID ${entry.key} Back`} subtitle="" image={entry.back} onCapture={(d) => updateEntry(entry.key, 'back', d)} facingMode="environment" accentColor="#22c55e" icon="card" mockup="id-back" />
@@ -850,11 +845,6 @@ export default function App() {
                         style={{ marginTop: 4, padding: '4px 12px', fontSize: 11, fontWeight: 600, border: 'none', borderRadius: 4, cursor: ocrLoading ? 'wait' : 'pointer', background: ocrLoading ? '#334155' : '#14532d', color: '#bbf7d0' }}>
                         {ocrLoading ? '...' : 'OCR Back'}
                       </button>
-                    )}
-                    {entry.backResult?.text_lines && (
-                      <div style={{ marginTop: 4, fontSize: 10, color: '#4ade80', textAlign: 'left', maxHeight: 60, overflow: 'auto', background: 'rgba(0,0,0,0.3)', padding: 4, borderRadius: 3, fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
-                        {entry.backResult.text_lines.join('\n').slice(0, 200)}
-                      </div>
                     )}
                   </div>
                 </div>
@@ -889,9 +879,23 @@ export default function App() {
               </div>
             </div>
             {ocrError && <div style={{ color: '#ef4444', fontSize: 12 }}>{ocrError}</div>}
-            {aiResult && (
-              <div style={{ marginTop: 8, padding: 12, background: '#1e293b', borderRadius: 8, border: '1px solid #475569' }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#a78bfa', marginBottom: 8 }}>AI Parsed Result</div>
+            {(() => {
+              const rawEntry = ocrEntries.find(e => e.frontResult?.text_lines?.length || e.backResult?.text_lines?.length);
+              const rawLines = rawEntry?.frontResult?.text_lines || rawEntry?.backResult?.text_lines || null;
+              if (!rawLines && !aiResult) return null;
+              return (
+                <div style={{ display: 'flex', gap: 12, marginTop: 8, alignItems: 'flex-start' }}>
+                  {rawLines && (
+                    <div style={{ flex: 1, minWidth: 0, padding: 12, background: '#1e293b', borderRadius: 8, border: '1px solid #475569' }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#4ade80', marginBottom: 6 }}>OCR Raw Result</div>
+                      <div style={{ fontSize: 11, color: '#e2e8f0', fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 400, overflow: 'auto', lineHeight: 1.5 }}>
+                        {rawLines.join('\n')}
+                      </div>
+                    </div>
+                  )}
+                  {aiResult && (
+                    <div style={{ flex: 1, minWidth: 0, padding: 12, background: '#1e293b', borderRadius: 8, border: '1px solid #475569' }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#a78bfa', marginBottom: 8 }}>AI Parsed Result</div>
                 {aiResult.id_type_name && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '4px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3, marginBottom: 4 }}>
                     <span>id_type_name</span>
@@ -951,6 +955,9 @@ export default function App() {
                 )}
               </div>
             )}
+            </div>
+          );
+        })()}
           </div>
 
         </div>
