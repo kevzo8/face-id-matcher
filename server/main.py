@@ -548,10 +548,10 @@ Return ONLY valid JSON with no markdown or explanation. Format:
 Extract ALL visible fields. Omit any field with an empty value.
 CRITICAL: Only extract values that literally appear in the OCR text above. NEVER invent, guess, or assume a value. If a field is not present in the OCR text, omit it entirely. Do not default to any value.
 
-Group into three categories. Validate field values intelligently:
+Group into three categories. Validate field values intelligently using common abbreviations:
 - blood_type: only A, B, AB, O (with optional +/-). Must literally appear in OCR text — do not guess or default.
-- gender: Male/Female. Must literally appear in OCR text.
-- civil_status: Single/Married/Divorced/Widowed. Must literally appear in OCR text.
+- gender: Male/Female (also accept M/F, MALE/FEMALE). Must literally appear in OCR text.
+- civil_status: Single/Married/Divorced/Widowed (also accept S/M/D/W). Must literally appear in OCR text.
 - birth_date: yyyy-mm-dd format. Must literally appear in OCR text.
 
 1. personal_data — name and birth. Exact: first_name, middle_name, last_name, birth_date
