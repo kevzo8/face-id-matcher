@@ -515,7 +515,7 @@ async def ocr_parse(request: Request):
     if not texts:
         raise HTTPException(status_code=400, detail="No text provided")
     try:
-        api_key = os.environ.get(f"{provider.upper()}_API_KEY")
+        api_key = body.get("api_key") or os.environ.get(f"{provider.upper()}_API_KEY")
         if not api_key:
             return OcrParseResponse(error=f"{provider.upper()}_API_KEY env var not set")
         
