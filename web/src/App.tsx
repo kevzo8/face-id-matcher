@@ -56,7 +56,6 @@ export default function App() {
   const [ocrError, setOcrError] = useState<string | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [aiParserProvider, setAiParserProvider] = useState<'groq' | 'openai'>('groq');
-  const [aiParserApiKey, setAiParserApiKey] = useState('');
   const [aiResult, setAiResult] = useState<{ id_type_code?: number; id_type_name?: string; personal_data?: { label: string; value: string }[]; other_fields?: { label: string; value: string }[]; id_information?: { id_label?: string; id_type_code?: number; id_type_name?: string; id_number?: string }[] } | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [livenessProvider, setLivenessProvider] = useState<LivenessProvider>('open_face_liveness');
@@ -379,7 +378,7 @@ export default function App() {
       const res = await fetch(`${ocrServerUrl.replace(/\/+$/, '')}/ocr/parse`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ texts, provider: aiParserProvider, api_key: aiParserApiKey || undefined }),
+        body: JSON.stringify({ texts, provider: aiParserProvider }),
       });
       const data = await res.json();
       if (data.error) { setAiResult({ id_type_code: 0, id_type_name: 'Error', personal_data: [], other_fields: [{ label: 'Parse error', value: data.error }] }); return; }
@@ -1336,9 +1335,7 @@ export default function App() {
                   <option value="groq">GROQ (fast/free)</option>
                   <option value="openai">OpenAI</option>
                 </select>
-                <input type="password" value={aiParserApiKey} onChange={(e) => setAiParserApiKey(e.target.value)} placeholder={`${aiParserProvider.toUpperCase()} API Key (optional)`}
-                  style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 11, marginTop: 4, boxSizing: 'border-box' }} />
-                <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Leave empty to use <strong>{aiParserProvider.toUpperCase()}_API_KEY</strong> env var on server.</div>
+                <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Set <strong>{aiParserProvider.toUpperCase()}_API_KEY</strong> env var on server.</div>
               </div>
             </div>
           )}
