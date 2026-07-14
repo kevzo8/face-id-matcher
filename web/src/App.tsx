@@ -907,13 +907,13 @@ export default function App() {
                   {aiResult && (
                     <div style={{ flex: 1, minWidth: 0, padding: 12, background: '#1e293b', borderRadius: 8, border: '1px solid #475569' }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#a78bfa', marginBottom: 8 }}>AI Parsed Result</div>
-                {aiResult.id_type_name && (
+                {!aiResult.id_information?.length && aiResult.id_type_name && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '4px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3, marginBottom: 4 }}>
                     <span>id_type_name</span>
                     <span style={{ fontWeight: 600, color: '#fbbf24' }}>{aiResult.id_type_name}</span>
                   </div>
                 )}
-                {aiResult.id_type_code !== undefined && (
+                {!aiResult.id_information?.length && aiResult.id_type_code !== undefined && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '4px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3, marginBottom: 4 }}>
                     <span>id_type_code</span>
                     <span style={{ fontWeight: 600, color: '#fbbf24' }}>{aiResult.id_type_code}</span>

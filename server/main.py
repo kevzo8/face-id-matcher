@@ -546,12 +546,13 @@ Return ONLY valid JSON with no markdown or explanation. Format:
 {{"id_type_code": <integer>, "id_type_name": "<full name from registry>", "personal_data": [{{"label": "<variable_name>", "value": "<value>"}}], "other_fields": [{{"label": "<variable_name>", "value": "<value>"}}], "id_information": [{{"id_label": "ID 1", "id_type_code": <int>, "id_type_name": "<str>", "id_number": "<str>"}}]}}
 
 Extract ALL visible fields. Omit any field with an empty value.
+CRITICAL: Only extract values that literally appear in the OCR text above. NEVER invent, guess, or assume a value. If a field is not present in the OCR text, omit it entirely. Do not default to any value.
 
 Group into three categories. Validate field values intelligently:
-- blood_type: only A, B, AB, O (with optional +/-), ignore impossible values
-- gender: Male/Female
-- civil_status: Single/Married/Divorced/Widowed
-- birth_date: yyyy-mm-dd format
+- blood_type: only A, B, AB, O (with optional +/-). Must literally appear in OCR text — do not guess or default.
+- gender: Male/Female. Must literally appear in OCR text.
+- civil_status: Single/Married/Divorced/Widowed. Must literally appear in OCR text.
+- birth_date: yyyy-mm-dd format. Must literally appear in OCR text.
 
 1. personal_data — name and birth. Exact: first_name, middle_name, last_name, birth_date
 2. other_fields — everything else: id_number, gender, nationality, address, expiry_date, issue_date, blood_type, religion, civil_status, occupation, mother_maiden_name, father_name, place_of_birth, height, weight, eye_color, restrictions
