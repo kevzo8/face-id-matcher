@@ -343,14 +343,12 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
                     <line x1="30" y1="78" x2="250" y2="78" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
                     <line x1="30" y1="92" x2="180" y2="92" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
                     <line x1="30" y1="120" x2="270" y2="120" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeDasharray="4 3" />
-                    <text x="150" y="115" textAnchor="middle" fill="#64748b" fontSize="8" fontFamily="sans-serif">SIGNATURE</text>
                   </>
                 )}
                 {mockup === 'selfie' && (
                   <>
                     <circle cx="150" cy="60" r="28" fill="#334155" stroke="#475569" strokeWidth="1.5" />
                     <ellipse cx="150" cy="150" rx="50" ry="35" fill="#334155" stroke="#475569" strokeWidth="1.5" />
-                    <text x="150" y="185" textAnchor="middle" fill="#64748b" fontSize="8" fontFamily="sans-serif">SELFIE</text>
                   </>
                 )}
               </svg>

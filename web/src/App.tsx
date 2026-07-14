@@ -615,33 +615,49 @@ export default function App() {
               <video ref={livenessTestVideoRef} style={{ display: 'none' }} playsInline muted />
               {!livenessTestStarted && !livenessTestResult && !livenessTestMode && !passiveLivenessResult && (
                 <>
-                  <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 8, fontWeight: 600 }}>Choose a test type:</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
-                     <button onClick={() => { setLivenessTestResult(null); setPassiveLivenessResult(null); setLivenessTestMode('active'); }}
-                      style={{ width: '100%', maxWidth: 320, padding: '12px 20px', fontSize: 14, fontWeight: 600, border: 'none', borderRadius: 8, cursor: 'pointer', background: 'linear-gradient(135deg, #581c87, #7c3aed)', color: '#e9d5ff', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: 20 }}>&#9654;</span>
-                      <span><strong>Active Liveness</strong><br /><span style={{ fontSize: 11, opacity: 0.7 }}>Challenge-response: follow on-screen prompts</span></span>
-                    </button>
-                    <button onClick={() => { setLivenessTestResult(null); setPassiveLivenessResult(null); setLivenessTestMode('passive'); }}
-                      style={{ width: '100%', maxWidth: 320, padding: '12px 20px', fontSize: 14, fontWeight: 600, border: 'none', borderRadius: 8, cursor: 'pointer', background: 'linear-gradient(135deg, #14532d, #16a34a)', color: '#bbf7d0', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: 20 }}>&#9725;</span>
-                      <span><strong>Passive Liveness</strong><br /><span style={{ fontSize: 11, opacity: 0.7 }}>Snap & detect — no action needed, server-side analysis</span></span>
-                    </button>
-                    <label style={{ width: '100%', maxWidth: 320, padding: '12px 20px', fontSize: 14, fontWeight: 600, border: '2px dashed #f97316', borderRadius: 8, cursor: 'pointer', background: 'transparent', color: '#f97316', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, boxSizing: 'border-box' }}>
-                      <span style={{ fontSize: 20 }}>&#128247;</span>
-                      <span><strong>Upload Video</strong><br /><span style={{ fontSize: 11, opacity: 0.8 }}>Test with a recorded video or photo</span></span>
-                      <input type="file" accept="video/*" style={{ display: 'none' }}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          setLivenessTestMode('upload');
-                          const video = livenessTestVideoRef.current;
-                          if (!video) return;
-                          video.src = URL.createObjectURL(file);
-                          video.load();
-                          video.oncanplay = () => { setLivenessTestVideo(video); setLivenessTestStarted(true); };
-                        }} />
-                    </label>
+                  <div style={{ background: '#1e293b', borderRadius: 8, padding: 12, border: '1px solid #3b82f6', marginBottom: 8 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#3b82f6', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 14 }}>&#128100;</span> Liveness Camera
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+                      <div style={{ width: 260, padding: 8, background: '#0f172a', borderRadius: 8, border: '1px solid #334155' }}>
+                        <svg viewBox="0 0 300 190" style={{ width: '100%', height: 'auto', display: 'block' }}>
+                          <rect x="2" y="2" width="296" height="186" rx="10" fill="none" stroke="#475569" strokeWidth="1.5" strokeDasharray="6 4" />
+                          <circle cx="150" cy="60" r="28" fill="#334155" stroke="#475569" strokeWidth="1.5" />
+                          <ellipse cx="150" cy="150" rx="50" ry="35" fill="#334155" stroke="#475569" strokeWidth="1.5" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                      <button onClick={() => { setLivenessTestResult(null); setPassiveLivenessResult(null); setLivenessTestMode('active'); }}
+                       style={{ flex: 1, maxWidth: 220, padding: '10px 14px', fontSize: 12, fontWeight: 600, border: 'none', borderRadius: 8, cursor: 'pointer', background: 'linear-gradient(135deg, #581c87, #7c3aed)', color: '#e9d5ff', textAlign: 'center' }}>
+                       <span style={{ fontSize: 16, display: 'block' }}>&#9654;</span>
+                       <strong>Active Liveness</strong>
+                       <div style={{ fontSize: 10, opacity: 0.7 }}>Follow on-screen prompts</div>
+                      </button>
+                      <button onClick={() => { setLivenessTestResult(null); setPassiveLivenessResult(null); setLivenessTestMode('passive'); }}
+                       style={{ flex: 1, maxWidth: 220, padding: '10px 14px', fontSize: 12, fontWeight: 600, border: 'none', borderRadius: 8, cursor: 'pointer', background: 'linear-gradient(135deg, #14532d, #16a34a)', color: '#bbf7d0', textAlign: 'center' }}>
+                       <span style={{ fontSize: 16, display: 'block' }}>&#9725;</span>
+                       <strong>Passive Liveness</strong>
+                       <div style={{ fontSize: 10, opacity: 0.7 }}>Snap & detect</div>
+                      </button>
+                      <label style={{ flex: 1, maxWidth: 220, padding: '10px 14px', fontSize: 12, fontWeight: 600, border: '2px dashed #f97316', borderRadius: 8, cursor: 'pointer', background: 'transparent', color: '#f97316', textAlign: 'center', boxSizing: 'border-box', display: 'block' }}>
+                       <span style={{ fontSize: 16, display: 'block' }}>&#128247;</span>
+                       <strong>Upload Video</strong>
+                       <div style={{ fontSize: 10, opacity: 0.8 }}>Recorded video or photo</div>
+                       <input type="file" accept="video/*" style={{ display: 'none' }}
+                         onChange={(e) => {
+                           const file = e.target.files?.[0];
+                           if (!file) return;
+                           setLivenessTestMode('upload');
+                           const video = livenessTestVideoRef.current;
+                           if (!video) return;
+                           video.src = URL.createObjectURL(file);
+                           video.load();
+                           video.oncanplay = () => { setLivenessTestVideo(video); setLivenessTestStarted(true); };
+                         }} />
+                      </label>
+                    </div>
                   </div>
                 </>
               )}
