@@ -501,7 +501,9 @@ async def ocr_detect(request: Request):
 class OcrParseResponse(BaseModel):
     id_type_code: int | None = None
     id_type_name: str | None = None
-    fields: list[dict] = []
+    personal_data: list[dict] = []
+    other_fields: list[dict] = []
+    id_information: list[dict] = []
     error: str | None = None
 
 
@@ -541,21 +543,16 @@ PHILIPPINES ID TYPE REGISTRY (use id_type_code for responses):
 13 = Philippines Driver's License
 
 Return ONLY valid JSON with no markdown or explanation. Format:
-{{"id_type_code": <integer>, "id_type_name": "<full name from registry>", "fields": [{{"label": "<variable_name>", "value": "<value>"}}]}}
+{{"id_type_code": <integer>, "id_type_name": "<full name from registry>", "personal_data": [{{"label": "<variable_name>", "value": "<value>"}}], "other_fields": [{{"label": "<variable_name>", "value": "<value>"}}], "id_information": [{{"id_label": "ID 1", "id_type_code": <int>, "id_type_name": "<str>", "id_number": "<str>"}}]}}
 
-Extract ALL visible fields. Use these variable names (snake_case, consistent):
-- id_number (government-issued ID number)
-- first_name
-- middle_name (if present, otherwise empty string)
-- last_name
-- birth_date (yyyy-mm-dd format)
-- gender
-- nationality
-- address
-- expiry_date
-- issue_date
+Extract ALL visible fields. Omit any field with an empty value.
 
-If text from multiple sides/IDs is provided, cross-reference and reconcile any discrepancies. Use the most complete/correct data.
+Group into three categories:
+1. personal_data — name and birth. Exact: first_name, middle_name, last_name, birth_date (yyyy-mm-dd)
+2. other_fields — everything else: id_number, gender, nationality, address, expiry_date, issue_date, blood_type, religion, civil_status, occupation, mother_maiden_name, father_name, place_of_birth, height, weight, eye_color, restrictions
+3. id_information — per-ID info when multiple IDs uploaded: [{"id_label":"ID 1","id_type_code":1,"id_type_name":"Philippines Passport","id_number":"P123456"}]. Omit if only one ID.
+
+If text from multiple sides/IDs is provided, cross-reference and reconcile any discrepancies. Use the most complete/correct data. Put shared/cross-referenced fields in personal_data or other_fields, and per-ID specific data in id_information.
 
 OCR Text:
 {text_block}"""
@@ -577,7 +574,9 @@ OCR Text:
         return OcrParseResponse(
             id_type_code=parsed.get("id_type_code"),
             id_type_name=parsed.get("id_type_name"),
-            fields=parsed.get("fields", []),
+            personal_data=parsed.get("personal_data", []),
+            other_fields=parsed.get("other_fields", []),
+            id_information=parsed.get("id_information", []),
         )
     except Exception as e:
         return OcrParseResponse(error=str(e))

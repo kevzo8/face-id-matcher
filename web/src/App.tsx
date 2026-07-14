@@ -56,7 +56,7 @@ export default function App() {
   const [ocrError, setOcrError] = useState<string | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [aiParserProvider, setAiParserProvider] = useState<'groq' | 'openai'>('groq');
-  const [aiResult, setAiResult] = useState<{ id_type_code?: number; id_type_name?: string; fields?: { label: string; value: string }[] } | null>(null);
+  const [aiResult, setAiResult] = useState<{ id_type_code?: number; id_type_name?: string; personal_data?: { label: string; value: string }[]; other_fields?: { label: string; value: string }[]; id_information?: { id_label?: string; id_type_code?: number; id_type_name?: string; id_number?: string }[] } | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [livenessProvider, setLivenessProvider] = useState<LivenessProvider>('open_face_liveness');
   const [livenessServerUrl, setLivenessServerUrl] = useState('https://face-id-matcher.onrender.com');
@@ -370,10 +370,10 @@ export default function App() {
         body: JSON.stringify({ texts, provider: aiParserProvider }),
       });
       const data = await res.json();
-      if (data.error) { setAiResult({ id_type_code: 0, id_type_name: 'Error', fields: [{ label: 'Parse error', value: data.error }] }); return; }
+      if (data.error) { setAiResult({ id_type_code: 0, id_type_name: 'Error', personal_data: [], other_fields: [{ label: 'Parse error', value: data.error }] }); return; }
       setAiResult(data);
     } catch (e) {
-      setAiResult({ id_type_code: 0, id_type_name: 'Error', fields: [{ label: 'Parse error', value: e instanceof Error ? e.message : 'Unknown error' }] });
+      setAiResult({ id_type_code: 0, id_type_name: 'Error', personal_data: [], other_fields: [{ label: 'Parse error', value: e instanceof Error ? e.message : 'Unknown error' }] });
     } finally {
       setAiLoading(false);
     }
@@ -546,8 +546,8 @@ export default function App() {
             {mode === 'single' && (
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12, marginBottom: 12 }}>
-                  <ImageCapture title="1. ID Photo" subtitle="Upload or take a photo of an ID card" image={idImage} onCapture={handleIdCapture} facingMode="environment" accentColor="#22c55e" icon="card" faceBox={idFaceBox} />
-                  <ImageCapture title="2. Selfie" subtitle="Take a selfie, upload a photo, or use another ID" image={selfieImage} onCapture={handleSelfieCapture} facingMode="user" accentColor="#3b82f6" icon="person" faceBox={selfieFaceBox} />
+                  <ImageCapture title="1. ID Photo" subtitle="Upload or take a photo of an ID card" image={idImage} onCapture={handleIdCapture} facingMode="environment" accentColor="#22c55e" icon="card" faceBox={idFaceBox} mockup="id-front" />
+                  <ImageCapture title="2. Selfie" subtitle="Take a selfie, upload a photo, or use another ID" image={selfieImage} onCapture={handleSelfieCapture} facingMode="user" accentColor="#3b82f6" icon="person" faceBox={selfieFaceBox} mockup="selfie" />
                 </div>
 
                 {selfieImage && !livenessRunning && !livenessResult && (
@@ -857,7 +857,7 @@ export default function App() {
                 </div>
               ))}
             </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
               <button onClick={addIdEntry}
                 style={{ padding: '6px 16px', fontSize: 12, fontWeight: 600, border: '1px dashed #22c55e', borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#22c55e' }}>
                 + Add Another ID
@@ -866,20 +866,26 @@ export default function App() {
                 style={{ padding: '6px 16px', fontSize: 12, fontWeight: 600, border: 'none', borderRadius: 6, cursor: ocrLoading ? 'wait' : 'pointer', background: ocrLoading ? '#334155' : 'linear-gradient(135deg, #14532d, #16a34a)', color: '#bbf7d0' }}>
                 {ocrLoading ? 'Processing...' : 'OCR All'}
               </button>
-              <button onClick={() => { setOcrEntries([{ key: 1, front: null, back: null }]); setNextEntryKey(2); setAiResult(null); setOcrError(null); }}
-                style={{ padding: '6px 16px', fontSize: 12, fontWeight: 600, border: '1px solid #475569', borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#e2e8f0' }}>
-                &#8634; Reset All
-              </button>
-            </div>
-            {ocrError && <div style={{ color: '#ef4444', fontSize: 12 }}>{ocrError}</div>}
-            {ocrEntries.some(e => e.frontResult?.text_lines?.length || e.backResult?.text_lines?.length) && (
-              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              {ocrEntries.some(e => e.frontResult?.text_lines?.length || e.backResult?.text_lines?.length) && (
                 <button onClick={parseAllWithAi} disabled={aiLoading}
-                  style={{ padding: '8px 16px', fontSize: 12, fontWeight: 600, border: 'none', borderRadius: 6, cursor: aiLoading ? 'wait' : 'pointer', background: aiLoading ? '#334155' : 'linear-gradient(135deg, #6d28d9, #8b5cf6)', color: '#ddd6fe' }}>
+                  style={{ padding: '6px 16px', fontSize: 12, fontWeight: 600, border: 'none', borderRadius: 6, cursor: aiLoading ? 'wait' : 'pointer', background: aiLoading ? '#334155' : 'linear-gradient(135deg, #6d28d9, #8b5cf6)', color: '#ddd6fe' }}>
                   {aiLoading ? 'Parsing...' : 'Parse All'}
                 </button>
+              )}
+              <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                {ocrEntries.length > 1 && (
+                  <button onClick={() => { setOcrEntries(prev => prev.slice(0, -1)); setAiResult(null); }}
+                    style={{ padding: '6px 16px', fontSize: 12, fontWeight: 600, border: '1px dashed #ef4444', borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#ef4444' }}>
+                    &#8722; Remove Last ID
+                  </button>
+                )}
+                <button onClick={() => { setOcrEntries([{ key: 1, front: null, back: null }]); setNextEntryKey(2); setAiResult(null); setOcrError(null); }}
+                  style={{ padding: '6px 16px', fontSize: 12, fontWeight: 600, border: '1px solid #475569', borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#e2e8f0' }}>
+                  &#8634; Reset All
+                </button>
               </div>
-            )}
+            </div>
+            {ocrError && <div style={{ color: '#ef4444', fontSize: 12 }}>{ocrError}</div>}
             {aiResult && (
               <div style={{ marginTop: 8, padding: 12, background: '#1e293b', borderRadius: 8, border: '1px solid #475569' }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#a78bfa', marginBottom: 8 }}>AI Parsed Result</div>
@@ -895,12 +901,51 @@ export default function App() {
                     <span style={{ fontWeight: 600, color: '#fbbf24' }}>{aiResult.id_type_code}</span>
                   </div>
                 )}
-                {aiResult.fields?.map((f, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '4px 6px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    <span style={{ fontFamily: 'monospace', color: '#93c5fd' }}>{f.label}</span>
-                    <span style={{ fontWeight: 600, color: '#e2e8f0', textAlign: 'right', maxWidth: '60%' }}>{f.value}</span>
+                {aiResult.id_information && aiResult.id_information.length > 0 && aiResult.id_information.map((info, idx) => (
+                  <div key={idx} style={{ marginTop: 8 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{info.id_label || 'ID ' + (idx + 1)} Information</div>
+                    {info.id_type_name && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '4px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3, marginBottom: 2 }}>
+                        <span>id_type_name</span>
+                        <span style={{ fontWeight: 600, color: '#fbbf24' }}>{info.id_type_name}</span>
+                      </div>
+                    )}
+                    {info.id_type_code !== undefined && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '4px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3, marginBottom: 2 }}>
+                        <span>id_type_code</span>
+                        <span style={{ fontWeight: 600, color: '#fbbf24' }}>{info.id_type_code}</span>
+                      </div>
+                    )}
+                    {info.id_number && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '4px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3, marginBottom: 2 }}>
+                        <span>id_number</span>
+                        <span style={{ fontWeight: 600, color: '#fbbf24' }}>{info.id_number}</span>
+                      </div>
+                    )}
                   </div>
                 ))}
+                {aiResult.personal_data && aiResult.personal_data.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: '#4ade80', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Personal Data</div>
+                    {aiResult.personal_data.map((f, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '4px 6px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                        <span style={{ fontFamily: 'monospace', color: '#93c5fd' }}>{f.label}</span>
+                        <span style={{ fontWeight: 600, color: '#e2e8f0', textAlign: 'right', maxWidth: '60%' }}>{f.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {aiResult.other_fields && aiResult.other_fields.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Other Fields</div>
+                    {aiResult.other_fields.map((f, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '4px 6px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                        <span style={{ fontFamily: 'monospace', color: '#93c5fd' }}>{f.label}</span>
+                        <span style={{ fontWeight: 600, color: '#e2e8f0', textAlign: 'right', maxWidth: '60%' }}>{f.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
