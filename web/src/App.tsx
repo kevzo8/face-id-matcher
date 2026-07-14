@@ -847,7 +847,7 @@ export default function App() {
                     )}
                   </div>
                   <div style={{ flex: '1 1 280px', maxWidth: 320, textAlign: 'center' }}>
-                    <ImageCapture title={`ID ${entry.key} Back`} subtitle="" image={entry.back} onCapture={(d) => updateEntry(entry.key, 'back', d)} facingMode="environment" accentColor="#22c55e" icon="card" mockup="id-back" />
+                    <ImageCapture title={`ID ${entry.key} Back`} subtitle="" image={entry.back} onCapture={(d) => updateEntry(entry.key, 'back', d)} facingMode="environment" accentColor="#f59e0b" icon="card" mockup="id-back" />
                     {entry.back?.url && (
                       <button onClick={() => runOcr(entry.key, 'back')} disabled={ocrLoading}
                         style={{ marginTop: 4, padding: '4px 12px', fontSize: 11, fontWeight: 600, border: 'none', borderRadius: 4, cursor: ocrLoading ? 'wait' : 'pointer', background: ocrLoading ? '#334155' : '#14532d', color: '#bbf7d0' }}>
