@@ -616,9 +616,15 @@ export default function App() {
               {!livenessTestStarted && !livenessTestResult && !livenessTestMode && !passiveLivenessResult && (
                 <>
                   <div style={{ background: '#1e293b', borderRadius: 8, padding: 12, border: '1px solid #3b82f6', marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#3b82f6', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 14 }}>&#128100;</span> Liveness Camera
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="8" r="4" />
+                        <path d="M4 22c0-4 3.6-8 8-8s8 4 8 8" />
+                      </svg>
+                      <span style={{ fontSize: 18, fontWeight: 600, color: '#e2e8f0' }}>Liveness Check</span>
                     </div>
+                    <p style={{ color: '#64748b', fontSize: 13, margin: '2px 0 8px 0' }}>Select a liveness check type</p>
+                    <div style={{ borderBottom: '1px solid #334155', marginBottom: 10 }} />
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
                       <div style={{ width: 260, padding: 8, background: '#0f172a', borderRadius: 8, border: '1px solid #334155' }}>
                         <svg viewBox="0 0 300 190" style={{ width: '100%', height: 'auto', display: 'block' }}>
