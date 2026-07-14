@@ -669,17 +669,33 @@ export default function App() {
               )}
               {livenessTestMode === 'active' && !livenessTestResult && (
                 <div style={{ background: '#1e293b', borderRadius: 8, padding: 16, border: '1px solid #475569', marginTop: 12 }}>
-                  <LivenessCheck onComplete={(r) => { setLivenessTestResult(r as { pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[]; rawLabels?: { label: string; confidence: number }[]; objectSnapshotUrl?: string; provider?: string }); setLivenessTestStarted(false); setLivenessTestMode(null); }} autoStart={true} provider={livenessProvider} serverUrl={livenessServerUrl} obServerUrl={obServerUrl} />
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1 }}>
+                      <LivenessCheck onComplete={(r) => { setLivenessTestResult(r as { pass: boolean; score: number; details: string; recordingUrl?: string; recordingDuration?: number; breakdown?: { label: string; pts: number }[]; challenges?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; colorAnalysis?: { label: string; value: string }[]; objectInfo?: { label: string; value: string }[]; rawLabels?: { label: string; confidence: number }[]; objectSnapshotUrl?: string; provider?: string }); setLivenessTestStarted(false); setLivenessTestMode(null); }} autoStart={true} provider={livenessProvider} serverUrl={livenessServerUrl} obServerUrl={obServerUrl} />
+                    </div>
+                    <button onClick={() => setLivenessTestMode(null)}
+                      style={{ padding: '6px 14px', fontSize: 11, fontWeight: 600, border: '1px solid #475569', borderRadius: 4, cursor: 'pointer', background: 'transparent', color: '#94a3b8', whiteSpace: 'nowrap', marginTop: 2 }}>
+                      &larr; Back
+                    </button>
+                  </div>
                 </div>
               )}
               {livenessTestMode === 'passive' && !passiveLivenessResult && (
                 <div style={{ background: '#1e293b', borderRadius: 8, padding: 16, border: '1px solid #3b82f6', marginTop: 12 }}>
-                  <PassiveLivenessCheck 
-                 serverUrl={livenessServerUrl} 
-                 provider={passiveLivenessProvider} 
-                 onComplete={(r) => { setPassiveLivenessResult(r); setLivenessTestMode(null); }}
-                 faceplusServerUrl={faceplusServerUrl} 
-                 awsServerUrl={awsServerUrl} />
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1 }}>
+                      <PassiveLivenessCheck 
+                     serverUrl={livenessServerUrl} 
+                     provider={passiveLivenessProvider} 
+                     onComplete={(r) => { setPassiveLivenessResult(r); setLivenessTestMode(null); }}
+                     faceplusServerUrl={faceplusServerUrl} 
+                     awsServerUrl={awsServerUrl} />
+                    </div>
+                    <button onClick={() => setLivenessTestMode(null)}
+                      style={{ padding: '6px 14px', fontSize: 11, fontWeight: 600, border: '1px solid #475569', borderRadius: 4, cursor: 'pointer', background: 'transparent', color: '#94a3b8', whiteSpace: 'nowrap', marginTop: 2 }}>
+                      &larr; Back
+                    </button>
+                  </div>
                 </div>
               )}
               {livenessTestStarted && !livenessTestResult && livenessTestMode === 'upload' && (
