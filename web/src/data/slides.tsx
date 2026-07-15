@@ -1181,10 +1181,10 @@ export const ocrSlides: Slide[] = [
     ),
   },
   {
-    id: 'ocr-providers',
+id: 'ocr-providers',
     title: 'OCR Providers',
     subtitle: '9 providers evaluated — 3 implemented, 6 server placeholders',
-    section: 'Comparison',
+    section: 'Provider Comparisons',
     content: (
       <div style={{ maxWidth: 780, margin: '0 auto' }}>
         <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
@@ -1220,7 +1220,7 @@ export const ocrSlides: Slide[] = [
     id: 'ocr-ph-registry',
     title: 'Philippine ID Type Registry',
     subtitle: '14 supported PH government ID types with cross-referencing',
-    section: 'PH Registry',
+    section: 'Overview',
     content: (
       <div style={{ maxWidth: 760, margin: '0 auto' }}>
         <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
@@ -1301,7 +1301,7 @@ export const ocrSlides: Slide[] = [
   },
   {
     id: 'ocr-ai-eval',
-    title: 'AI Parser Provider Evaluation',
+    title: 'AI Parser Evaluation',
     subtitle: 'GROQ vs OpenAI — speed, cost, and accuracy comparison',
     section: 'AI Parsing',
     content: (

@@ -4,7 +4,7 @@ import { slides, livenessSlides, ocrSlides, Slide } from '../data/slides.tsx';
 
 const sectionColors: Record<string, string> = {
   Overview: '#6366f1',
-  Comparison: '#22c55e',
+  'Provider Comparisons': '#22c55e',
   Results: '#f59e0b',
   'PH Registry': '#f97316',
   'AI Parsing': '#8b5cf6',
