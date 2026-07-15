@@ -1180,7 +1180,7 @@ export const ocrSlides: Slide[] = [
           style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
           <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>Cross-Referencing</div>
           <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>
-            When multiple IDs are uploaded (e.g., Passport + Driver\'s License), the AI prompt instructs the LLM to cross-reference and reconcile discrepancies across ID sources. The id_information field captures per-ID data separately for comparison.
+            When multiple IDs are uploaded (e.g., Passport + Driver's License), the AI prompt instructs the LLM to cross-reference and reconcile discrepancies across ID sources. The id_information field captures per-ID data separately for comparison.
           </div>
         </motion.div>
       </div>
@@ -1255,7 +1255,7 @@ export const ocrSlides: Slide[] = [
           style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))', borderRadius: 10, padding: '14px 16px', border: '1px solid rgba(99,102,241,0.3)' }}>
           <div style={{ fontWeight: 700, color: '#a5b4fc', marginBottom: 4, fontSize: 14 }}>Key Design Decision</div>
           <div style={{ color: '#cbd5e1', fontSize: 14, lineHeight: 1.6 }}>
-            Per-image OCR instead of stitching — each ID side is OCR\'d separately to avoid composite image quality loss. The stitchImages function exists but is intentionally unused in the OCR flow.
+            Per-image OCR instead of stitching — each ID side is OCR'd separately to avoid composite image quality loss. The stitchImages function exists but is intentionally unused in the OCR flow.
           </div>
         </motion.div>
       </div>

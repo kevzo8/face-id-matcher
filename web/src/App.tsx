@@ -491,8 +491,8 @@ export default function App() {
               style={{
                 width: '100%', textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 500,
                 border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                color: f.color,
                 background: showPresentation && feature === f.key ? '#334155' : 'transparent',
-                color: showPresentation && feature === f.key ? f.color : '#475569',
                 borderLeft: `3px solid ${showPresentation && feature === f.key ? f.color : 'transparent'}`,
               }}
             >
