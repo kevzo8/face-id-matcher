@@ -1143,80 +1143,6 @@ export const ocrSlides: Slide[] = [
     ),
   },
   {
-    id: 'ocr-pipeline',
-    title: 'OCR Pipeline Architecture',
-    subtitle: 'End-to-end flow from capture to structured data',
-    section: 'Overview',
-    content: (
-      <div style={{ maxWidth: 780, margin: '0 auto' }}>
-        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 18 }}>
-          The pipeline processes ID images individually and uses AI to extract structured fields from raw OCR text:
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
-          {[
-            { phase: '1. Capture', detail: 'Camera or file upload. Front + back per ID entry. SVG mockups for alignment. Rotation/flip controls.' },
-            { phase: '2. OCR Detect', detail: 'POST /ocr/detect with provider param. AWS Rekognition detect_text() + detect_labels() for ID type.' },
-            { phase: '3. Text Assembly', detail: 'Each side OCR\'d individually (no stitching). Texts deduplicated before AI parsing.' },
-            { phase: '4. AI Parse', detail: 'POST /ocr/parse with GROQ/OpenAI. PH ID Type Registry prompt extracts structured fields.' },
-            { phase: '5. Field Validation', detail: 'Enforces gender (M/F), civil status (S/M/D/W), blood type (A/B/AB/O ±), date formats.' },
-            { phase: '6. Cross-Reference', detail: 'When multiple IDs uploaded, AI reconciles discrepancies across ID sources.' },
-          ].map((p, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
-              style={{ background: '#1e293b', borderRadius: 8, padding: '12px 14px', border: '1px solid #334155', borderTop: `3px solid ${i < 2 ? '#6366f1' : i < 4 ? '#8b5cf6' : '#f59e0b'}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 15 }}>{p.phase}</span>
-              </div>
-              <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.5 }}>{p.detail}</div>
-            </motion.div>
-          ))}
-        </div>
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-          style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))', borderRadius: 10, padding: '14px 16px', border: '1px solid rgba(99,102,241,0.3)' }}>
-          <div style={{ fontWeight: 700, color: '#a5b4fc', marginBottom: 4, fontSize: 14 }}>Key Design Decision</div>
-          <div style={{ color: '#cbd5e1', fontSize: 14, lineHeight: 1.6 }}>
-            Per-image OCR instead of stitching — each ID side is OCR\'d separately to avoid composite image quality loss. The stitchImages function exists but is intentionally unused in the OCR flow.
-          </div>
-        </motion.div>
-      </div>
-    ),
-  },
-  {
-id: 'ocr-providers',
-    title: 'OCR Providers',
-    subtitle: '9 providers evaluated — 3 implemented, 6 server placeholders',
-    section: 'Provider Comparisons',
-    content: (
-      <div style={{ maxWidth: 780, margin: '0 auto' }}>
-        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
-          The server implements 3 OCR backends. The remaining 6 are frontend-only options that fall through to the default provider.
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          {[
-            { name: 'AWS Rekognition OCR', status: '✅ Active', cost: '$0.001/check', color: '#22c55e', note: 'Default provider. Uses rekognition.detect_text() for text + detect_labels() for ID type classification.' },
-            { name: 'AWS Textract', status: '✅ Active', cost: '~$0.0015/page', color: '#22c55e', note: 'Uses textract.detect_document_text(). Better for dense text. Falls back to error if not enabled.' },
-            { name: 'Amazon Bedrock Claude', status: '✅ Active', cost: '~$0.003/call', color: '#22c55e', note: 'Claude 3 Sonnet via bedrock-runtime. Extracts text via vision. Falls back to error text on failure.' },
-            { name: 'Verihubs', status: '🔧 Placeholder', cost: 'Contact', color: '#f59e0b', note: 'Frontend option only — no server implementation. Falls to Rekognition default.' },
-            { name: 'ZOLOZ', status: '🔧 Placeholder', cost: 'Contact', color: '#f59e0b', note: 'Frontend option only — no server implementation. Falls to Rekognition default.' },
-            { name: 'Tencent Cloud', status: '🔧 Placeholder', cost: 'Contact', color: '#f59e0b', note: 'Frontend option only — no server implementation. Falls to Rekognition default.' },
-            { name: 'Google DocAI', status: '🔧 Placeholder', cost: '~$0.015/page', color: '#f59e0b', note: 'Frontend option only — no server implementation. Falls to Rekognition default.' },
-            { name: 'Mindee', status: '🔧 Placeholder', cost: '~$0.01/page', color: '#f59e0b', note: 'Frontend option only — no server implementation. Falls to Rekognition default.' },
-            { name: 'Azure DI', status: '🔧 Placeholder', cost: '~$0.01/page', color: '#f59e0b', note: 'Frontend option only — no server implementation. Falls to Rekognition default.' },
-          ].map((p, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-              style={{ background: p.status.includes('✅') ? `${p.color}08` : '#1e293b', borderRadius: 10, padding: '12px 14px', border: `1px solid ${p.color}33`, borderLeft: `4px solid ${p.color}` }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 14 }}>{p.name}</span>
-                <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 3, background: `${p.color}22`, color: p.color, fontWeight: 600 }}>{p.status}</span>
-              </div>
-              <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 2 }}>{p.cost}</div>
-              <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.4 }}>{p.note}</div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    ),
-  },
-  {
     id: 'ocr-ph-registry',
     title: 'Philippine ID Type Registry',
     subtitle: '14 supported PH government ID types with cross-referencing',
@@ -1261,10 +1187,121 @@ id: 'ocr-providers',
     ),
   },
   {
+    id: 'ocr-challenges',
+    title: 'Key Challenges',
+    subtitle: 'Philippine ID-specific OCR difficulties',
+    section: 'Overview',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          Philippine government IDs present unique OCR challenges that informed our design decisions:
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+          {[
+            { icon: '🌐', title: 'Bilingual Content', desc: 'Filipino + English on same ID. Field mapping complexity for AI parsing.' },
+            { icon: '📐', title: 'Variable Layouts', desc: 'Same ID type can have different versions/regions. No standard template.' },
+            { icon: '✨', title: 'Holographic Overlays', desc: 'Security holograms and reflective coatings create OCR artifacts and glare.' },
+            { icon: '🔍', title: 'Low Print Quality', desc: 'Pixelated or blurry text from low-resolution ID printing.' },
+            { icon: '💔', title: 'Physical Damage', desc: 'Worn, faded, or damaged cards cause missing or incorrect fields.' },
+            { icon: '📋', title: 'Non-Standard Names', desc: 'Field names vary across ID types — mapping to unified schema is complex.' },
+          ].map((c, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+              style={{ background: 'rgba(245,158,11,0.06)', borderRadius: 10, padding: '12px 14px', border: '1px solid rgba(245,158,11,0.25)' }}>
+              <div style={{ fontSize: 22, marginBottom: 4 }}>{c.icon}</div>
+              <div style={{ fontWeight: 700, color: '#e2e8f0', marginBottom: 2, fontSize: 14 }}>{c.title}</div>
+              <div style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5 }}>{c.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+          style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+          <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>Mitigations</div>
+          <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>
+            Per-image OCR avoids composite quality loss. Anti-hallucination prompts prevent AI from inventing data. Multi-ID cross-referencing reconciles discrepancies. Image quality warnings alert users to poor captures.
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'ocr-pipeline',
+    title: 'OCR Pipeline Architecture',
+    subtitle: 'End-to-end flow from capture to structured data',
+    section: 'Overview',
+    content: (
+      <div style={{ maxWidth: 780, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 18 }}>
+          The pipeline processes ID images individually and uses AI to extract structured fields from raw OCR text:
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
+          {[
+            { phase: '1. Capture', detail: 'Camera or file upload. Front + back per ID entry. SVG mockups for alignment. Rotation/flip controls.' },
+            { phase: '2. OCR Detect', detail: 'POST /ocr/detect with provider param. AWS Rekognition detect_text() + detect_labels() for ID type.' },
+            { phase: '3. Text Assembly', detail: 'Each side OCR\'d individually (no stitching). Texts deduplicated before AI parsing.' },
+            { phase: '4. AI Parse', detail: 'POST /ocr/parse with GROQ/OpenAI. PH ID Type Registry prompt extracts structured fields.' },
+            { phase: '5. Field Validation', detail: 'Enforces gender (M/F), civil status (S/M/D/W), blood type (A/B/AB/O ±), date formats.' },
+            { phase: '6. Cross-Reference', detail: 'When multiple IDs uploaded, AI reconciles discrepancies across ID sources.' },
+          ].map((p, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+              style={{ background: '#1e293b', borderRadius: 8, padding: '12px 14px', border: '1px solid #334155', borderTop: `3px solid ${i < 2 ? '#6366f1' : i < 4 ? '#8b5cf6' : '#f59e0b'}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 15 }}>{p.phase}</span>
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.5 }}>{p.detail}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+          style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))', borderRadius: 10, padding: '14px 16px', border: '1px solid rgba(99,102,241,0.3)' }}>
+          <div style={{ fontWeight: 700, color: '#a5b4fc', marginBottom: 4, fontSize: 14 }}>Key Design Decision</div>
+          <div style={{ color: '#cbd5e1', fontSize: 14, lineHeight: 1.6 }}>
+            Per-image OCR instead of stitching — each ID side is OCR\'d separately to avoid composite image quality loss. The stitchImages function exists but is intentionally unused in the OCR flow.
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'ocr-providers',
+    title: 'OCR Providers',
+    subtitle: '9 providers evaluated — 3 implemented, 6 server placeholders',
+    section: 'Provider Comparisons',
+    content: (
+      <div style={{ maxWidth: 780, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          The server implements 3 OCR backends. The remaining 6 are frontend-only options that fall through to the default provider.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {[
+            { name: 'AWS Rekognition OCR', status: '✅ Active', cost: '$0.001/check', color: '#22c55e', note: 'Default provider. Uses rekognition.detect_text() for text + detect_labels() for ID type classification.' },
+            { name: 'AWS Textract', status: '✅ Active', cost: '~$0.0015/page', color: '#22c55e', note: 'Uses textract.detect_document_text(). Better for dense text. Falls back to error if not enabled.' },
+            { name: 'Amazon Bedrock Claude', status: '✅ Active', cost: '~$0.003/call', color: '#22c55e', note: 'Claude 3 Sonnet via bedrock-runtime. Extracts text via vision. Falls back to error text on failure.' },
+            { name: 'Verihubs', status: '🔧 Placeholder', cost: 'Contact', color: '#f59e0b', note: 'Frontend option only — no server implementation. Falls to Rekognition default.' },
+            { name: 'ZOLOZ', status: '🔧 Placeholder', cost: 'Contact', color: '#f59e0b', note: 'Frontend option only — no server implementation. Falls to Rekognition default.' },
+            { name: 'Tencent Cloud', status: '🔧 Placeholder', cost: 'Contact', color: '#f59e0b', note: 'Frontend option only — no server implementation. Falls to Rekognition default.' },
+            { name: 'Google DocAI', status: '🔧 Placeholder', cost: '~$0.015/page', color: '#f59e0b', note: 'Frontend option only — no server implementation. Falls to Rekognition default.' },
+            { name: 'Mindee', status: '🔧 Placeholder', cost: '~$0.01/page', color: '#f59e0b', note: 'Frontend option only — no server implementation. Falls to Rekognition default.' },
+            { name: 'Azure DI', status: '🔧 Placeholder', cost: '~$0.01/page', color: '#f59e0b', note: 'Frontend option only — no server implementation. Falls to Rekognition default.' },
+          ].map((p, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+              style={{ background: p.status.includes('✅') ? `${p.color}08` : '#1e293b', borderRadius: 10, padding: '12px 14px', border: `1px solid ${p.color}33`, borderLeft: `4px solid ${p.color}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 14 }}>{p.name}</span>
+                <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 3, background: `${p.color}22`, color: p.color, fontWeight: 600 }}>{p.status}</span>
+              </div>
+              <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 2 }}>{p.cost}</div>
+              <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.4 }}>{p.note}</div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
     id: 'ocr-ai-parsing',
     title: 'AI Parsing with LLM',
     subtitle: 'GROQ (Llama 3.3) or OpenAI (GPT-4o-mini) — structured extraction from raw OCR',
-    section: 'AI Parsing',
+    section: 'Provider Comparisons',
     content: (
       <div style={{ maxWidth: 760, margin: '0 auto' }}>
         <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
@@ -1303,7 +1340,7 @@ id: 'ocr-providers',
     id: 'ocr-ai-eval',
     title: 'AI Parser Evaluation',
     subtitle: 'GROQ vs OpenAI — speed, cost, and accuracy comparison',
-    section: 'AI Parsing',
+    section: 'Provider Comparisons',
     content: (
       <div style={{ maxWidth: 760, margin: '0 auto' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
@@ -1343,7 +1380,7 @@ id: 'ocr-providers',
     id: 'ocr-flow',
     title: 'End-to-End Flow',
     subtitle: 'From capture to structured JSON in 3 API calls',
-    section: 'AI Parsing',
+    section: 'Provider Comparisons',
     content: (
       <div style={{ maxWidth: 760, margin: '0 auto' }}>
         <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
@@ -1370,43 +1407,6 @@ id: 'ocr-providers',
           <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>Provider Detection</div>
           <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>
             ID type is detected via <strong style={{ color: '#93c5fd' }}>AWS Rekognition detect_labels()</strong> at ≥70% confidence (labels: ID Card, Passport, Driver\'s License, etc.). The AI parser then classifies more precisely using the PH ID Type Registry based on text content.
-          </div>
-        </motion.div>
-      </div>
-    ),
-  },
-  {
-    id: 'ocr-challenges',
-    title: 'Key Challenges',
-    subtitle: 'Philippine ID-specific OCR difficulties',
-    section: 'AI Parsing',
-    content: (
-      <div style={{ maxWidth: 760, margin: '0 auto' }}>
-        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
-          Philippine government IDs present unique OCR challenges that informed our design decisions:
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-          {[
-            { icon: '🌐', title: 'Bilingual Content', desc: 'Filipino + English on same ID. Field mapping complexity for AI parsing.' },
-            { icon: '📐', title: 'Variable Layouts', desc: 'Same ID type can have different versions/regions. No standard template.' },
-            { icon: '✨', title: 'Holographic Overlays', desc: 'Security holograms and reflective coatings create OCR artifacts and glare.' },
-            { icon: '🔍', title: 'Low Print Quality', desc: 'Pixelated or blurry text from low-resolution ID printing.' },
-            { icon: '💔', title: 'Physical Damage', desc: 'Worn, faded, or damaged cards cause missing or incorrect fields.' },
-            { icon: '📋', title: 'Non-Standard Names', desc: 'Field names vary across ID types — mapping to unified schema is complex.' },
-          ].map((c, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
-              style={{ background: 'rgba(245,158,11,0.06)', borderRadius: 10, padding: '12px 14px', border: '1px solid rgba(245,158,11,0.25)' }}>
-              <div style={{ fontSize: 22, marginBottom: 4 }}>{c.icon}</div>
-              <div style={{ fontWeight: 700, color: '#e2e8f0', marginBottom: 2, fontSize: 14 }}>{c.title}</div>
-              <div style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5 }}>{c.desc}</div>
-            </motion.div>
-          ))}
-        </div>
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-          style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
-          <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>Mitigations</div>
-          <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>
-            Per-image OCR avoids composite quality loss. Anti-hallucination prompts prevent AI from inventing data. Multi-ID cross-referencing reconciles discrepancies. Image quality warnings alert users to poor captures.
           </div>
         </motion.div>
       </div>
@@ -1477,7 +1477,7 @@ id: 'ocr-providers',
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.3 }}
           style={{ fontSize: 28, fontWeight: 800, background: 'linear-gradient(135deg, #818cf8, #22c55e)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: 6, letterSpacing: -0.5 }}
-        >OCR & ID Type Detection POC</motion.div>
+        >OCR & ID Type Detection</motion.div>
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
