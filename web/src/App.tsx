@@ -482,8 +482,8 @@ export default function App() {
 
           {([
             { key: 'id_to_face' as const, label: 'ID to Face', color: '#a855f7', icon: '\u2696', slide: 0, path: 'face-id' },
-            { key: 'liveness' as const, label: 'Liveness Test', color: '#f97316', icon: '\u25C9', slide: 1, path: 'liveness' },
-            { key: 'ocr' as const, label: 'OCR & ID Type', color: '#22c55e', icon: '\u2630', slide: 2, path: 'ocr' },
+            { key: 'liveness' as const, label: 'Liveness Test', color: '#f97316', icon: '\u25C9', slide: 0, path: 'liveness' },
+            { key: 'ocr' as const, label: 'OCR & ID Type', color: '#22c55e', icon: '\u2630', slide: 0, path: 'ocr' },
           ]).map((f) => (
             <button
               key={'p-' + f.key}

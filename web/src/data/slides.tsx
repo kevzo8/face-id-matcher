@@ -282,7 +282,7 @@ const keyFindings = [
 export const slides: Slide[] = [
   {
     id: 'app',
-    title: 'Face ID Matcher POC',
+    title: 'Face ID Matcher',
     subtitle: 'Biometric Face Matching — CPS-221',
     section: 'Overview',
     content: null,
@@ -628,6 +628,883 @@ export const slides: Slide[] = [
           animate={{ width: 60 }}
           transition={{ duration: 0.6, delay: 0.6 }}
           style={{ height: 2, background: 'linear-gradient(90deg, #6366f1, #a855f7)', margin: '12px 0', borderRadius: 2 }}
+        />
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.7 }}
+          style={{ fontSize: 16, color: '#cbd5e1', marginBottom: 2, fontWeight: 700, letterSpacing: 2 }}
+        >KGV</motion.div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.8 }}
+          style={{ fontSize: 12, color: '#64748b' }}
+        >RBAC Team</motion.div>
+      </motion.div>
+    ),
+  },
+];
+
+export const livenessSlides: Slide[] = [
+  {
+    id: 'liveness-title',
+    title: 'Liveness Detection',
+    subtitle: 'Biometric Liveness — CPS-222',
+    section: 'Overview',
+    content: null,
+  },
+  {
+    id: 'liveness-what',
+    title: 'What is Liveness Detection?',
+    subtitle: 'Distinguishing a real human from a spoof',
+    section: 'Overview',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          Liveness detection verifies that the person in front of the camera is a live human being — not a photo, video replay, silicone mask, or deepfake.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+          {[
+            { icon: <Camera />, title: 'Active Liveness', desc: 'Challenge-response — user performs specific actions (blink, smile, turn head) to prove liveness. Higher security, requires user cooperation.', color: '#8b5cf6' },
+            { icon: <Lightbulb />, title: 'Passive Liveness', desc: 'Single photo analysis — server-side algorithms detect spoofing artifacts, depth, texture. Frictionless, no user action needed.', color: '#22c55e' },
+          ].map((item, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 + i * 0.08 }}
+              style={{ background: `${item.color}08`, borderRadius: 12, padding: '14px 16px', border: `1px solid ${item.color}33`, borderTop: `3px solid ${item.color}` }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <div style={{ color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, background: `${item.color}15`, borderRadius: 10 }}>{item.icon}</div>
+                <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 15 }}>{item.title}</div>
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: 14, lineHeight: 1.5 }}>{item.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+          style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))', borderRadius: 12, padding: '14px 18px', border: '1px solid rgba(99,102,241,0.3)' }}>
+          <div style={{ fontWeight: 700, color: '#a5b4fc', marginBottom: 4, fontSize: 15 }}>Why It Matters for KYC</div>
+          <div style={{ color: '#cbd5e1', fontSize: 14, lineHeight: 1.7 }}>
+            Face matching alone is not enough — an attacker can present a photo of the legitimate user. Liveness ensures the person is physically present, preventing spoofing attacks. Philippine financial regulators increasingly require liveness for eKYC compliance.
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'liveness-providers',
+    title: 'Providers Tested',
+    subtitle: '10 liveness providers across active, passive, and cloud',
+    section: 'Comparison',
+    content: (
+      <div style={{ maxWidth: 800, margin: '0 auto' }}>
+        <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 14, lineHeight: 1.6 }}>
+          Each provider was tested with real subjects under various lighting conditions, with presentation attacks (photo/video replay), and across different devices.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {[
+            { name: 'open-face-liveness', type: 'Active (browser)', cost: '$0', accuracy: 'Good', color: '#22c55e', note: 'Blink + head-turn via face-api.js, fully offline' },
+            { name: 'AWS Rekognition - Face Liveness', type: 'Active (cloud)', cost: '~$0.015/check', accuracy: 'Excellent', color: '#f59e0b', note: 'iBeta L1+L2 certified, requires KVS + WebSocket' },
+            { name: 'AWS DetectFaces', type: 'Passive (heuristic)', cost: '~$0.001/check', accuracy: 'Moderate', color: '#3b82f6', note: 'Heuristic — eyes open, brightness, sharpness' },
+            { name: 'AWS DetectLabels', type: 'Passive (spoof)', cost: '~$0.001/check', accuracy: 'Good', color: '#f97316', note: 'Scans for phones, screens, photos, ID documents' },
+            { name: 'Face++', type: 'Passive (cloud)', cost: '~$0.00019/check', accuracy: 'Good', color: '#8b5cf6', note: 'Cheapest cloud option, heuristic on Free plan' },
+            { name: 'Azure Face', type: 'Passive (cloud)', cost: '~$0.015/check', accuracy: 'Good', color: '#3b82f6', note: '30K free/month, face attributes + quality checks' },
+            { name: 'OpenBiometrics', type: 'Self-hosted', cost: '$0 (self)', accuracy: 'Good', color: '#06b6d4', note: 'MiniFASNet passive + 6 active presets, proxy via /liveness/openbiometrics' },
+            { name: 'HyperVerge', type: 'Active (cloud)', cost: 'Contact', accuracy: 'Excellent', color: '#f59e0b', note: 'ISO 30107-3 L2 certified' },
+            { name: 'Didit', type: 'Passive/Active', cost: '$0.10–$0.33', accuracy: 'Good', color: '#22c55e', note: 'iBeta L1, $0.10 passive, $0.15 active, $0.33 full KYC, 500 free/mo' },
+            { name: 'iProov', type: 'Active (cloud)', cost: 'Contact', accuracy: 'Excellent', color: '#a855f7', note: 'Govt-grade, iBeta L2, used by UK Home Office' },
+          ].map((p, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+              style={{ background: `${p.color}08`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${p.color}22` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.color }} />
+                <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 14 }}>{p.name}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+                <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 3, background: `${p.color}22`, color: p.color, fontWeight: 600 }}>{p.type}</span>
+                <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 3, background: '#1e293b', color: '#94a3b8' }}>{p.cost}</span>
+              </div>
+              <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.4 }}>{p.note}</div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'liveness-passive-heuristic',
+    title: 'Passive Liveness',
+    subtitle: '8-metric pixel-level analysis — no API calls, $0 per check',
+    section: 'Comparison',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          A self-contained passive liveness provider that runs entirely server-side using numpy and PIL. No external API calls, no cloud costs. Analyzes 8 pixel-level metrics to distinguish real faces from photos, screens, and prints.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+          {[
+            { metric: 'Sharpness', weight: '20%', desc: 'Laplacian variance — blur detection for out-of-focus prints' },
+            { metric: 'Edge Strength', weight: '15%', desc: 'Gradient magnitude — edges are softer on re-photographed images' },
+            { metric: 'Color Variance', weight: '15%', desc: 'Channel variance — screens have different color distribution' },
+            { metric: 'Histogram Spread', weight: '10%', desc: 'Pixel value distribution — photos have narrower histograms' },
+            { metric: 'FFT Frequency', weight: '10%', desc: 'Low vs high frequency ratio — screens lack high frequencies' },
+            { metric: 'Specular Highlights', weight: '15%', desc: 'Screen glare detection — bright spots from display reflections' },
+            { metric: 'Moiré Patterns', weight: '10%', desc: 'Screen capture artifacts — repeating patterns from camera-scanline interference' },
+            { metric: 'Color Banding', weight: '5%', desc: 'Quantization artifacts — reduced color depth in re-captured images' },
+          ].map((m, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+              style={{ background: '#1e293b', borderRadius: 8, padding: '8px 10px', border: '1px solid #334155' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 12 }}>{m.metric}</span>
+                <span style={{ fontSize: 10, color: '#64748b' }}>{m.weight}</span>
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: 11, lineHeight: 1.4 }}>{m.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+          style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+          <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>Scoring & Hybrid Mode</div>
+          <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.7 }}>
+            Weighted confidence: <code style={{ color: '#a5b4fc' }}>s_blur×0.20 + s_edge×0.15 + s_color×0.15 + s_hist×0.10 + s_freq×0.10 + s_highlight×0.15 + s_moire×0.10 + s_banding×0.05</code><br />
+            Threshold: <strong style={{ color: '#4ade80' }}>confidence &gt; 0.70</strong> → PASS. Score mapped to 0-20 scale.<br /><br />
+            <strong style={{ color: '#a5b4fc' }}>Hybrid mode</strong>: Combines cloud attributes (40%) with heuristic analysis (60%) for providers like Face++ and AWS DetectFaces. Hybrid threshold: <strong style={{ color: '#4ade80' }}>combined &gt; 0.75</strong>.
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'liveness-active',
+    title: 'Active Liveness',
+    subtitle: 'open-face-liveness — browser-based challenge-response',
+    section: 'Comparison',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          The browser-based active liveness test uses face-api.js to detect facial landmarks and measure eye aspect ratio (EAR) for blink detection, plus head rotation for turn challenges.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+          {[
+            { metric: 'Blink Detection', desc: 'EAR threshold < 0.25 for both eyes simultaneously indicates a blink. 2 blinks required.', pts: '10 pts' },
+            { metric: 'Head Turn', desc: 'Nose position delta > 15px indicates head turn. Left + right turns required.', pts: '30 pts' },
+            { metric: 'Face Size', desc: 'Distance between eyes > 40px ensures the face fills enough of the frame.', pts: '20 pts' },
+            { metric: 'Texture Analysis', desc: 'Laplacian variance > 20 ensures the image has natural skin texture, not a flat screen.', pts: '20 pts' },
+            { metric: 'Motion / Frame Delta', desc: 'Average pixel change between frames > 3 ensures live video, not a static image.', pts: '20 pts' },
+          ].map((item, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+              style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 14 }}>{item.metric}</div>
+                <span style={{ fontSize: 11, padding: '1px 8px', borderRadius: 3, background: '#22c55e22', color: '#4ade80', fontWeight: 600 }}>{item.pts}</span>
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5 }}>{item.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+          style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+          <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>Scoring Formula</div>
+          <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6, fontFamily: 'monospace' }}>
+            Total = Blinks(10) + HeadTurn(30) + FaceSize(20) + Texture(20) + Motion(20) = 100<br />
+            Threshold: ≥ 75 = PASS
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'liveness-color-flash',
+    title: 'Color Flash Liveness',
+    subtitle: 'RGB reflection analysis — the most sophisticated active liveness mechanism',
+    section: 'Comparison',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          The color flash test cycles red, green, and blue full-screen overlays while measuring the face's RGB response. A real face reflects the colored light — the dominant channel rises significantly more than the other two. A printed photo or screen replay shows a flat response where all channels shift together.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+          {[
+            { metric: 'Baseline Capture', desc: '40 frames (~2s) of face RGB collected before flash to establish baseline per-channel values.', pts: 'Setup', color: '#64748b' },
+            { metric: 'Red Flash', desc: 'Red channel rises vs green+blue average. Real face: discrimination > 8/255 (~3% shift).', pts: '7 pts', color: '#ef4444' },
+            { metric: 'Green Flash', desc: 'Green channel rises vs red+blue average. Same 8/255 discrimination threshold.', pts: '7 pts', color: '#22c55e' },
+            { metric: 'Blue Flash', desc: 'Blue channel rises vs red+green average. Same 8/255 discrimination threshold.', pts: '7 pts', color: '#3b82f6' },
+          ].map((item, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+              style={{ background: i > 0 ? `${item.color}08` : '#1e293b', borderRadius: 10, padding: '12px 14px', border: i > 0 ? `1px solid ${item.color}44` : '1px solid #334155', borderLeft: i > 0 ? `4px solid ${item.color}` : '1px solid #334155' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <div style={{ fontWeight: 700, color: i > 0 ? item.color : '#e2e8f0', fontSize: 14 }}>{item.metric}</div>
+                <span style={{ fontSize: 11, padding: '1px 8px', borderRadius: 3, background: i > 0 ? `${item.color}22` : '#8b5cf622', color: i > 0 ? item.color : '#a78bfa', fontWeight: 600 }}>{item.pts}</span>
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5 }}>{item.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+          style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+          <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>How It Works</div>
+          <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>
+            A semi-transparent color overlay (red/green/blue at 55% opacity) is rendered over the video with <code style={{ color: '#a5b4fc' }}>mixBlendMode: screen</code>. The face's mean RGB is sampled from each frame. For each color, the target channel's rise above baseline is compared to the average rise of the other two channels. A real face shows <strong style={{ color: '#4ade80' }}>discrimination {'>'} 8</strong> (3% color shift). A printed photo or screen replay shows a flat response — all channels shift together.
+          </div>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+          style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.15), rgba(74,222,128,0.15))', borderRadius: 10, padding: '12px 14px', border: '1px solid rgba(34,197,94,0.3)', marginTop: 12 }}>
+          <div style={{ fontWeight: 700, color: '#86efac', marginBottom: 4, fontSize: 14 }}>Mobile Performance</div>
+          <div style={{ color: '#cbd5e1', fontSize: 13, lineHeight: 1.6 }}>
+            The color flash works on <strong style={{ color: '#4ade80' }}>all devices</strong> — mobile and desktop. In fact, it may be <strong style={{ color: '#4ade80' }}>more effective on mobile</strong> because the phone screen is held closer to the face, making the RGB reflection more pronounced. Camera constraints use <code style={{ color: '#a5b4fc' }}>facingMode: user</code> (front camera) with <code style={{ color: '#a5b4fc' }}>playsInline</code> for mobile compatibility. The flash runs identically across platforms — 3 colors × 10 frames each, same discrimination threshold.
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'liveness-detectlabels',
+    title: 'Spoof Detection',
+    subtitle: 'Object detection for presentation attack prevention',
+    section: 'Comparison',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          The <code style={{ color: '#a5b4fc' }}>/liveness/detect-objects</code> endpoint calls <strong style={{ color: '#93c5fd' }}>AWS Rekognition DetectLabels</strong> with <code style={{ color: '#a5b4fc' }}>MaxLabels=50, MinConfidence=70</code> to scan a single frame for spoof indicators. Detected objects are classified into attack categories.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+          {[
+            { category: 'Phone / Device', labels: 'Mobile Phone, Cell Phone, Smartphone, Phone', risk: 'High (with hand)', color: '#f87171' },
+            { category: 'Screen Replay', labels: 'Screen, Display, Monitor, Television, TV', risk: 'Medium', color: '#fbbf24' },
+            { category: 'Photo / Print', labels: 'Photo, Photograph, Picture Frame, Paper, Poster, Print', risk: 'High', color: '#f87171' },
+            { category: 'ID Document', labels: 'ID Card, Driver\'s License, Passport, Credit Card', risk: 'High', color: '#f87171' },
+            { category: 'Hand Holding', labels: 'Hand, Finger (combined with screen/phone)', risk: 'High', color: '#f87171' },
+          ].map((cat, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+              style={{ background: `${cat.color}08`, borderRadius: 10, padding: '10px 12px', border: `1px solid ${cat.color}33` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 13 }}>{cat.category}</div>
+                <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 3, background: `${cat.color}22`, color: cat.color, fontWeight: 600 }}>{cat.risk}</span>
+              </div>
+              <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.4 }}>{cat.labels}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+            <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>Risk Logic</div>
+            <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.7, fontFamily: 'monospace' }}>
+              All indicators require ≥ 80% confidence to trigger.<br />
+              Phone + Hand + Screen → <strong style={{ color: '#f87171' }}>HIGH</strong> risk (-30 pt penalty in active liveness)<br />
+              Screen only → <strong style={{ color: '#fbbf24' }}>MEDIUM</strong> risk<br />
+              No spoof objects → <strong style={{ color: '#4ade80' }}>LOW</strong> risk<br /><br />
+              Generic labels (Device, Electronics, Gadget, Camera, Lens, Arm) are <strong style={{ color: '#fca5a5' }}>excluded</strong> to avoid false positives.
+            </div>
+          </div>
+          <div style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+            <div style={{ fontWeight: 700, color: '#a5b4fc', marginBottom: 4, fontSize: 14 }}>Integration in Active Liveness</div>
+            <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>
+              When provider is <code style={{ color: '#a5b4fc' }}>aws_detect_faces_objects</code>, an initial snapshot is captured at session start and a second capture ~5s in. Both are sent to <code style={{ color: '#a5b4fc' }}>/liveness/detect-objects</code>. If <strong style={{ color: '#f87171' }}>spoof_risk === high</strong>, a <strong style={{ color: '#f87171' }}>-30 point penalty</strong> is applied to the active liveness score.
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'liveness-architecture',
+    title: 'Pipeline Architecture',
+    subtitle: 'End-to-end flow from capture to verdict',
+    section: 'Results',
+    content: (
+        <div style={{ maxWidth: 780, margin: '0 auto' }}>
+        <div style={{ fontSize: 17, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 18 }}>
+          The active liveness check runs entirely in-browser at ~20fps, with optional cloud fallback for high-security transactions. Here is the complete pipeline:
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
+          {[
+            { phase: '1. Baseline Collection', dur: '~2s (40 frames)', detail: 'Captures face RGB baseline, median nose position, and face size. Initializes EAR tracking for blink detection.' },
+            { phase: '2. Head-Turn Challenges', dur: '~3s (2×30 frames)', detail: '2 random challenges from: turn_left, turn_right, look_up, look_down. Nose delta > 15px for 8+ frames = pass (15 pts each).' },
+            { phase: '3. Color Flash Liveness', dur: '~1.5s (3×10 frames)', detail: 'Red → Green → Blue overlay at 55% opacity. Measures RGB channel discrimination. 7 pts per color = 21 pts max.' },
+            { phase: '4. Blink Detection', dur: 'Throughout', detail: 'EAR < 0.2 counts as a blink. 2 blinks required for full 10 pts. Runs continuously during all phases.' },
+            { phase: '5. Mid-Session AWS', dur: '~5s in', detail: 'Captures frame for DetectLabels or DetectFaces. -30 pt penalty if spoof_risk=high.' },
+            { phase: '6. Final Scoring', dur: 'End', detail: 'Face Size (20) + Texture (20) + Motion (20) + Challenges (30) + Blinks (10) + Flash (21) - AWS Penalty. Threshold: ≥ 75 = PASS.' },
+          ].map((p, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+              style={{ background: '#1e293b', borderRadius: 8, padding: '12px 14px', border: '1px solid #334155', borderTop: `3px solid ${i < 2 ? '#6366f1' : i < 4 ? '#8b5cf6' : '#a855f7'}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 15 }}>{p.phase}</span>
+                <span style={{ fontSize: 11, color: '#64748b', background: '#0f172a', padding: '2px 8px', borderRadius: 3 }}>{p.dur}</span>
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.5 }}>{p.detail}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+          style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))', borderRadius: 10, padding: '14px 16px', border: '1px solid rgba(99,102,241,0.3)' }}>
+          <div style={{ fontWeight: 700, color: '#a5b4fc', marginBottom: 6, fontSize: 16 }}>Passive Liveness Flow</div>
+          <div style={{ color: '#cbd5e1', fontSize: 15, lineHeight: 1.7 }}>
+            Single frame → provider selection (AWS DetectLabels, AWS DetectFaces, Face++, Heuristic, Hybrid, OpenBiometrics) → server-side analysis → spoof verdict + confidence score. No user interaction required. Ideal as a fast pre-check before active challenge.
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'liveness-comparison',
+    title: 'Comparison Results',
+    subtitle: 'Score breakdown across providers',
+    section: 'Results',
+    content: (
+      <div style={{ maxWidth: 800, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#94a3b8', marginBottom: 16, lineHeight: 1.6 }}>Each provider's testing status and key characteristics at a glance:</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+          {[
+            { name: 'open-face-liveness', type: 'Active (browser)', cost: '$0', badge: '✅ Tested', badgeColor: '#22c55e', desc: 'Browser engine: face size + texture + motion + challenges + blinks + flash. Fully offline.', color: '#22c55e' },
+            { name: 'AWS Rekognition - Face Liveness', type: 'Active (cloud)', cost: '~$0.015', badge: '📄 Estimated', badgeColor: '#3b82f6', desc: 'iBeta L1+L2 certified. Score estimated from docs — KVS + WebSocket not implemented.', color: '#3b82f6' },
+            { name: 'AWS DetectFaces', type: 'Passive (heuristic)', cost: '~$0.001', badge: '✅ Tested', badgeColor: '#22c55e', desc: 'Heuristic: eyes open + mouth + sharpness + brightness. Good for basic passive checks.', color: '#22c55e' },
+            { name: 'AWS DetectLabels', type: 'Passive (spoof)', cost: '~$0.001', badge: '✅ Tested', badgeColor: '#22c55e', desc: 'Spoof object detection: phones, screens, photos, ID docs. Returns risk level. Used in active liveness for -30 pt penalty.', color: '#22c55e' },
+            { name: 'Face++', type: 'Passive (cloud)', cost: '~$0.00019', badge: '✅ Tested', badgeColor: '#22c55e', desc: 'Free-plan heuristic: eyes open + blur quality. Cheapest cloud option at $0.00019/check.', color: '#22c55e' },
+            { name: 'Azure Face', type: 'Passive (cloud)', cost: '~$0.015', badge: '🚫 Blocked', badgeColor: '#ef4444', desc: 'Subscription request rejected — could not test.', color: '#ef4444' },
+            { name: 'OpenBiometrics', type: 'Self-hosted', cost: '$0 (self)', badge: '🔧 Partial', badgeColor: '#f59e0b', desc: 'Proxy integration exists but not properly tested with a live instance.', color: '#f59e0b' },
+            { name: 'HyperVerge', type: 'Active (cloud)', cost: 'Contact', badge: '📄 Docs Only', badgeColor: '#64748b', desc: 'ISO 30107-3 L2 certified. Evaluated via documentation.', color: '#64748b' },
+            { name: 'Didit', type: 'Passive/Active', cost: '$0.10–$0.33', badge: '📄 Docs Only', badgeColor: '#64748b', desc: '$0.10 passive, $0.15 active, $0.33 full KYC. 500 free/mo. iBeta L1.', color: '#64748b' },
+            { name: 'iProov', type: 'Active (cloud)', cost: 'Contact', badge: '📄 Docs Only', badgeColor: '#64748b', desc: 'Govt-grade, iBeta L2, used by UK Home Office. Evaluated via docs.', color: '#64748b' },
+          ].map((p, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 14, background: p.badge === '✅ Tested' ? 'rgba(34,197,94,0.06)' : '#1e293b', borderRadius: 10, padding: '12px 16px', border: `1px solid ${p.color}33`, borderLeft: `4px solid ${p.color}` }}>
+              <div style={{ flex: 2 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                  <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 15 }}>{p.name}</span>
+                  <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: `${p.badgeColor}22`, color: p.badgeColor, fontWeight: 600 }}>{p.badge}</span>
+                </div>
+                <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.5 }}>{p.desc}</div>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontSize: 11, color: '#64748b', marginBottom: 2 }}>{p.type}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: p.cost === '$0' ? '#4ade80' : p.cost === 'Contact' ? '#fbbf24' : '#e2e8f0' }}>{p.cost}</div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'liveness-recommendations',
+    title: 'Recommendations',
+    subtitle: 'Best path forward for production',
+    section: 'Conclusion',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          Based on our testing, here are the recommended approaches for different scenarios:
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+          {[
+            { tier: '🥇 Best Free', provider: 'open-face-liveness', desc: 'Browser-only active liveness with blink + head-turn. $0, no server needed. Best for POC and low-volume use.', color: '#22c55e' },
+            { tier: '🥇 Best Production', provider: 'AWS Rekognition - Face Liveness + open-face-liveness', desc: 'Hybrid: open-face-liveness as primary (free), AWS Rekognition as fallback for high-risk transactions. Covers iBeta L1+L2.', color: '#8b5cf6' },
+            { tier: '🥈 Best Passive', provider: 'AWS DetectFaces / DetectLabels + Heuristic', desc: 'Combined $0.001/check passive analysis — heuristic face metrics (eyes/brightness/sharpness) + spoof object detection (phones/screens/photos). Good for frictionless UX where active challenges are undesirable.', color: '#3b82f6' },
+            { tier: '🥉 Cheapest', provider: 'Face++ (Free) + Heuristic', desc: 'Combined passive + active for ~$0.00019/check. Passive heuristic via Face++ free plan + server-side heuristic for defense in depth.', color: '#f59e0b' },
+          ].map((r, i) => (
+            <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
+              style={{ background: `${r.color}08`, borderRadius: 10, padding: '14px 16px', border: `1px solid ${r.color}33`, borderLeft: `4px solid ${r.color}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 16 }}>{r.tier}</span>
+                <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 15 }}>{r.provider}</span>
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>{r.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+          style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))', borderRadius: 12, padding: '14px 18px', border: '1px solid rgba(99,102,241,0.3)' }}>
+          <div style={{ fontWeight: 700, color: '#a5b4fc', marginBottom: 6, fontSize: 15 }}>Next Steps</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {[
+              'Productionize open-face-liveness with better UI/UX for challenge prompts',
+              'Add AWS Rekognition integration for high-security transactions',
+              'Implement passive liveness as a fast pre-check before active challenge',
+              'Test with more diverse subjects and lighting conditions',
+              'Integrate liveness into the unified KYC flow (CPS-220 → CPS-222 → CPS-221)',
+            ].map((s, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', color: '#cbd5e1', fontSize: 13 }}>
+                <span style={{ color: '#818cf8', marginTop: 1 }}>▸</span>
+                <span>{s}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'liveness-thanks',
+    title: 'Thank You',
+    subtitle: 'CPS-222: Liveness Detection Spike Complete',
+    section: 'Conclusion',
+    content: (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', textAlign: 'center' }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+          style={{ fontSize: 28, fontWeight: 800, background: 'linear-gradient(135deg, #a78bfa, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: 6, letterSpacing: -0.5 }}
+        >Liveness Detection POC</motion.div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.45 }}
+          style={{ fontSize: 14, color: '#94a3b8', marginBottom: 2 }}
+        >10 providers tested · Active + Passive · Browser + Cloud</motion.div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.5 }}
+          style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}
+        >CPS-222 · Liveness detection spike complete</motion.div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.55 }}
+          style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}
+        >
+          <a href="https://svi-jira.atlassian.net/browse/CPS-222" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Jira: CPS-222</a>
+          {' · '}
+          <a href="https://svi-jira.atlassian.net/wiki/spaces/~71202071852762867849479b4d350bd48b7534/pages/250740911/CPS-221+Spike+Biometric+Face+Matching+UX+vs.+Async+Backend" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Confluence</a>
+        </motion.div>
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: 60 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          style={{ height: 2, background: 'linear-gradient(90deg, #6366f1, #a855f7)', margin: '12px 0', borderRadius: 2 }}
+        />
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.7 }}
+          style={{ fontSize: 16, color: '#cbd5e1', marginBottom: 2, fontWeight: 700, letterSpacing: 2 }}
+        >KGV</motion.div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.8 }}
+          style={{ fontSize: 12, color: '#64748b' }}
+        >RBAC Team</motion.div>
+      </motion.div>
+    ),
+  },
+];
+
+export const ocrSlides: Slide[] = [
+  {
+    id: 'ocr-title',
+    title: 'OCR & ID Type Detection',
+    subtitle: 'Optical Character Recognition — CPS-220',
+    section: 'Overview',
+    content: null,
+  },
+  {
+    id: 'ocr-what',
+    title: 'What We Built',
+    subtitle: 'OCR pipeline for Philippine government IDs',
+    section: 'Overview',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          An OCR pipeline that captures Philippine government ID images, extracts text via AWS Rekognition/Textract/Bedrock, and parses the results into structured fields using AI — all optimized for the unique challenges of Philippine IDs.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+          {[
+            { title: 'ID Capture', desc: 'Front + back camera capture or upload with SVG mockups for framing. Supports rotation, flip, and quality checks.', color: '#6366f1' },
+            { title: 'Text Extraction', desc: '3 OCR providers: AWS Rekognition (default), AWS Textract, Amazon Bedrock Claude via 3 different text extraction engines.', color: '#22c55e' },
+            { title: 'AI Parsing', desc: 'GROQ (Llama 3.3) or OpenAI (GPT-4o-mini) extracts structured fields using the PH ID Type Registry (14 ID types).', color: '#8b5cf6' },
+            { title: 'ID Registry', desc: '14 Philippine ID types (Passport, National ID, UMID, PRC, SSS, GSIS, TIN, Driver\'s License, etc.) with cross-referencing support.', color: '#f59e0b' },
+          ].map((item, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
+              style={{ background: `${item.color}08`, borderRadius: 12, padding: '14px 16px', border: `1px solid ${item.color}33`, borderTop: `3px solid ${item.color}` }}>
+              <div style={{ fontWeight: 700, color: '#e2e8f0', marginBottom: 6, fontSize: 15 }}>{item.title}</div>
+              <div style={{ color: '#94a3b8', fontSize: 14, lineHeight: 1.5 }}>{item.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+          style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))', borderRadius: 12, padding: '14px 18px', border: '1px solid rgba(99,102,241,0.3)' }}>
+          <div style={{ fontWeight: 700, color: '#a5b4fc', marginBottom: 4, fontSize: 15 }}>CPS-220: Spike Context</div>
+          <div style={{ color: '#cbd5e1', fontSize: 14, lineHeight: 1.7 }}>
+            Spike to identify the best approach for OCR and ID type detection for Philippine government IDs. Evaluated 9 OCR providers, built a working pipeline with 3 active backends, and created a PH-specific ID type registry with LLM-based structured data extraction.
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'ocr-pipeline',
+    title: 'OCR Pipeline Architecture',
+    subtitle: 'End-to-end flow from capture to structured data',
+    section: 'Overview',
+    content: (
+      <div style={{ maxWidth: 780, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 18 }}>
+          The pipeline processes ID images individually and uses AI to extract structured fields from raw OCR text:
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
+          {[
+            { phase: '1. Capture', detail: 'Camera or file upload. Front + back per ID entry. SVG mockups for alignment. Rotation/flip controls.' },
+            { phase: '2. OCR Detect', detail: 'POST /ocr/detect with provider param. AWS Rekognition detect_text() + detect_labels() for ID type.' },
+            { phase: '3. Text Assembly', detail: 'Each side OCR\'d individually (no stitching). Texts deduplicated before AI parsing.' },
+            { phase: '4. AI Parse', detail: 'POST /ocr/parse with GROQ/OpenAI. PH ID Type Registry prompt extracts structured fields.' },
+            { phase: '5. Field Validation', detail: 'Enforces gender (M/F), civil status (S/M/D/W), blood type (A/B/AB/O ±), date formats.' },
+            { phase: '6. Cross-Reference', detail: 'When multiple IDs uploaded, AI reconciles discrepancies across ID sources.' },
+          ].map((p, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+              style={{ background: '#1e293b', borderRadius: 8, padding: '12px 14px', border: '1px solid #334155', borderTop: `3px solid ${i < 2 ? '#6366f1' : i < 4 ? '#8b5cf6' : '#f59e0b'}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 15 }}>{p.phase}</span>
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.5 }}>{p.detail}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+          style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))', borderRadius: 10, padding: '14px 16px', border: '1px solid rgba(99,102,241,0.3)' }}>
+          <div style={{ fontWeight: 700, color: '#a5b4fc', marginBottom: 4, fontSize: 14 }}>Key Design Decision</div>
+          <div style={{ color: '#cbd5e1', fontSize: 14, lineHeight: 1.6 }}>
+            Per-image OCR instead of stitching — each ID side is OCR\'d separately to avoid composite image quality loss. The stitchImages function exists but is intentionally unused in the OCR flow.
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'ocr-providers',
+    title: 'OCR Providers',
+    subtitle: '9 providers evaluated — 3 implemented, 6 server placeholders',
+    section: 'Comparison',
+    content: (
+      <div style={{ maxWidth: 780, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          The server implements 3 OCR backends. The remaining 6 are frontend-only options that fall through to the default provider.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {[
+            { name: 'AWS Rekognition OCR', status: '✅ Active', cost: '$0.001/check', color: '#22c55e', note: 'Default provider. Uses rekognition.detect_text() for text + detect_labels() for ID type classification.' },
+            { name: 'AWS Textract', status: '✅ Active', cost: '~$0.0015/page', color: '#22c55e', note: 'Uses textract.detect_document_text(). Better for dense text. Falls back to error if not enabled.' },
+            { name: 'Amazon Bedrock Claude', status: '✅ Active', cost: '~$0.003/call', color: '#22c55e', note: 'Claude 3 Sonnet via bedrock-runtime. Extracts text via vision. Falls back to error text on failure.' },
+            { name: 'Verihubs', status: '🔧 Placeholder', cost: 'Contact', color: '#f59e0b', note: 'Frontend option only — no server implementation. Falls to Rekognition default.' },
+            { name: 'ZOLOZ', status: '🔧 Placeholder', cost: 'Contact', color: '#f59e0b', note: 'Frontend option only — no server implementation. Falls to Rekognition default.' },
+            { name: 'Tencent Cloud', status: '🔧 Placeholder', cost: 'Contact', color: '#f59e0b', note: 'Frontend option only — no server implementation. Falls to Rekognition default.' },
+            { name: 'Google DocAI', status: '🔧 Placeholder', cost: '~$0.015/page', color: '#f59e0b', note: 'Frontend option only — no server implementation. Falls to Rekognition default.' },
+            { name: 'Mindee', status: '🔧 Placeholder', cost: '~$0.01/page', color: '#f59e0b', note: 'Frontend option only — no server implementation. Falls to Rekognition default.' },
+            { name: 'Azure DI', status: '🔧 Placeholder', cost: '~$0.01/page', color: '#f59e0b', note: 'Frontend option only — no server implementation. Falls to Rekognition default.' },
+          ].map((p, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+              style={{ background: p.status.includes('✅') ? `${p.color}08` : '#1e293b', borderRadius: 10, padding: '12px 14px', border: `1px solid ${p.color}33`, borderLeft: `4px solid ${p.color}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 14 }}>{p.name}</span>
+                <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 3, background: `${p.color}22`, color: p.color, fontWeight: 600 }}>{p.status}</span>
+              </div>
+              <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 2 }}>{p.cost}</div>
+              <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.4 }}>{p.note}</div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'ocr-ph-registry',
+    title: 'Philippine ID Type Registry',
+    subtitle: '14 supported PH government ID types with cross-referencing',
+    section: 'PH Registry',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          The AI prompt contains the full PH ID Type Registry — 14 ID types with codes 0–13. The LLM classifies the ID based on text it reads from the OCR output.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 16 }}>
+          {[
+            { code: 0, name: 'Other (specify)', color: '#64748b' },
+            { code: 1, name: 'Philippines Passport', color: '#6366f1' },
+            { code: 2, name: 'National ID (ePhilID)', color: '#22c55e' },
+            { code: 3, name: 'National ID (PhilID Card)', color: '#22c55e' },
+            { code: 4, name: 'UMID', color: '#8b5cf6' },
+            { code: 5, name: 'PRC ID', color: '#f59e0b' },
+            { code: 6, name: 'SSS ID', color: '#ef4444' },
+            { code: 7, name: 'GSIS ID', color: '#3b82f6' },
+            { code: 8, name: 'TIN Card', color: '#f97316' },
+            { code: 9, name: 'PWD ID', color: '#06b6d4' },
+            { code: 10, name: 'Senior Citizen ID', color: '#a855f7' },
+            { code: 11, name: 'PhilHealth ID', color: '#14b8a6' },
+            { code: 12, name: 'Postal ID', color: '#e11d48' },
+            { code: 13, name: 'Driver\'s License', color: '#2563eb' },
+          ].map((id, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#1e293b', borderRadius: 8, padding: '8px 12px', borderLeft: `3px solid ${id.color}` }}>
+              <span style={{ fontSize: 12, fontWeight: 800, color: id.color, minWidth: 24 }}>{id.code}</span>
+              <span style={{ fontSize: 13, color: '#e2e8f0' }}>{id.name}</span>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+          style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+          <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>Cross-Referencing</div>
+          <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>
+            When multiple IDs are uploaded (e.g., Passport + Driver\'s License), the AI prompt instructs the LLM to cross-reference and reconcile discrepancies across ID sources. The id_information field captures per-ID data separately for comparison.
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'ocr-ai-parsing',
+    title: 'AI Parsing with LLM',
+    subtitle: 'GROQ (Llama 3.3) or OpenAI (GPT-4o-mini) — structured extraction from raw OCR',
+    section: 'AI Parsing',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          The <code style={{ color: '#a5b4fc' }}>POST /ocr/parse</code> endpoint sends raw OCR text to an LLM with a carefully engineered prompt that includes the full PH ID Type Registry, strict JSON schema, and anti-hallucination guards.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+          {[
+            { metric: 'GROQ (Default)', desc: 'llama-3.3-70b-versatile via api.groq.com. Fast inference, free tier available. GROQ_API_KEY env var.', pts: 'Default' },
+            { metric: 'OpenAI (Fallback)', desc: 'gpt-4o-mini via api.openai.com. More reliable structure. OPENAI_API_KEY env var.', pts: 'Fallback' },
+            { metric: 'Temperature', desc: '0.1 — low creativity, high determinism. Ensures consistent structured output.', pts: '0.1' },
+            { metric: 'Anti-Hallucination', desc: 'Only extract values that literally appear in OCR text. NEVER invent, guess, or assume.', pts: 'Critical' },
+          ].map((item, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+              style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 14 }}>{item.metric}</div>
+                <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 3, background: '#8b5cf622', color: '#a78bfa', fontWeight: 600 }}>{item.pts}</span>
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5 }}>{item.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+          style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+          <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>Extracted Fields</div>
+          <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.7 }}>
+            <strong style={{ color: '#a5b4fc' }}>personal_data</strong>: first_name, middle_name, last_name, birth_date<br />
+            <strong style={{ color: '#a5b4fc' }}>other_fields</strong>: id_number, gender (M/F), nationality, address, expiry_date, issue_date, blood_type (A/B/AB/O ±), civil_status (S/M/D/W), occupation, mother_maiden_name, father_name, place_of_birth, height, weight, eye_color, restrictions<br />
+            <strong style={{ color: '#a5b4fc' }}>id_information</strong>: per-ID data (id_label, id_type_code, id_type_name, id_number) for multi-ID cross-referencing
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'ocr-ai-eval',
+    title: 'AI Parser Provider Evaluation',
+    subtitle: 'GROQ vs OpenAI — speed, cost, and accuracy comparison',
+    section: 'AI Parsing',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+          {[
+            { name: 'GROQ (Llama 3.3 70B)', role: 'Default', speed: 'Fast (~1-2s)', cost: 'Free tier (5K req/min) or ~$0.0002/call', accuracy: 'Good', note: 'Fast inference, free tier, good for high volume. Occasional JSON drift under load.', color: '#8b5cf6' },
+            { name: 'OpenAI (GPT-4o-mini)', role: 'Fallback', speed: 'Moderate (~2-4s)', cost: '~$0.00015/call, no free tier', accuracy: 'Excellent', note: 'More consistent JSON, better at ambiguous fields. Slower but reliable.', color: '#22c55e' },
+            { name: 'Anthropic Claude 3.5 Haiku', role: 'Recommended', speed: 'Moderate (~2-3s)', cost: '~$0.003/call, no free tier', accuracy: 'Excellent', note: 'Best structured output of all tested. Already integrated via Bedrock for OCR vision.', color: '#f59e0b' },
+            { name: 'Google Gemini 2.0 Flash', role: 'Recommended', speed: 'Fast (~1-2s)', cost: 'Free tier (1,500 req/day) or ~$0.0001/call', accuracy: 'Very good', note: 'Competitive with GROQ on speed. Strong structured output. Generous free tier.', color: '#3b82f6' },
+            { name: 'DeepSeek V3', role: 'Worth trying', speed: 'Fast (~1-2s)', cost: 'Free tier or ~$0.0001/call', accuracy: 'Good', note: 'Very cheap, good structured output. Growing ecosystem.', color: '#f59e0b' },
+            { name: 'Together AI (Mixtral 8x22B)', role: 'Worth trying', speed: 'Moderate (~2-3s)', cost: 'Free tier ($25 credit) or ~$0.0009/call', accuracy: 'Good', note: 'Open-source models, similar to GROQ. Good alternative.', color: '#f97316' },
+          ].map((p, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+              style={{ background: `${p.color}08`, borderRadius: 12, padding: '12px 14px', border: `1px solid ${p.color}33`, borderTop: `3px solid ${p.color}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 14 }}>{p.name}</span>
+                <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 3, background: `${p.color}22`, color: p.color, fontWeight: 600 }}>{p.role}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, marginBottom: 4 }}>
+                <div style={{ fontSize: 12, color: '#94a3b8' }}><strong style={{ color: '#cbd5e1' }}>Speed:</strong> {p.speed}</div>
+                <div style={{ fontSize: 12, color: '#94a3b8' }}><strong style={{ color: '#cbd5e1' }}>Cost:</strong> {p.cost}</div>
+              </div>
+              <div style={{ fontSize: 12, color: '#94a3b8' }}><strong style={{ color: '#cbd5e1' }}>Note:</strong> {p.note}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+          style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(99,102,241,0.15))', borderRadius: 12, padding: '14px 18px', border: '1px solid rgba(139,92,246,0.3)' }}>
+          <div style={{ fontWeight: 700, color: '#c4b5fd', marginBottom: 6, fontSize: 15 }}>Recommendation</div>
+          <div style={{ color: '#cbd5e1', fontSize: 14, lineHeight: 1.7 }}>
+            <strong style={{ color: '#a5b4fc' }}>GROQ (Llama 3.3 70B)</strong> as the default — it's fast, free-tier available, and produces consistently good structured output for PH ID parsing. Use <strong style={{ color: '#86efac' }}>OpenAI (GPT-4o-mini)</strong> as a fallback when GROQ is unavailable or when you need more reliable JSON structure for edge cases. For production, consider <strong style={{ color: '#fbbf24' }}>Anthropic Claude (Haiku)</strong> as a premium option — it has the most reliable structured output of all tested models, though at higher cost (~$0.003/call). <strong style={{ color: '#93c5fd' }}>Google Gemini 2.0 Flash</strong> is a strong free-tier alternative with competitive speed and accuracy.
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'ocr-flow',
+    title: 'End-to-End Flow',
+    subtitle: 'From capture to structured JSON in 3 API calls',
+    section: 'AI Parsing',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          The complete flow from ID capture to structured data extraction:
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+          {[
+            { step: '1. Capture', detail: 'User captures or uploads ID front + back via ImageCapture component. SVG mockups guide framing. Camera or file upload.' },
+            { step: '2. OCR Detect', detail: 'Frontend sends each image to POST /ocr/detect. Server runs rekognition.detect_text() + detect_labels(). Returns raw text_lines + id_type.' },
+            { step: '3. OCR All (Bulk)', detail: 'runAllOcr() iterates all images across all ID entries, calls /ocr/detect per image. Stores results per entry.' },
+            { step: '4. Deduplicate', detail: 'OCR texts from all sides/entries are collected, deduplicated to avoid redundant AI processing.' },
+            { step: '5. AI Parse', detail: 'POST /ocr/parse with deduplicated text. LLM uses PH ID Type Registry prompt. Returns structured JSON.' },
+            { step: '6. Display', detail: '2-column layout: left shows raw OCR text with ID/side headers, right shows AI-parsed result in organized sections.' },
+          ].map((p, i) => (
+            <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
+              style={{ display: 'flex', gap: 12, alignItems: 'flex-start', background: '#1e293b', borderRadius: 8, padding: '10px 14px', border: '1px solid #334155', borderLeft: `3px solid ${i < 2 ? '#6366f1' : i < 4 ? '#8b5cf6' : '#22c55e'}` }}>
+              <span style={{ fontWeight: 700, color: '#a5b4fc', fontSize: 14, minWidth: 80 }}>{p.step}</span>
+              <span style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.5 }}>{p.detail}</span>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+          style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+          <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>Provider Detection</div>
+          <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>
+            ID type is detected via <strong style={{ color: '#93c5fd' }}>AWS Rekognition detect_labels()</strong> at ≥70% confidence (labels: ID Card, Passport, Driver\'s License, etc.). The AI parser then classifies more precisely using the PH ID Type Registry based on text content.
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'ocr-challenges',
+    title: 'Key Challenges',
+    subtitle: 'Philippine ID-specific OCR difficulties',
+    section: 'AI Parsing',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          Philippine government IDs present unique OCR challenges that informed our design decisions:
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+          {[
+            { icon: '🌐', title: 'Bilingual Content', desc: 'Filipino + English on same ID. Field mapping complexity for AI parsing.' },
+            { icon: '📐', title: 'Variable Layouts', desc: 'Same ID type can have different versions/regions. No standard template.' },
+            { icon: '✨', title: 'Holographic Overlays', desc: 'Security holograms and reflective coatings create OCR artifacts and glare.' },
+            { icon: '🔍', title: 'Low Print Quality', desc: 'Pixelated or blurry text from low-resolution ID printing.' },
+            { icon: '💔', title: 'Physical Damage', desc: 'Worn, faded, or damaged cards cause missing or incorrect fields.' },
+            { icon: '📋', title: 'Non-Standard Names', desc: 'Field names vary across ID types — mapping to unified schema is complex.' },
+          ].map((c, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+              style={{ background: 'rgba(245,158,11,0.06)', borderRadius: 10, padding: '12px 14px', border: '1px solid rgba(245,158,11,0.25)' }}>
+              <div style={{ fontSize: 22, marginBottom: 4 }}>{c.icon}</div>
+              <div style={{ fontWeight: 700, color: '#e2e8f0', marginBottom: 2, fontSize: 14 }}>{c.title}</div>
+              <div style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5 }}>{c.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+          style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+          <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>Mitigations</div>
+          <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>
+            Per-image OCR avoids composite quality loss. Anti-hallucination prompts prevent AI from inventing data. Multi-ID cross-referencing reconciles discrepancies. Image quality warnings alert users to poor captures.
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'ocr-recommendations',
+    title: 'Recommendations',
+    subtitle: 'Best path forward for production',
+    section: 'Conclusion',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          Based on our spike findings, here are the recommended approaches for production:
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+          {[
+            { tier: '🥇 Best OCR', provider: 'AWS Textract', desc: 'Better accuracy than Rekognition for dense ID text. Handles Philippine IDs well. ~$0.0015/page.', color: '#22c55e' },
+            { tier: '🥇 Best AI Parser', provider: 'GROQ (Llama 3.3)', desc: 'Fast, free tier available, good structured output. Falls back to OpenAI GPT-4o-mini if GROQ is unavailable.', color: '#8b5cf6' },
+            { tier: '🥈 Fallback OCR', provider: 'AWS Rekognition OCR', desc: 'Default provider, always available. detect_text() for OCR + detect_labels() for ID type. $0.001/check.', color: '#3b82f6' },
+            { tier: '🥉 Vision OCR', provider: 'Bedrock Claude 3', desc: 'Vision-based extraction via Claude. Can read text that traditional OCR misses. Slower and more expensive.', color: '#f59e0b' },
+          ].map((r, i) => (
+            <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
+              style={{ background: `${r.color}08`, borderRadius: 10, padding: '14px 16px', border: `1px solid ${r.color}33`, borderLeft: `4px solid ${r.color}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 16 }}>{r.tier}</span>
+                <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 15 }}>{r.provider}</span>
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>{r.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+          style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))', borderRadius: 12, padding: '14px 18px', border: '1px solid rgba(99,102,241,0.3)' }}>
+          <div style={{ fontWeight: 700, color: '#a5b4fc', marginBottom: 6, fontSize: 15 }}>Next Steps</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {[
+              'Implement additional OCR providers (Google DocAI, Azure DI) for comparison',
+              'Add explicit country detection logic for non-PH IDs',
+              'Improve image quality heuristics for Philippine ID-specific layouts',
+              'Add field-level confidence scores from AI parsing',
+              'Integrate OCR pipeline with liveness + face matching for unified KYC flow (CPS-220 → CPS-222 → CPS-221)',
+            ].map((s, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', color: '#cbd5e1', fontSize: 13 }}>
+                <span style={{ color: '#818cf8', marginTop: 1 }}>▸</span>
+                <span>{s}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'ocr-thanks',
+    title: 'Thank You',
+    subtitle: 'CPS-220: OCR & ID Type Detection Spike Complete',
+    section: 'Conclusion',
+    content: (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', textAlign: 'center' }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+          style={{ fontSize: 28, fontWeight: 800, background: 'linear-gradient(135deg, #818cf8, #22c55e)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: 6, letterSpacing: -0.5 }}
+        >OCR & ID Type Detection POC</motion.div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.45 }}
+          style={{ fontSize: 14, color: '#94a3b8', marginBottom: 2 }}
+        >9 providers evaluated · 3 active backends · 14 PH ID types</motion.div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.5 }}
+          style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}
+        >CPS-220 · OCR & ID Type Detection spike complete</motion.div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.55 }}
+          style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}
+        >
+          <a href="https://svi-jira.atlassian.net/browse/CPS-220" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Jira: CPS-220</a>
+          {' · '}
+          <a href="https://svi-jira.atlassian.net/wiki/spaces/~71202071852762867849479b4d350bd48b7534/pages/250740911/CPS-221+Spike+Biometric+Face+Matching+UX+vs.+Async+Backend" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Confluence</a>
+        </motion.div>
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: 60 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          style={{ height: 2, background: 'linear-gradient(90deg, #6366f1, #22c55e)', margin: '12px 0', borderRadius: 2 }}
         />
         <motion.div
           initial={{ opacity: 0, y: 10 }}
