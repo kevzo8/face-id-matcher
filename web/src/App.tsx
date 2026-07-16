@@ -55,7 +55,7 @@ export default function App() {
   const [nextEntryKey, setNextEntryKey] = useState(2);
   const [ocrError, setOcrError] = useState<string | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
-  const [aiParserProvider, setAiParserProvider] = useState<'groq' | 'openai'>('groq');
+  const [aiParserProvider, setAiParserProvider] = useState<'groq' | 'openai' | 'gemini'>('groq');
   const [aiResult, setAiResult] = useState<{ id_type_code?: number; id_type_name?: string; personal_data?: { label: string; value: string }[]; other_fields?: { label: string; value: string }[]; id_information?: { id_label?: string; id_type_code?: number; id_type_name?: string; id_number?: string }[] } | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [livenessProvider, setLivenessProvider] = useState<LivenessProvider>('open_face_liveness');
@@ -1377,6 +1377,7 @@ export default function App() {
                 <select value={aiParserProvider} onChange={(e) => setAiParserProvider(e.target.value as any)}
                   style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12 }}>
                   <option value="groq">GROQ (fast/free)</option>
+                  <option value="gemini">Gemini (fallback)</option>
                   <option value="openai">OpenAI</option>
                 </select>
                 <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Set <strong>{aiParserProvider.toUpperCase()}_API_KEY</strong> env var on server.</div>

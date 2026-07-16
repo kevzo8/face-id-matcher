@@ -519,9 +519,6 @@ async def ocr_parse(request: Request):
         if not api_key:
             return OcrParseResponse(error=f"{provider.upper()}_API_KEY env var not set")
         
-        base_url = "https://api.groq.com/openai/v1" if provider == "groq" else "https://api.openai.com/v1"
-        model = "llama-3.3-70b-versatile" if provider == "groq" else "gpt-4o-mini"
-        
         text_block = "\n\n".join([f"[{t['label']}]\n{t['text']}" for t in texts])
         
         prompt = f"""You are an AI ID document parser for the Philippines. Extract structured information from the following ID document text(s).
@@ -563,19 +560,30 @@ If text from multiple sides/IDs is provided, cross-reference and reconcile any d
 OCR Text:
 {text_block}"""
         
-        res = http_requests.post(f"{base_url}/chat/completions", json={
-            "model": model,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.1,
-        }, headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
-        }, timeout=30)
+        if provider == "gemini":
+            import google.generativeai as genai
+            genai.configure(api_key=api_key)
+            model_instance = genai.GenerativeModel("gemini-2.0-flash")
+            response = model_instance.generate_content(f"{prompt}\n\n---\n{text_block}")
+            content = response.text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        else:
+            base_url = "https://api.groq.com/openai/v1" if provider == "groq" else "https://api.openai.com/v1"
+            model = "llama-3.3-70b-versatile" if provider == "groq" else "gpt-4o-mini"
+            
+            res = http_requests.post(f"{base_url}/chat/completions", json={
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.1,
+            }, headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}",
+            }, timeout=30)
+            
+            data = res.json()
+            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            if not content:
+                return OcrParseResponse(error=f"Empty response from {provider}. Check API key and model access.")
         
-        data = res.json()
-        content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-        if not content:
-            return OcrParseResponse(error=f"Empty response from {provider}. Check API key and model access.")
         import re
         json_str = re.sub(r'```json|```', '', content).strip()
         parsed = json.loads(json_str)

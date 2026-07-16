@@ -707,7 +707,7 @@ export const livenessSlides: Slide[] = [
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {[
             { name: 'open-face-liveness', type: 'Active (browser)', cost: '$0', accuracy: 'Good', color: '#22c55e', note: 'Blink + head-turn via face-api.js, fully offline' },
-            { name: 'AWS Rekognition - Face Liveness', type: 'Active (cloud)', cost: '~$0.015/check', accuracy: 'Excellent', color: '#f59e0b', note: 'iBeta L1+L2 certified, requires KVS + WebSocket' },
+            { name: 'AWS Rekognition - Face Liveness', type: 'Active (cloud)', cost: '~$0.015/check', accuracy: 'Excellent', color: '#f59e0b', note: 'iBeta L1+L2 certified, requires KVS (~$0.0085/min) + WebSocket (~$1/mo)' },
             { name: 'AWS DetectFaces', type: 'Passive (heuristic)', cost: '~$0.001/check', accuracy: 'Moderate', color: '#3b82f6', note: 'Heuristic — eyes open, brightness, sharpness' },
             { name: 'AWS DetectLabels', type: 'Passive (spoof)', cost: '~$0.001/check', accuracy: 'Good', color: '#f97316', note: 'Scans for phones, screens, photos, ID documents' },
             { name: 'Face++', type: 'Passive (cloud)', cost: '~$0.00019/check', accuracy: 'Good', color: '#8b5cf6', note: 'Cheapest cloud option, heuristic on Free plan' },
@@ -957,10 +957,10 @@ export const livenessSlides: Slide[] = [
     content: (
       <div style={{ maxWidth: 800, margin: '0 auto' }}>
         <div style={{ fontSize: 15, color: '#94a3b8', marginBottom: 16, lineHeight: 1.6 }}>Each provider's testing status and key characteristics at a glance:</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
           {[
             { name: 'open-face-liveness', type: 'Active (browser)', cost: '$0', badge: '✅ Tested', badgeColor: '#22c55e', desc: 'Browser engine: face size + texture + motion + challenges + blinks + flash. Fully offline.', color: '#22c55e' },
-            { name: 'AWS Rekognition - Face Liveness', type: 'Active (cloud)', cost: '~$0.015', badge: '📄 Estimated', badgeColor: '#3b82f6', desc: 'iBeta L1+L2 certified. Score estimated from docs — KVS + WebSocket not implemented.', color: '#3b82f6' },
+            { name: 'AWS Rekognition - Face Liveness', type: 'Active (cloud)', cost: '~$0.015', badge: '📄 Estimated', badgeColor: '#3b82f6', desc: 'iBeta L1+L2 certified. Score estimated from docs — KVS (~$0.0085/min) + WebSocket (~$1/mo) not implemented.', color: '#3b82f6' },
             { name: 'AWS DetectFaces', type: 'Passive (heuristic)', cost: '~$0.001', badge: '✅ Tested', badgeColor: '#22c55e', desc: 'Heuristic: eyes open + mouth + sharpness + brightness. Good for basic passive checks.', color: '#22c55e' },
             { name: 'AWS DetectLabels', type: 'Passive (spoof)', cost: '~$0.001', badge: '✅ Tested', badgeColor: '#22c55e', desc: 'Spoof object detection: phones, screens, photos, ID docs. Returns risk level. Used in active liveness for -30 pt penalty.', color: '#22c55e' },
             { name: 'Face++', type: 'Passive (cloud)', cost: '~$0.00019', badge: '✅ Tested', badgeColor: '#22c55e', desc: 'Free-plan heuristic: eyes open + blur quality. Cheapest cloud option at $0.00019/check.', color: '#22c55e' },
@@ -1002,8 +1002,8 @@ export const livenessSlides: Slide[] = [
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
           {[
             { tier: '🥇 Best Free', provider: 'open-face-liveness', desc: 'Browser-only active liveness with blink + head-turn. $0, no server needed. Best for POC and low-volume use.', color: '#22c55e' },
-            { tier: '🥇 Best Production', provider: 'AWS Rekognition - Face Liveness + open-face-liveness', desc: 'Hybrid: open-face-liveness as primary (free), AWS Rekognition as fallback for high-risk transactions. Covers iBeta L1+L2.', color: '#8b5cf6' },
-            { tier: '🥈 Best Passive', provider: 'AWS DetectFaces / DetectLabels + Heuristic', desc: 'Combined $0.001/check passive analysis — heuristic face metrics (eyes/brightness/sharpness) + spoof object detection (phones/screens/photos). Good for frictionless UX where active challenges are undesirable.', color: '#3b82f6' },
+            { tier: '🥇 Best Production', provider: 'AWS Rekognition - Face Liveness + open-face-liveness', desc: 'Hybrid: open-face-liveness as primary (free), AWS Rekognition as fallback for high-risk transactions. Covers iBeta L1+L2. Note: AWS Rekognition alone costs ~$0.015/check + KVS (~$0.0085/min) + WebSocket (~$1/mo), making it the most expensive option.', color: '#8b5cf6' },
+            { tier: '🥈 Best Passive & Active', provider: 'AWS DetectFaces / DetectLabels + Heuristic', desc: 'Combined $0.001/check passive analysis — heuristic face metrics (eyes/brightness/sharpness) + spoof object detection (phones/screens/photos). Good for frictionless UX where active challenges are undesirable.', color: '#3b82f6' },
             { tier: '🥉 Cheapest', provider: 'Face++ (Free) + Heuristic', desc: 'Combined passive + active for ~$0.00019/check. Passive heuristic via Face++ free plan + server-side heuristic for defense in depth.', color: '#f59e0b' },
           ].map((r, i) => (
             <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
@@ -1310,7 +1310,8 @@ export const ocrSlides: Slide[] = [
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
           {[
             { metric: 'GROQ (Default)', desc: 'llama-3.3-70b-versatile via api.groq.com. Fast inference, free tier available. GROQ_API_KEY env var.', pts: 'Default' },
-            { metric: 'OpenAI (Fallback)', desc: 'gpt-4o-mini via api.openai.com. More reliable structure. OPENAI_API_KEY env var.', pts: 'Fallback' },
+            { metric: 'Gemini (Fallback)', desc: 'gemini-2.0-flash via Google AI. GEMINI_API_KEY env var.', pts: 'Fallback' },
+            { metric: 'OpenAI', desc: 'gpt-4o-mini via api.openai.com. More reliable structure. OPENAI_API_KEY env var.', pts: 'Optional' },
             { metric: 'Temperature', desc: '0.1 — low creativity, high determinism. Ensures consistent structured output.', pts: '0.1' },
             { metric: 'Anti-Hallucination', desc: 'Only extract values that literally appear in OCR text. NEVER invent, guess, or assume.', pts: 'Critical' },
           ].map((item, i) => (
@@ -1346,7 +1347,8 @@ export const ocrSlides: Slide[] = [
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
           {[
             { name: 'GROQ (Llama 3.3 70B)', role: 'Default', speed: 'Fast (~1-2s)', cost: 'Free tier (5K req/min) or ~$0.0002/call', accuracy: 'Good', note: 'Fast inference, free tier, good for high volume. Occasional JSON drift under load.', color: '#8b5cf6' },
-            { name: 'OpenAI (GPT-4o-mini)', role: 'Fallback', speed: 'Moderate (~2-4s)', cost: '~$0.00015/call, no free tier', accuracy: 'Excellent', note: 'More consistent JSON, better at ambiguous fields. Slower but reliable.', color: '#22c55e' },
+            { name: 'Gemini (Gemini-2.0-flash)', role: 'Fallback', speed: 'Fast (~1-2s)', cost: 'Free tier available, then ~$0.00015/call', accuracy: 'Excellent', note: 'Google AI. GEMINI_API_KEY env var. Fast and reliable.', color: '#8b5cf6' },
+            { name: 'OpenAI (GPT-4o-mini)', role: 'Optional', speed: 'Moderate (~2-4s)', cost: '~$0.00015/call, no free tier', accuracy: 'Excellent', note: 'More consistent JSON, better at ambiguous fields. Slower but reliable.', color: '#22c55e' },
             { name: 'Anthropic Claude 3.5 Haiku', role: 'Recommended', speed: 'Moderate (~2-3s)', cost: '~$0.003/call, no free tier', accuracy: 'Excellent', note: 'Best structured output of all tested. Already integrated via Bedrock for OCR vision.', color: '#f59e0b' },
             { name: 'Google Gemini 2.0 Flash', role: 'Recommended', speed: 'Fast (~1-2s)', cost: 'Free tier (1,500 req/day) or ~$0.0001/call', accuracy: 'Very good', note: 'Competitive with GROQ on speed. Strong structured output. Generous free tier.', color: '#3b82f6' },
             { name: 'DeepSeek V3', role: 'Worth trying', speed: 'Fast (~1-2s)', cost: 'Free tier or ~$0.0001/call', accuracy: 'Good', note: 'Very cheap, good structured output. Growing ecosystem.', color: '#f59e0b' },
