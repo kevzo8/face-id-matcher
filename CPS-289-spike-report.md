@@ -502,9 +502,6 @@ flowchart LR
 
 ### 7.3 Client Integration Checklist
 
-```markdown
-## Client Integration Checklist
-
 ### Required
 - [ ] Add our server IP to allowlist (outbound HTTPS to api.svi.com)
 - [ ] Add our widget domain to Content-Security-Policy: `frame-src https://verify.svi.com`
@@ -749,8 +746,6 @@ A single, self-contained interactive HTML file that simulates the entire biometr
 6. **Result display** — success/failure with verification token
 7. **Callback simulation** — simulated callback to client backend
 8. **Transaction completion** — simulated transaction confirmation page
-
-### 11.2 Prototype Architecture
 
 ### 11.2 Prototype Architecture
 
