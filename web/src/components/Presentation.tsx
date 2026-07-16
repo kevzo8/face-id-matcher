@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { slides, livenessSlides, ocrSlides, Slide } from '../data/slides.tsx';
+import { slides, livenessSlides, ocrSlides, biometricSlides, Slide } from '../data/slides.tsx';
 
 const sectionColors: Record<string, string> = {
   Overview: '#6366f1',
@@ -46,7 +46,7 @@ const lightTheme = {
 const MOBILE_BP = 768;
 
 export default function Presentation({ feature = 'id_to_face', initialSlide = 0, onClose }: { feature?: string; initialSlide?: number; onClose: () => void }) {
-  const currentSlides = feature === 'liveness' ? livenessSlides : feature === 'ocr' ? ocrSlides : slides;
+  const currentSlides = feature === 'liveness' ? livenessSlides : feature === 'ocr' ? ocrSlides : feature === 'biometric' ? biometricSlides : slides;
   const [current, setCurrent] = useState(initialSlide);
   const [isMobile, setIsMobile] = useState(window.innerWidth < MOBILE_BP);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= MOBILE_BP);
@@ -60,7 +60,7 @@ export default function Presentation({ feature = 'id_to_face', initialSlide = 0,
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  const baseRoute = '/' + ({ id_to_face: 'face-id', liveness: 'liveness', ocr: 'ocr' })[feature] + '/presentation/';
+  const baseRoute = '/' + ({ id_to_face: 'face-id', liveness: 'liveness', ocr: 'ocr', biometric: 'biometric' })[feature] + '/presentation/';
 
   const goTo = useCallback((i: number) => {
     if (i >= 0 && i < total) {
@@ -211,6 +211,10 @@ export default function Presentation({ feature = 'id_to_face', initialSlide = 0,
           <button onClick={() => window.location.href = '/ocr/presentation/0'}
             style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, border: 'none', borderRadius: 4, cursor: 'pointer', background: 'transparent', color: feature === 'ocr' ? '#86efac' : t.textMuted, textAlign: 'left', borderLeft: `3px solid ${feature === 'ocr' ? '#22c55e' : 'transparent'}` }}>
             OCR & ID Type
+          </button>
+          <button onClick={() => window.location.href = '/biometric/presentation/0'}
+            style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, border: 'none', borderRadius: 4, cursor: 'pointer', background: 'transparent', color: feature === 'biometric' ? '#fbbf24' : t.textMuted, textAlign: 'left', borderLeft: `3px solid ${feature === 'biometric' ? '#fbbf24' : 'transparent'}` }}>
+            Biometric Auth
           </button>
           <button onClick={() => window.location.href = '/'}
             style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, border: '1px solid #475569', borderRadius: 4, cursor: 'pointer', background: 'transparent', color: t.textMuted, textAlign: 'center', marginTop: 4 }}>

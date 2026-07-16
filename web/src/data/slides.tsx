@@ -1100,6 +1100,571 @@ export const livenessSlides: Slide[] = [
   },
 ];
 
+export const biometricSlides: Slide[] = [
+  {
+    id: 'bio-title',
+    title: 'Biometric Transaction Authentication',
+    subtitle: 'Architecture & Integration Design — CPS-289',
+    section: 'Overview',
+    content: null,
+  },
+  {
+    id: 'bio-problem',
+    title: 'The Problem',
+    subtitle: 'Why we need biometric transaction authentication',
+    section: 'Overview',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          Our clients need to verify a user's identity at the moment of a high-value transaction — but they cannot access our core identity database directly.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+          {[
+            { title: 'Prevent Data Leakage', desc: 'Client apps must never see raw biometric templates or PII. Identity data stays on our side.', color: '#6366f1' },
+            { title: 'Plug-and-Play', desc: 'Clients should add our verification step with minimal code changes — ideally one iframe tag.', color: '#22c55e' },
+            { title: 'Invisible Updates', desc: 'We can change the UI or fix bugs without client redeployment. Updates are instant for all clients.', color: '#8b5cf6' },
+            { title: 'Transaction Binding', desc: 'Prevent replay attacks where a valid face check is reused for a different transaction.', color: '#f59e0b' },
+          ].map((item, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
+              style={{ background: `${item.color}08`, borderRadius: 12, padding: '14px 16px', border: `1px solid ${item.color}33`, borderTop: `3px solid ${item.color}` }}>
+              <div style={{ fontWeight: 700, color: '#e2e8f0', marginBottom: 6, fontSize: 15 }}>{item.title}</div>
+              <div style={{ color: '#94a3b8', fontSize: 14, lineHeight: 1.5 }}>{item.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+          style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))', borderRadius: 12, padding: '14px 18px', border: '1px solid rgba(99,102,241,0.3)' }}>
+          <div style={{ fontWeight: 700, color: '#a5b4fc', marginBottom: 4, fontSize: 15 }}>Business Value</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {[
+              { metric: 'Fraud Reduction', desc: 'Prevents account takeover during high-value transactions' },
+              { metric: 'Client Onboarding', desc: 'Plug-and-play widget reduces integration from weeks to days' },
+              { metric: 'Operational Cost', desc: 'Centralized updates eliminate per-client maintenance' },
+              { metric: 'Compliance', desc: 'Audit trail per transaction with biometric proof' },
+            ].map((v, i) => (
+              <div key={i} style={{ background: '#1e293b', borderRadius: 6, padding: '8px 10px', border: '1px solid #334155' }}>
+                <div style={{ fontWeight: 700, color: '#a5b4fc', fontSize: 13, marginBottom: 2 }}>{v.metric}</div>
+                <div style={{ color: '#94a3b8', fontSize: 12 }}>{v.desc}</div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'bio-concept',
+    title: 'High-Level Concept',
+    subtitle: 'The "Middleman" Architecture',
+    section: 'Overview',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          Client apps never access our core identity data directly. Instead, we host the biometric verification securely on our side and expose a lightweight integration surface.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+          {[
+            { phase: '1. Initiate', desc: 'Client backend calls POST /api/v1/auth/session with transaction details. Gets back a session_token and widget_url.', color: '#6366f1' },
+            { phase: '2. Launch Widget', desc: 'Client opens the widget URL in an iframe/modal. Widget validates the session token and shows transaction details.', color: '#8b5cf6' },
+            { phase: '3. Capture & Verify', desc: 'User captures face via camera. Backend runs passive liveness, spoof detection, and face match against enrolled template.', color: '#22c55e' },
+            { phase: '4. Handoff', desc: 'Backend sends signed callback to client with verification result. Client completes the transaction.', color: '#f59e0b' },
+          ].map((item, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
+              style={{ background: `${item.color}08`, borderRadius: 12, padding: '14px 16px', border: `1px solid ${item.color}33`, borderTop: `3px solid ${item.color}` }}>
+              <div style={{ fontWeight: 700, color: '#e2e8f0', marginBottom: 6, fontSize: 15 }}>{item.phase}</div>
+              <div style={{ color: '#94a3b8', fontSize: 14, lineHeight: 1.5 }}>{item.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+          style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))', borderRadius: 12, padding: '14px 18px', border: '1px solid rgba(99,102,241,0.3)' }}>
+          <div style={{ fontWeight: 700, color: '#a5b4fc', marginBottom: 4, fontSize: 15 }}>Key Principle</div>
+          <div style={{ color: '#cbd5e1', fontSize: 14, lineHeight: 1.6 }}>
+            Client apps never access our core identity data directly. We host the biometric verification securely on our side and expose a lightweight integration surface — a secure iframe widget.
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'bio-architecture',
+    title: 'System Architecture',
+    subtitle: 'Four-layer design with pluggable providers',
+    section: 'Overview',
+    content: (
+      <div style={{ maxWidth: 780, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 18 }}>
+          The architecture is organized into four layers, each with clear responsibilities and pluggable components:
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
+          {[
+            { layer: 'API Gateway', components: 'Auth Session API · Verify API · Callback API', color: '#6366f1' },
+            { layer: 'Service Layer', components: 'Session Manager · Biometric Engine · Transaction Binding', color: '#8b5cf6' },
+            { layer: 'Provider Layer', components: 'InsightFace · Rekognition · Face++ · Liveness Providers', color: '#22c55e' },
+            { layer: 'Data Layer', components: 'Session Store (Redis) · Audit Log (Cassandra) · Biometric Templates', color: '#f59e0b' },
+          ].map((l, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
+              style={{ background: `${l.color}08`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${l.color}33`, borderTop: `3px solid ${l.color}` }}>
+              <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 14, marginBottom: 4 }}>{l.layer}</div>
+              <div style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5 }}>{l.components}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+          style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))', borderRadius: 12, padding: '14px 18px', border: '1px solid rgba(99,102,241,0.3)' }}>
+          <div style={{ fontWeight: 700, color: '#a5b4fc', marginBottom: 6, fontSize: 15 }}>API Endpoints</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+            {[
+              { endpoint: 'POST /auth/session', desc: 'Create session, get widget URL' },
+              { endpoint: 'POST /auth/verify', desc: 'Submit face + liveness data' },
+              { endpoint: 'GET /auth/status', desc: 'Check session status' },
+              { endpoint: 'POST /auth/cancel', desc: 'Cancel pending session' },
+            ].map((e, i) => (
+              <div key={i} style={{ background: '#1e293b', borderRadius: 6, padding: '6px 10px', border: '1px solid #334155' }}>
+                <div style={{ fontWeight: 600, color: '#a5b4fc', fontSize: 12, fontFamily: 'monospace' }}>{e.endpoint}</div>
+                <div style={{ color: '#94a3b8', fontSize: 11 }}>{e.desc}</div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'bio-widget',
+    title: 'Widget Architecture',
+    subtitle: 'The secure iframe that powers the biometric check',
+    section: 'Overview',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          The widget is a self-contained web page hosted at <code style={{ color: '#a5b4fc' }}>https://verify.svi.com/widget</code>. It handles the entire biometric verification flow inside a sandboxed iframe.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
+          {[
+            { module: 'Session Validator', desc: 'Validates session_token JWT signature, expiry, and usage count. Shows transaction details for user confirmation.', color: '#6366f1' },
+            { module: 'Camera Module', desc: 'Multi-constraint camera access with selfie mirroring, face bounding box overlay, and quality checks.', color: '#8b5cf6' },
+            { module: 'Liveness Module', desc: 'Passive heuristic + active challenges + flash liveness + spoof object detection. Layered approach.', color: '#22c55e' },
+            { module: 'Face Match Module', desc: 'Captures face image, sends to backend for matching against enrolled template. Returns confidence score.', color: '#f59e0b' },
+            { module: 'Result Handler', desc: 'Success: sends callback to client. Failure: retry/support flow. Token passed via URL fragment.', color: '#ef4444' },
+          ].map((m, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+              style={{ background: `${m.color}08`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${m.color}33`, borderTop: `3px solid ${m.color}` }}>
+              <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 14, marginBottom: 4 }}>{m.module}</div>
+              <div style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5 }}>{m.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+          style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+          <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>Widget Flow</div>
+          <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>
+            Session Validator → Camera Module → Liveness Module → Face Match Module → Result Handler
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'bio-integration',
+    title: 'Integration Strategy',
+    subtitle: 'Three approaches compared',
+    section: 'Comparison',
+    content: (
+      <div style={{ maxWidth: 780, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          Three integration approaches evaluated, with the iframe widget as the recommended path:
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 18 }}>
+          {[
+            { name: 'Iframe Widget', badge: '🥇 Recommended', effort: '4-6 weeks', security: 'Best — sandboxed', ux: 'Good — inline modal', updates: 'Instant — server-side', color: '#22c55e' },
+            { name: 'Web Component', badge: '🥈 Alternative', effort: '6-8 weeks', security: 'Good — client DOM access', ux: 'Best — native feel', updates: 'CDN cache-busting', color: '#f59e0b' },
+            { name: 'Redirect Flow', badge: '🥉 Fallback', effort: '2-3 weeks', security: 'Best — no cross-origin', ux: 'Poor — full page redirect', updates: 'Server-side only', color: '#64748b' },
+          ].map((a, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
+              style={{ background: `${a.color}08`, borderRadius: 12, padding: '14px', border: `1px solid ${a.color}33`, borderTop: `3px solid ${a.color}` }}>
+              <div style={{ fontSize: 12, marginBottom: 4 }}>{a.badge}</div>
+              <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 15, marginBottom: 4 }}>{a.name}</div>
+              <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 8 }}>Est. {a.effort}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 12, color: '#94a3b8' }}>
+                <div><strong style={{ color: '#cbd5e1' }}>Security:</strong> {a.security}</div>
+                <div><strong style={{ color: '#cbd5e1' }}>UX:</strong> {a.ux}</div>
+                <div><strong style={{ color: '#cbd5e1' }}>Updates:</strong> {a.updates}</div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+          style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.15), rgba(16,185,129,0.15))', borderRadius: 12, padding: '14px 18px', border: '1px solid rgba(34,197,94,0.3)' }}>
+          <div style={{ fontWeight: 700, color: '#86efac', marginBottom: 4, fontSize: 15 }}>🥇 Recommended: Iframe Widget</div>
+          <div style={{ color: '#cbd5e1', fontSize: 14, lineHeight: 1.6 }}>
+            Client embeds a simple <code style={{ color: '#a5b4fc' }}>&lt;iframe&gt;</code> pointing to our hosted widget URL. The iframe communicates with the parent page via <code style={{ color: '#a5b4fc' }}>postMessage</code> API. Maximum security — client cannot access our DOM, camera stream, or identity data. Invisible updates — we update the widget on our server, all clients get it instantly.
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'bio-security',
+    title: 'Security Architecture',
+    subtitle: 'Session tokens, tamper-proofing, and layered liveness',
+    section: 'Comparison',
+    content: (
+      <div style={{ maxWidth: 780, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          Security is built into every layer — from session token design to image pipeline tamper-proofing.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
+          {[
+            { control: 'Single-Use Tokens', desc: 'JWT jti stored in Redis with TTL. Marked consumed on first use. Subsequent uses rejected.', color: '#6366f1' },
+            { control: 'Short Expiry', desc: 'Default 5 minutes (configurable). Reduces window for replay attacks.', color: '#8b5cf6' },
+            { control: 'Transaction Binding', desc: 'Amount + recipient hashed into session token. Widget displays for user confirmation.', color: '#22c55e' },
+            { control: 'Callback Signing', desc: 'Verification payload signed with client-specific HMAC secret. Client verifies before acting.', color: '#f59e0b' },
+            { control: 'Rate Limiting', desc: '3 attempts/session, 10/min per user, 100/min per IP. Account lockout after 5 failed sessions.', color: '#ef4444' },
+            { control: 'Iframe Sandbox', desc: 'sandbox="allow-scripts allow-same-origin" — no popups, no form submission, no navigation.', color: '#6366f1' },
+            { control: 'Image Integrity', desc: 'Image signed with HMAC(secret, image + session_token) before transmission. Backend verifies.', color: '#8b5cf6' },
+            { control: 'CORS + CSP', desc: 'Widget only loads from our domain. Content-Security-Policy restricts script sources.', color: '#22c55e' },
+          ].map((c, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+              style={{ background: `${c.color}08`, borderRadius: 8, padding: '10px 12px', border: `1px solid ${c.color}33`, borderLeft: `3px solid ${c.color}` }}>
+              <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 13, marginBottom: 2 }}>{c.control}</div>
+              <div style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.4 }}>{c.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+          style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+          <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>Session Token Structure</div>
+          <div style={{ color: '#94a3b8', fontSize: 12, fontFamily: 'monospace', lineHeight: 1.6 }}>
+            JWT: {`{jti, sub, txn, amount, recipient, iat, exp, usage, client_id}`}<br />
+            Signed with HMAC-SHA256. Single-use. 5-minute default expiry.
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'bio-liveness',
+    title: 'Layered Liveness Strategy',
+    subtitle: 'Four-layer defense against presentation attacks',
+    section: 'Comparison',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          Leveraging existing POC work from CPS-222, we implement a layered liveness approach with fallback chain:
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
+          {[
+            { layer: '1. Passive (Pixel)', method: '8-metric heuristic (blur, edges, color, FFT, moire, banding)', cost: '$0', target: 'Printed photo, screen replay', color: '#6366f1' },
+            { layer: '2. Spoof Objects', method: 'AWS Rekognition DetectLabels — scan for phone, screen, hand, photo frame', cost: '$0.001', target: 'Presentation attack (phone holding photo)', color: '#8b5cf6' },
+            { layer: '3. Active Challenges', method: 'Random head-turn + blink detection via face-api.js landmarks', cost: '$0', target: 'Pre-recorded video, deepfake', color: '#22c55e' },
+            { layer: '4. Flash Liveness', method: 'RGB screen flash — measure color channel response', cost: '$0', target: 'Screen replay, high-quality print', color: '#f59e0b' },
+          ].map((l, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
+              style={{ background: `${l.color}08`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${l.color}33`, borderTop: `3px solid ${l.color}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 14 }}>{l.layer}</span>
+                <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 3, background: `${l.color}22`, color: l.color, fontWeight: 600 }}>{l.cost}</span>
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5, marginBottom: 4 }}>{l.method}</div>
+              <div style={{ color: '#64748b', fontSize: 11 }}>Target: {l.target}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+          style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+          <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>Fallback Chain</div>
+          <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>
+            Passive → if confidence &lt; 0.7, add Spoof Objects → if still uncertain, add Active Challenges → if still uncertain, fall back to human review.
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'bio-mobile',
+    title: 'Mobile Compatibility',
+    subtitle: 'Browser-based camera in mobile WebViews',
+    section: 'Comparison',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          The widget must function correctly when loaded inside a client's custom mobile app (Android WebView, iOS WKWebView, or in-app browser).
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
+          {[
+            { challenge: 'Camera in iframe', solution: 'iOS: allow="camera" attribute + NSCameraUsageDescription. Android: CAMERA permission in manifest.', color: '#6366f1' },
+            { challenge: 'WebView camera access', solution: 'iOS: WKWebView mediaTypesRequiringUserActionForPlayback. Android: WebSettings mediaPlaybackRequiresUserGesture.', color: '#8b5cf6' },
+            { challenge: 'In-app browser', solution: 'Cannot control permissions. Fall back to redirect flow (open in system browser).', color: '#f59e0b' },
+            { challenge: 'iOS 15+ iframe camera', solution: 'Requires allow="camera" attribute on iframe. Without it, camera returns black/empty.', color: '#22c55e' },
+            { challenge: 'Responsive layout', solution: 'Widget uses CSS max-width: 480px + height: 100dvh for mobile-friendly sizing.', color: '#3b82f6' },
+          ].map((m, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+              style={{ background: `${m.color}08`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${m.color}33`, borderLeft: `3px solid ${m.color}` }}>
+              <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 13, marginBottom: 2 }}>{m.challenge}</div>
+              <div style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5 }}>{m.solution}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+          style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+          <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>Camera Access Strategy (from POC)</div>
+          <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>
+            1. Enumerate devices, sort virtual/OBS cameras to bottom<br />
+            2. Constraint fallback: exact device → facingMode + 1280x720 → 640x480 → {`{ video: true }`}<br />
+            3. Selfie mirroring via scaleX(-1) on video preview and captured canvas
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'bio-cost',
+    title: 'Cost Analysis',
+    subtitle: 'Per-transaction and monthly projections',
+    section: 'Comparison',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          The self-hosted approach (InsightFace + heuristic liveness) costs nearly $0 per transaction. Cloud options add provider costs.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            style={{ background: 'rgba(34,197,94,0.08)', borderRadius: 12, padding: '14px 16px', border: '1px solid rgba(34,197,94,0.33)', borderTop: '3px solid #22c55e' }}>
+            <div style={{ fontWeight: 700, color: '#86efac', fontSize: 15, marginBottom: 8 }}>Self-Hosted (InsightFace)</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#bbf7d0', marginBottom: 4 }}>$0.001</div>
+            <div style={{ color: '#94a3b8', fontSize: 12, marginBottom: 8 }}>per transaction</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 12, color: '#94a3b8' }}>
+              <div>Passive liveness: <strong style={{ color: '#86efac' }}>$0.00</strong></div>
+              <div>Face matching: <strong style={{ color: '#86efac' }}>$0.00</strong></div>
+              <div>Spoof detection: <strong style={{ color: '#86efac' }}>$0.001</strong> (if needed)</div>
+              <div>Session mgmt: <strong style={{ color: '#86efac' }}>~$0.00001</strong></div>
+            </div>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+            style={{ background: 'rgba(59,130,246,0.08)', borderRadius: 12, padding: '14px 16px', border: '1px solid rgba(59,130,246,0.33)', borderTop: '3px solid #3b82f6' }}>
+            <div style={{ fontWeight: 700, color: '#93c5fd', fontSize: 15, marginBottom: 8 }}>Cloud (Rekognition)</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#bfdbfe', marginBottom: 4 }}>$0.017</div>
+            <div style={{ color: '#94a3b8', fontSize: 12, marginBottom: 8 }}>per transaction</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 12, color: '#94a3b8' }}>
+              <div>Face match: <strong style={{ color: '#93c5fd' }}>$0.001</strong></div>
+              <div>Liveness: <strong style={{ color: '#93c5fd' }}>$0.015</strong></div>
+              <div>Spoof detection: <strong style={{ color: '#93c5fd' }}>$0.001</strong></div>
+            </div>
+          </motion.div>
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+          style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+          <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 6, fontSize: 14 }}>Monthly Cost Projections</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+            {[
+              { volume: '1,000', self: '~$1', cloud: '~$17', budget: '~$0.38' },
+              { volume: '10,000', self: '~$10', cloud: '~$170', budget: '~$3.80' },
+              { volume: '100,000', self: '~$100', cloud: '~$1,700', budget: '~$38' },
+              { volume: '1,000,000', self: '~$1,000', cloud: '~$17,000', budget: '~$380' },
+            ].map((r, i) => (
+              <div key={i} style={{ background: '#0f172a', borderRadius: 6, padding: '8px 10px', border: '1px solid #334155', textAlign: 'center' }}>
+                <div style={{ fontWeight: 700, color: '#fbbf24', fontSize: 12, marginBottom: 4 }}>{r.volume}/mo</div>
+                <div style={{ fontSize: 11, color: '#86efac' }}>Self: {r.self}</div>
+                <div style={{ fontSize: 11, color: '#93c5fd' }}>Cloud: {r.cloud}</div>
+                <div style={{ fontSize: 11, color: '#fde68a' }}>Face++: {r.budget}</div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'bio-comparison',
+    title: 'Comparison Matrix',
+    subtitle: 'Integration approaches and provider comparison',
+    section: 'Comparison',
+    content: (
+      <div style={{ maxWidth: 780, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          Side-by-side comparison of the three integration approaches:
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 18 }}>
+          {[
+            { criterion: 'Security', iframe: 'Best', web: 'Good', redirect: 'Best' },
+            { criterion: 'Integration Effort', iframe: 'Low', web: 'Medium', redirect: 'Low' },
+            { criterion: 'UX', iframe: 'Good', web: 'Best', redirect: 'Poor' },
+            { criterion: 'Mobile WebView', iframe: 'Needs testing', web: 'Best', redirect: 'Best' },
+            { criterion: 'Invisible Updates', iframe: 'Best', web: 'Good', redirect: 'Best' },
+            { criterion: 'Customization', iframe: 'None', web: 'Limited', redirect: 'None' },
+            { criterion: 'Framework Support', iframe: 'All', web: 'All', redirect: 'All' },
+          ].map((row, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+              style={{ background: '#1e293b', borderRadius: 8, padding: '8px 10px', border: '1px solid #334155', textAlign: 'center' }}>
+              <div style={{ fontWeight: 700, color: '#fbbf24', fontSize: 11, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>{row.criterion}</div>
+              <div style={{ fontSize: 12, color: '#86efac', marginBottom: 2 }}>Iframe: {row.iframe}</div>
+              <div style={{ fontSize: 12, color: '#fde68a', marginBottom: 2 }}>Web: {row.web}</div>
+              <div style={{ fontSize: 12, color: '#94a3b8' }}>Redirect: {row.redirect}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+          style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))', borderRadius: 12, padding: '14px 18px', border: '1px solid rgba(99,102,241,0.3)' }}>
+          <div style={{ fontWeight: 700, color: '#a5b4fc', marginBottom: 4, fontSize: 15 }}>Session Store Recommendation</div>
+          <div style={{ color: '#cbd5e1', fontSize: 14, lineHeight: 1.6 }}>
+            <strong style={{ color: '#fbbf24' }}>Redis</strong> for session tokens (fast TTL, atomic INCR for single-use enforcement). <strong style={{ color: '#fbbf24' }}>Cassandra</strong> for audit log (existing SVI stack, full ACID).
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'bio-poc',
+    title: 'POC Plan',
+    subtitle: '5 phases over 6-7 weeks',
+    section: 'Results',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          Building on the completed foundation from CPS-220, CPS-221, and CPS-222:
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+          {[
+            { phase: 'Phase 0: Foundation', status: '✅ COMPLETED', items: 'Face matching, liveness, OCR, ID registry, multi-provider architecture, camera capture, web app, FastAPI backend', color: '#22c55e' },
+            { phase: 'Phase 1: Session API', status: 'WEEK 1-2', items: 'POST /auth/session, JWT tokens, Redis store, rate limiting, client API key auth', color: '#6366f1' },
+            { phase: 'Phase 2: Widget Frontend', status: 'WEEK 3-4', items: 'Standalone widget HTML/JS, session validation, camera access, liveness, face capture, postMessage protocol', color: '#8b5cf6' },
+            { phase: 'Phase 3: Verify API', status: 'WEEK 4-5', items: 'POST /auth/verify, session validation, liveness integration, face match, callback signing, audit log', color: '#22c55e' },
+            { phase: 'Phase 4: Integration & Testing', status: 'WEEK 6', items: 'Iframe sandbox testing, mobile WebView, camera permissions, security pen testing, load testing', color: '#f59e0b' },
+            { phase: 'Phase 5: Interactive Prototype', status: 'WEEK 6-7', items: 'Single-file prototype.html with full flow simulation, all states, responsive design', color: '#a855f7' },
+          ].map((p, i) => (
+            <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
+              style={{ background: '#1e293b', borderRadius: 8, padding: '10px 14px', border: '1px solid #334155', borderLeft: `3px solid ${p.color}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 14 }}>{p.phase}</span>
+                <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 3, background: `${p.color}22`, color: p.color, fontWeight: 600 }}>{p.status}</span>
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5 }}>{p.items}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+          style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+          <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>Total Estimated Effort</div>
+          <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>
+            <strong style={{ color: '#a5b4fc' }}>6-7 weeks</strong> for full implementation. Interactive prototype (prototype.html) already built and functional.
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'bio-recommendations',
+    title: 'Recommendations',
+    subtitle: 'Best path forward for production',
+    section: 'Conclusion',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          Based on our spike findings, here are the recommended approaches for production:
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+          {[
+            { tier: '🥇 Integration', provider: 'Iframe Widget', desc: 'Maximum security, invisible updates, simple integration. One iframe tag + one postMessage listener.', color: '#22c55e' },
+            { tier: '🥇 Face Match', provider: 'AWS Rekognition (cloud)', desc: '100% accuracy across all tested conditions, $0.001/check. InsightFace as self-hosted fallback ($0/check).', color: '#6366f1' },
+            { tier: '🥇 Liveness', provider: 'Layered approach', desc: 'Passive heuristic ($0) → Spoof objects ($0.001) → Active challenges ($0) → Flash liveness ($0).', color: '#8b5cf6' },
+            { tier: '🥇 Session Store', provider: 'Redis + Cassandra', desc: 'Redis for fast TTL + atomic INCR. Cassandra for audit log (existing SVI stack).', color: '#f59e0b' },
+            { tier: '🥇 Client Integration', provider: 'Iframe Widget', desc: 'One iframe tag, one postMessage listener. Works with React, Vue, Angular, vanilla JS, mobile WebViews.', color: '#3b82f6' },
+          ].map((r, i) => (
+            <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
+              style={{ background: `${r.color}08`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${r.color}33`, borderLeft: `4px solid ${r.color}`, marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                <span style={{ fontSize: 16 }}>{r.tier}</span>
+                <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 14 }}>{r.provider}</span>
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5 }}>{r.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+          style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))', borderRadius: 12, padding: '14px 18px', border: '1px solid rgba(99,102,241,0.3)' }}>
+          <div style={{ fontWeight: 700, color: '#a5b4fc', marginBottom: 6, fontSize: 15 }}>Next Steps</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {[
+              'Implement Session Management API (Phase 1 — Week 1-2)',
+              'Build Widget Frontend with camera, liveness, and face capture (Phase 2 — Week 3-4)',
+              'Implement Verification API with callback signing (Phase 3 — Week 4-5)',
+              'Integration testing: iframe sandbox, mobile WebView, security pen testing (Phase 4 — Week 6)',
+              'Interactive prototype already built — prototype.html with full flow simulation',
+            ].map((s, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', color: '#cbd5e1', fontSize: 13 }}>
+                <span style={{ color: '#818cf8', marginTop: 1 }}>▸</span>
+                <span>{s}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'bio-thanks',
+    title: 'Thank You',
+    subtitle: 'CPS-289: Biometric Transaction Authentication Spike Complete',
+    section: 'Conclusion',
+    content: (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', textAlign: 'center' }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+          style={{ fontSize: 28, fontWeight: 800, background: 'linear-gradient(135deg, #818cf8, #22c55e)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: 6, letterSpacing: -0.5 }}
+        >Biometric Transaction Authentication</motion.div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.45 }}
+          style={{ fontSize: 14, color: '#94a3b8', marginBottom: 2 }}
+        >Iframe Widget · Session API · Layered Liveness · Transaction Binding</motion.div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.5 }}
+          style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}
+        >CPS-289 · Architecture & Integration Design spike complete</motion.div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.55 }}
+          style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}
+        >
+          <a href="https://svi-jira.atlassian.net/browse/CPS-289" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Jira: CPS-289</a>
+          {' · '}
+          <a href="https://svi-jira.atlassian.net/wiki/spaces/~71202071852762867849479b4d350bd48b7534/pages/250740911/CPS-221+Spike+Biometric+Face+Matching+UX+vs.+Async+Backend" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Confluence</a>
+        </motion.div>
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: 60 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          style={{ height: 2, background: 'linear-gradient(90deg, #6366f1, #22c55e)', margin: '12px 0', borderRadius: 2 }}
+        />
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.7 }}
+          style={{ fontSize: 16, color: '#cbd5e1', marginBottom: 2, fontWeight: 700, letterSpacing: 2 }}
+        >KGV</motion.div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.8 }}
+          style={{ fontSize: 12, color: '#64748b' }}
+        >RBAC Team</motion.div>
+      </motion.div>
+    ),
+  },
+];
+
 export const ocrSlides: Slide[] = [
   {
     id: 'ocr-title',

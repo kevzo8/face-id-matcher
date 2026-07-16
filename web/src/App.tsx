@@ -63,12 +63,16 @@ export default function App() {
   const [obServerUrl, setObServerUrl] = useState('https://openbiometrics.onrender.com');
   const [faceplusServerUrl, setFaceplusServerUrl] = useState('https://face-id-matcher.onrender.com');
   const [awsServerUrl, setAwsServerUrl] = useState('https://face-id-matcher.onrender.com');
-  const [feature, setFeature] = useState<'id_to_face' | 'liveness' | 'ocr'>('id_to_face');
+  const [feature, setFeature] = useState<'id_to_face' | 'liveness' | 'ocr' | 'biometric'>('id_to_face');
   const [mode, setMode] = useState<'single' | 'batch' | 'csv'>('single');
   const [showInfo, setShowInfo] = useState(false);
   const [showTips, setShowTips] = useState(true);
   const [showLivenessHow, setShowLivenessHow] = useState(false);
   const [showLivenessFails, setShowLivenessFails] = useState(false);
+  const [showBioSecurity, setShowBioSecurity] = useState(false);
+  const [showBioLiveness, setShowBioLiveness] = useState(false);
+  const [showBioCost, setShowBioCost] = useState(false);
+  const [showBioStack, setShowBioStack] = useState(false);
   const [showPresentation, setShowPresentation] = useState(false);
   const [showPrototype, setShowPrototype] = useState(false);
   const [initialSlide, setInitialSlide] = useState(0);
@@ -88,18 +92,18 @@ export default function App() {
 
   useEffect(() => {
     function handleRoute() {
-      setShowPrototype(window.location.pathname === '/prototype');
-      if (window.location.pathname === '/prototype') return;
-      const presMatch = window.location.pathname.match(/^\/(face-id|liveness|ocr)\/presentation\/(\d+)$/);
+      setShowPrototype(window.location.pathname === '/biometric');
+      if (window.location.pathname === '/biometric') return;
+      const presMatch = window.location.pathname.match(/^\/(face-id|liveness|ocr|biometric)\/presentation\/(\d+)$/);
       if (presMatch) {
-        const feat = presMatch[1] === 'face-id' ? 'id_to_face' : presMatch[1] === 'liveness' ? 'liveness' : 'ocr';
+        const feat = presMatch[1] === 'face-id' ? 'id_to_face' : presMatch[1] === 'liveness' ? 'liveness' : presMatch[1] === 'biometric' ? 'biometric' : 'ocr';
         setFeature(feat);
         setShowPresentation(true);
         setInitialSlide(parseInt(presMatch[2], 10));
         return;
       }
       setShowPresentation(false);
-      const routeMap: Record<string, 'id_to_face' | 'liveness' | 'ocr'> = {
+      const routeMap: Record<string, 'id_to_face' | 'liveness' | 'ocr' | 'biometric'> = {
         '/face-id': 'id_to_face',
         '/liveness': 'liveness',
         '/ocr': 'ocr',
@@ -435,7 +439,7 @@ export default function App() {
   }
 
   if (showPresentation) {
-    return <Presentation feature={feature} initialSlide={initialSlide} onClose={() => { setShowPresentation(false); window.history.pushState(null, '', '/' + ({ id_to_face: 'face-id', liveness: 'liveness', ocr: 'ocr' })[feature]); }} />;
+    return <Presentation feature={feature} initialSlide={initialSlide} onClose={() => { setShowPresentation(false); window.history.pushState(null, '', '/' + ({ id_to_face: 'face-id', liveness: 'liveness', ocr: 'ocr', biometric: 'biometric' })[feature]); }} />;
   }
 
   return (
@@ -467,7 +471,7 @@ export default function App() {
           ]).map((f) => (
             <button
               key={f.key}
-              onClick={() => { setShowPresentation(false); setShowPrototype(false); setFeature(f.key); window.history.pushState(null, '', '/' + ({ id_to_face: 'face-id', liveness: 'liveness', ocr: 'ocr' })[f.key]); }}
+              onClick={() => { setShowPresentation(false); setShowPrototype(false); setFeature(f.key); window.history.pushState(null, '', '/' + ({ id_to_face: 'face-id', liveness: 'liveness', ocr: 'ocr', biometric: 'biometric' })[f.key]); }}
               style={{
                 width: '100%', textAlign: 'left', padding: '10px 10px', fontSize: 12, fontWeight: 600,
                 border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
@@ -483,7 +487,7 @@ export default function App() {
 
           <div style={{ padding: '12px 10px 4px', fontSize: 10, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 1 }}>Prototypes</div>
 
-          <button onClick={() => { window.history.pushState(null, '', '/prototype'); setShowPrototype(true); }}
+          <button onClick={() => { window.history.pushState(null, '', '/biometric'); setShowPrototype(true); }}
             style={{ width: '100%', textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 500, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: '#6366f1', background: showPrototype ? '#334155' : 'transparent' }}>
             <span>🔐</span><span>Biometric Auth Demo</span>
           </button>
@@ -494,6 +498,7 @@ export default function App() {
             { key: 'id_to_face' as const, label: 'ID to Face', color: '#a855f7', icon: '\u2696', slide: 0, path: 'face-id' },
             { key: 'liveness' as const, label: 'Liveness Test', color: '#f97316', icon: '\u25C9', slide: 0, path: 'liveness' },
             { key: 'ocr' as const, label: 'OCR & ID Type', color: '#22c55e', icon: '\u2630', slide: 0, path: 'ocr' },
+            { key: 'biometric' as const, label: 'Biometric Auth', color: '#fbbf24', icon: '\u26A1', slide: 0, path: 'biometric' },
           ]).map((f) => (
             <button
               key={'p-' + f.key}
@@ -1015,6 +1020,51 @@ export default function App() {
         })()}
           </div>
 
+          {/* ==================== BIOMETRIC ==================== */}
+          <div style={{ display: feature === 'biometric' && !showPrototype ? 'block' : 'none' }}>
+            <div style={{ maxWidth: 680, margin: '0 auto', textAlign: 'center', paddingTop: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+                <div style={{ width: 64, height: 64, borderRadius: 16, background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 20px rgba(245,158,11,0.3)' }}>
+                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                </div>
+              </div>
+              <h2 style={{ color: '#e2e8f0', fontSize: 24, fontWeight: 800, marginBottom: 6 }}>Biometric Transaction Authentication</h2>
+              <p style={{ color: '#94a3b8', fontSize: 14, lineHeight: 1.7, marginBottom: 20 }}>
+                Secure, plug-and-play architecture for injecting a biometric verification step into client applications — enabling face verification before high-value actions (money transfers, benefit claims) without exposing core identity data.
+              </p>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 24 }}>
+                <button onClick={() => { window.history.pushState(null, '', '/biometric'); setShowPrototype(true); }}
+                  style={{ padding: '12px 24px', fontSize: 14, fontWeight: 600, border: 'none', borderRadius: 8, cursor: 'pointer', background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', color: '#1e293b', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  ▶ Try Live Demo
+                </button>
+                <button onClick={() => { setShowPresentation(false); setFeature('biometric'); window.history.pushState(null, '', '/biometric/presentation/0'); setShowPresentation(true); setInitialSlide(0); }}
+                  style={{ padding: '12px 24px', fontSize: 14, fontWeight: 600, border: '1px solid #475569', borderRadius: 8, cursor: 'pointer', background: 'transparent', color: '#e2e8f0' }}>
+                  View Presentation
+                </button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 24 }}>
+                {[
+                  { icon: '🔐', title: 'Secure Iframe', desc: 'Client never sees identity data. Sandboxed widget.' },
+                  { icon: '⚡', title: 'Invisible Updates', desc: 'Change UI without client redeployment.' },
+                  { icon: '🛡', title: 'Layered Liveness', desc: 'Passive + active + flash + spoof detection.' },
+                ].map((f, i) => (
+                  <div key={i} style={{ background: '#1e293b', borderRadius: 8, padding: '12px 10px', border: '1px solid #334155' }}>
+                    <div style={{ fontSize: 22, marginBottom: 4 }}>{f.icon}</div>
+                    <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 13, marginBottom: 2 }}>
+                      {f.title}
+                    </div>
+                    <div style={{ color: '#94a3b8', fontSize: 11, lineHeight: 1.4 }}>{f.desc}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: '#64748b' }}>
+                Part of the <strong style={{ color: '#fbbf24' }}>Vegamatcher</strong> KYC suite — CPS-289 spike. Built on CPS-220 (OCR), CPS-221 (Face Matching), CPS-222 (Liveness).
+              </div>
+            </div>
+          </div>
+
         </div>
 
         {/* === Right: Sidebar (feature-aware) === */}
@@ -1381,6 +1431,108 @@ export default function App() {
                   <option value="openai">OpenAI</option>
                 </select>
                 <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Set <strong>{aiParserProvider.toUpperCase()}_API_KEY</strong> env var on server.</div>
+              </div>
+            </div>
+          )}
+
+          {/* ==================== BIOMETRIC SIDEBAR ==================== */}
+          {feature === 'biometric' && !showPrototype && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24' }}>BIOMETRIC AUTH DEMO</div>
+              <div style={{ fontSize: 10, color: '#64748b', lineHeight: 1.5 }}>
+                Click <strong style={{ color: '#fbbf24' }}>"Try Live Demo"</strong> above to experience the interactive prototype. The demo simulates the full biometric transaction authentication flow including:<br />
+                • Session creation & token generation<br />
+                • Iframe widget launch<br />
+                • Camera access simulation<br />
+                • Passive liveness check<br />
+                • Face match against enrolled template<br />
+                • Verification result & callback<br />
+                • Transaction completion
+              </div>
+              <div style={{ borderTop: '1px solid #334155', paddingTop: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24' }}>INTEGRATION APPROACHES</div>
+                <div style={{ fontSize: 10, color: '#64748b', lineHeight: 1.5 }}>
+                  <strong style={{ color: '#93c5fd' }}>Iframe Widget (Recommended)</strong><br />
+                  Maximum security — sandboxed, no client DOM access<br />
+                  Invisible updates — server-side only<br />
+                  One iframe tag + postMessage listener<br />
+                  <br />
+                  <strong style={{ color: '#f59e0b' }}>Web Component (Alternative)</strong><br />
+                  Native feel — renders in client DOM<br />
+                  Requires loading SDK script<br />
+                  <br />
+                  <strong style={{ color: '#64748b' }}>Redirect Flow (Fallback)</strong><br />
+                  Simplest integration — just a link<br />
+                  Worst UX — full page redirect
+                </div>
+              </div>
+              <div style={{ borderTop: '1px solid #334155', paddingTop: 8 }}>
+                <button onClick={() => setShowBioSecurity(!showBioSecurity)}
+                  style={{ width: '100%', textAlign: 'left', padding: '2px 0', fontSize: 11, fontWeight: 700, border: 'none', cursor: 'pointer', background: 'transparent', color: '#fbbf24' }}>
+                  <span>{showBioSecurity ? '\u25BC' : '\u25B6'} SECURITY ARCHITECTURE</span>
+                </button>
+                {showBioSecurity && (
+                  <div style={{ fontSize: 10, color: '#64748b', lineHeight: 1.5, marginTop: 6 }}>
+                    • JWT session tokens with HMAC-SHA256 signing<br />
+                    • Single-use enforcement via Redis (atomic INCR)<br />
+                    • 5-minute default expiry, configurable per client<br />
+                    • Transaction binding (amount + recipient hashed into token)<br />
+                    • HMAC-signed callback payloads<br />
+                    • Rate limiting (3 attempts/session, 10/min per user)<br />
+                    • Iframe sandbox with strict CSP<br />
+                    • Image pipeline tamper-proofing per session
+                  </div>
+                )}
+              </div>
+              <div style={{ borderTop: '1px solid #334155', paddingTop: 8 }}>
+                <button onClick={() => setShowBioLiveness(!showBioLiveness)}
+                  style={{ width: '100%', textAlign: 'left', padding: '2px 0', fontSize: 11, fontWeight: 700, border: 'none', cursor: 'pointer', background: 'transparent', color: '#fbbf24' }}>
+                  <span>{showBioLiveness ? '\u25BC' : '\u25B6'} LIVESTRATEGY</span>
+                </button>
+                {showBioLiveness && (
+                  <div style={{ fontSize: 10, color: '#64748b', lineHeight: 1.5, marginTop: 6 }}>
+                    Layered defense with fallback chain:<br />
+                    • Passive heuristic liveness ($0) — first line<br />
+                    • AWS Rekognition DetectLabels ($0.001) — spoof objects<br />
+                    • Active challenges (head-turn + blink) — browser-side<br />
+                    • Flash liveness (RGB screen response) — $0<br />
+                    • For high-value transactions (&gt;P50,000): require all 4 layers
+                  </div>
+                )}
+              </div>
+              <div style={{ borderTop: '1px solid #334155', paddingTop: 8 }}>
+                <button onClick={() => setShowBioCost(!showBioCost)}
+                  style={{ width: '100%', textAlign: 'left', padding: '2px 0', fontSize: 11, fontWeight: 700, border: 'none', cursor: 'pointer', background: 'transparent', color: '#fbbf24' }}>
+                  <span>{showBioCost ? '\u25BC' : '\u25B6'} COST ANALYSIS</span>
+                </button>
+                {showBioCost && (
+                  <div style={{ fontSize: 10, color: '#64748b', lineHeight: 1.5, marginTop: 6 }}>
+                    Self-hosted (InsightFace + heuristic): ~$0.001/check<br />
+                    Cloud (Rekognition): ~$0.017/check<br />
+                    <br />
+                    Monthly projections (100K volume):<br />
+                    • Self-hosted: ~$100<br />
+                    • Cloud Rekognition: ~$1,700<br />
+                    • Budget option (Face++): ~$38
+                  </div>
+                )}
+              </div>
+              <div style={{ borderTop: '1px solid #334155', paddingTop: 8 }}>
+                <button onClick={() => setShowBioStack(!showBioStack)}
+                  style={{ width: '100%', textAlign: 'left', padding: '2px 0', fontSize: 11, fontWeight: 700, border: 'none', cursor: 'pointer', background: 'transparent', color: '#fbbf24' }}>
+                  <span>{showBioStack ? '\u25BC' : '\u25B6'} TECHNICAL STACK</span>
+                </button>
+                {showBioStack && (
+                  <div style={{ fontSize: 10, color: '#64748b', lineHeight: 1.5, marginTop: 6 }}>
+                    • Session store: Redis (fast TTL, atomic INCR)<br />
+                    • Audit log: Cassandra (existing SVI stack)<br />
+                    • Face match: InsightFace (self-hosted) / Rekognition (cloud)<br />
+                    • Liveness: 8-metric heuristic + AWS Rekognition<br />
+                    • Widget: Vanilla JS/HTML (no framework)<br />
+                    • Backend: FastAPI (Python)<br />
+                    • API: REST with JWT auth
+                  </div>
+                )}
               </div>
             </div>
           )}
