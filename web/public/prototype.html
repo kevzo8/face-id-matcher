@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SVI Biometric Auth — Interactive Prototype</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #334155;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --primary: #6366f1;
+    --primary-dim: #6366f133;
+    --success: #22c55e;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --radius: 12px;
+    --shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+  }
+  button {
+    font-family: inherit; cursor: pointer; border: none; outline: none;
+    transition: all 0.2s;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Transaction Page */
+  #app { width: 100%; max-width: 900px; padding: 24px; display: flex; gap: 24px; align-items: flex-start; }
+  #app-left { flex: 0 0 420px; }
+  #app-right { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .card {
+    background: var(--surface); border-radius: var(--radius); padding: 32px 24px;
+    box-shadow: var(--shadow); border: 1px solid var(--surface2);
+  }
+  .badge {
+    display: inline-block; background: var(--primary-dim); color: var(--primary);
+    padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.5px; margin-bottom: 16px;
+  }
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { color: var(--text2); font-size: 14px; margin-bottom: 24px; }
+  .txn-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 0; border-bottom: 1px solid var(--surface2);
+  }
+  .txn-row:last-of-type { border-bottom: none; }
+  .txn-label { color: var(--text2); font-size: 13px; }
+  .txn-value { font-size: 15px; font-weight: 600; text-align: right; }
+  .txn-amount { font-size: 28px; font-weight: 800; color: var(--success); }
+  .txn-recipient { color: var(--primary); }
+  .btn-primary {
+    width: 100%; padding: 14px; border-radius: var(--radius); font-size: 16px;
+    font-weight: 600; background: var(--primary); color: #fff; margin-top: 24px;
+  }
+  .btn-primary:hover:not(:disabled) { background: #4f46e5; transform: translateY(-1px); }
+  .btn-primary:active:not(:disabled) { transform: translateY(0); }
+  .btn-secondary {
+    padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500;
+    background: var(--surface2); color: var(--text);
+  }
+  .btn-secondary:hover { background: #475569; }
+
+  /* Modal Overlay */
+  #modal {
+    display: none; position: fixed; inset: 0; z-index: 99999;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center; padding: 16px;
+    animation: fadeIn 0.3s ease;
+  }
+  #modal.open { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes scanLine { 0% { top: 0; } 100% { top: 100%; } }
+  @keyframes progressFill { from { width: 0; } to { width: 100%; } }
+  @keyframes checkmark { 0% { stroke-dashoffset: 100; } 100% { stroke-dashoffset: 0; } }
+  @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+  @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+  .widget {
+    background: var(--surface); border-radius: 16px; width: 100%; max-width: 420px;
+    box-shadow: var(--shadow); border: 1px solid var(--surface2); overflow: hidden;
+    animation: slideUp 0.4s ease; max-height: 90vh; overflow-y: auto;
+  }
+  .widget-header {
+    display: flex; align-items: center; gap: 12px; padding: 16px 20px;
+    border-bottom: 1px solid var(--surface2); position: relative;
+  }
+  .widget-logo {
+    width: 32px; height: 32px; background: var(--primary); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 800; color: #fff; flex-shrink: 0;
+  }
+  .widget-title { font-size: 15px; font-weight: 600; }
+  .widget-step { color: var(--text2); font-size: 12px; margin-left: auto; }
+  .widget-body { padding: 24px 20px; }
+  .widget-footer {
+    padding: 16px 20px; border-top: 1px solid var(--surface2);
+    display: flex; justify-content: flex-end; gap: 8px;
+  }
+
+  /* Steps */
+  .step { display: none; }
+  .step.active { display: block; animation: slideUp 0.3s ease; }
+
+  /* Step: Session */
+  .session-loading { text-align: center; padding: 32px 0; }
+  .spinner {
+    width: 48px; height: 48px; border: 4px solid var(--surface2);
+    border-top-color: var(--primary); border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+  }
+  .session-details { margin: 16px 0; }
+  .detail-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
+  .detail-label { color: var(--text2); }
+  .detail-value { font-weight: 600; }
+
+  /* Step: Camera */
+  .camera-preview {
+    width: 100%; aspect-ratio: 3/4; max-height: 320px;
+    background: #000; border-radius: 10px; overflow: hidden; position: relative;
+    margin-bottom: 16px;
+  }
+  .camera-preview canvas, .camera-preview video {
+    width: 100%; height: 100%; object-fit: cover;
+  }
+  .camera-scan-line {
+    position: absolute; left: 10%; right: 10%; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    animation: scanLine 2s ease-in-out infinite;
+  }
+  .camera-overlay {
+    position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center;
+  }
+  .face-guide {
+    width: 140px; height: 180px; border: 2px dashed rgba(99,102,241,0.5);
+    border-radius: 50%; position: relative;
+  }
+  .face-guide::after {
+    content: 'Position your face here';
+    position: absolute; bottom: -32px; left: 50%; transform: translateX(-50%);
+    font-size: 11px; color: var(--text2); white-space: nowrap;
+  }
+
+  /* Step: Liveness */
+  .liveness-container { text-align: center; }
+  .liveness-icon {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: var(--primary-dim); margin: 0 auto 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .progress-bar {
+    width: 100%; height: 8px; background: var(--surface2); border-radius: 4px;
+    overflow: hidden; margin: 16px 0;
+  }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, var(--primary), var(--success));
+    border-radius: 4px; transition: width 0.3s ease;
+  }
+  .liveness-status { color: var(--text2); font-size: 13px; margin-top: 8px; }
+
+  /* Step: Face Match */
+  .match-container { text-align: center; }
+  .match-faces {
+    display: flex; gap: 16px; justify-content: center; margin-bottom: 20px;
+  }
+  .match-face-box {
+    width: 100px; height: 120px; background: var(--surface2); border-radius: 10px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; position: relative; overflow: hidden;
+  }
+  .match-face-label { font-size: 11px; color: var(--text2); position: relative; z-index: 1; background: rgba(15,23,42,0.7); padding: 2px 6px; border-radius: 4px; }
+  .match-face-box img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
+  .match-compare-icon { align-self: center; color: var(--primary); }
+
+  /* Step: Result */
+  .result-container { text-align: center; }
+  .result-icon { font-size: 64px; margin-bottom: 16px; }
+  .result-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+  .result-desc { color: var(--text2); font-size: 14px; margin-bottom: 16px; }
+  .result-token {
+    background: var(--surface2); padding: 12px; border-radius: 8px;
+    font-family: monospace; font-size: 12px; color: var(--text2);
+    word-break: break-all; margin-bottom: 16px;
+  }
+  .result-checkmark {
+    width: 72px; height: 72px; margin: 0 auto 16px;
+    position: relative;
+  }
+  .result-checkmark svg { width: 100%; height: 100%; }
+  .result-checkmark circle {
+    fill: none; stroke: var(--success); stroke-width: 3;
+    stroke-dasharray: 200; stroke-dashoffset: 200;
+    animation: checkmark 0.6s ease forwards 0.2s;
+  }
+  .result-checkmark path {
+    fill: none; stroke: var(--success); stroke-width: 4; stroke-linecap: round;
+    stroke-dasharray: 100; stroke-dashoffset: 100;
+    animation: checkmark 0.4s ease forwards 0.6s;
+  }
+
+  /* Console */
+  #console {
+    background: #0c0a1e; border-radius: 8px;
+    padding: 12px; font-family: monospace; font-size: 11px;
+    flex: 1; overflow-y: auto; line-height: 1.5;
+    min-height: 400px;
+  }
+  .log-entry { color: var(--text2); }
+  .log-entry .time { color: #64748b; }
+  .log-entry .info { color: var(--primary); }
+  .log-entry .success { color: var(--success); }
+  .log-entry .warn { color: var(--warning); }
+  .log-entry .error { color: var(--danger); }
+
+  .consent-text { font-size: 12px; color: var(--text2); text-align: center; margin-top: 12px; }
+  .retry-count { color: var(--warning); font-size: 12px; margin-top: 8px; }
+
+  /* Responsive */
+  @media (max-width: 700px) {
+    #app { flex-direction: column; max-width: 480px; }
+    #app-left { flex: none; width: 100%; }
+    #app-right { width: 100%; }
+    #console { min-height: 200px; }
+    .card { padding: 20px 16px; }
+    .txn-amount { font-size: 24px; }
+    .widget { border-radius: 12px; }
+    .match-face-box { width: 80px; height: 100px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="app-left">
+    <div class="card" id="mainCard">
+      <div class="badge">Secure Verification &amp; Identification</div>
+      <h1>Send Money</h1>
+      <p class="subtitle">Confirm this transaction with biometric verification</p>
+
+      <div class="txn-row">
+        <span class="txn-label">Amount</span>
+        <span class="txn-value txn-amount">&#8369;17,490.00</span>
+      </div>
+      <div class="txn-row">
+        <span class="txn-label">Sender</span>
+        <span class="txn-value" style="color:#60a5fa;">Kevin Vega</span>
+      </div>
+      <div class="txn-row">
+        <span class="txn-label">Bank</span>
+        <span class="txn-value" style="font-size:13px;color:#60a5fa;">Bank of the Philippine Islands (BPI)</span>
+      </div>
+      <div class="txn-row">
+        <span class="txn-label">Account No.</span>
+        <span class="txn-value" style="font-family:monospace;font-size:13px;color:#60a5fa;">201057556</span>
+      </div>
+      <div class="txn-row">
+        <span class="txn-label">Recipient</span>
+        <span class="txn-value" style="color:#22c55e;">Louie Lara</span>
+      </div>
+      <div class="txn-row">
+        <span class="txn-label">Bank</span>
+        <span class="txn-value" style="font-size:13px;color:#22c55e;">GCash</span>
+      </div>
+      <div class="txn-row">
+        <span class="txn-label">Account No.</span>
+        <span class="txn-value" style="font-family:monospace;font-size:13px;color:#22c55e;">09760044732</span>
+      </div>
+      <div class="txn-row">
+        <span class="txn-label">Transaction ID</span>
+        <span class="txn-value" style="font-family:monospace;font-size:13px;">TXN-20260715-001</span>
+      </div>
+      <div class="txn-row">
+        <span class="txn-label">Date</span>
+        <span class="txn-value" id="txn-date"></span>
+      </div>
+
+      <div id="preAuthSection">
+        <button class="btn-primary" id="startBtn" onclick="startVerification()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+          Verify Identity to Continue
+        </button>
+        <p style="text-align:center;margin-top:12px;font-size:12px;color:var(--text2);">
+          Your face will be used only for this verification
+        </p>
+      </div>
+
+      <div id="postAuthSection" style="display:none;">
+        <button class="btn-primary" id="confirmTransferBtn" style="background:var(--success);width:100%;">Identity Verified, Confirm Transfer</button>
+      </div>
+
+      <div id="transferSuccess" style="display:none;margin-top:16px;border-top:1px solid var(--surface2);padding-top:16px;">
+        <div style="text-align:center;margin-bottom:12px;">
+          <div class="result-checkmark" style="width:64px;height:64px;margin:0 auto;">
+            <svg viewBox="0 0 72 72">
+              <circle cx="36" cy="36" r="30"/>
+              <path d="M22 36l8 8 20-20"/>
+            </svg>
+          </div>
+        </div>
+        <div style="font-size:18px;font-weight:700;color:var(--success);text-align:center;margin-bottom:16px;">Transfer Successful!</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--surface2);"><span>Amount</span><strong style="color:var(--text);">&#8369;17,490.00</strong></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--surface2);"><span>From</span><strong style="color:var(--text);">Kevin Vega (BPI · 201057556)</strong></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--surface2);"><span>To</span><strong style="color:var(--text);">Louie Lara (GCash · 09760044732)</strong></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--surface2);"><span>Transaction ID</span><strong style="color:var(--text);font-family:monospace;font-size:12px;">TXN-20260715-001</strong></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;"><span>Reference No.</span><strong style="color:var(--text);font-family:monospace;font-size:12px;" id="refNo">REF-20260715-8a3f</strong></div>
+        </div>
+        <div style="font-size:10px;color:var(--text2);border-top:1px solid var(--surface2);margin-top:12px;padding-top:12px;word-break:break-all;font-family:monospace;">
+          Verification Token: vt_56t8nnpdmfzck0qn0ovu0rjqiklutnjzqvwpozxnka9nfy
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:12px;">
+      <button class="btn-secondary" onclick="goBack()">← Back to Main App</button>
+    </div>
+  </div>
+  <div id="app-right">
+    <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Event Log</div>
+    <div id="console"></div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="modal">
+  <div class="widget" id="widget">
+    <div class="widget-header">
+      <div class="widget-logo">SVI</div>
+      <div class="widget-title">Secure Verification &amp; Identification</div>
+      <div class="widget-step" id="stepIndicator">Step 1 of 5</div>
+    </div>
+
+    <div class="widget-body">
+      <!-- Step 1: Session Loading -->
+      <div class="step active" id="step-session">
+        <div class="session-loading">
+          <div class="spinner"></div>
+          <p style="font-size:14px;font-weight:600;">Establishing secure session...</p>
+          <p style="font-size:12px;color:var(--text2);margin-top:4px;">Initializing biometric verification</p>
+        </div>
+      </div>
+
+      <!-- Step 2: Transaction Confirmation -->
+      <div class="step" id="step-confirm">
+        <p style="font-size:15px;font-weight:600;margin-bottom:16px;">Confirm Transaction Details</p>
+        <div class="session-details">
+          <div class="detail-row"><span class="detail-label">Amount</span><span class="detail-value" style="color:var(--success);">&#8369;17,490.00</span></div>
+          <div class="detail-row"><span class="detail-label">Sender</span><span class="detail-value" style="color:#60a5fa;">Kevin Vega</span></div>
+          <div class="detail-row"><span class="detail-label">Sender Bank</span><span class="detail-value" style="font-size:12px;color:#60a5fa;">BPI · 201057556</span></div>
+          <div class="detail-row"><span class="detail-label">Recipient</span><span class="detail-value" style="color:#22c55e;">Louie Lara</span></div>
+          <div class="detail-row"><span class="detail-label">Recipient Bank</span><span class="detail-value" style="font-size:12px;color:#22c55e;">GCash · 09760044732</span></div>
+          <div class="detail-row"><span class="detail-label">Session</span><span class="detail-value" style="font-family:monospace;font-size:12px;color:var(--text2);">st_eyJ...xxxx</span></div>
+        </div>
+        <p style="font-size:12px;color:var(--text2);margin-top:12px;">Please verify these details before proceeding with biometric authentication.</p>
+      </div>
+
+      <!-- Step 3: Camera / Face Capture -->
+      <div class="step" id="step-camera">
+        <p style="font-size:15px;font-weight:600;margin-bottom:12px;">Face Verification</p>
+        <div class="camera-preview" id="cameraPreview">
+          <canvas id="faceCanvas"></canvas>
+          <div class="camera-scan-line"></div>
+          <div class="camera-overlay">
+            <div class="face-guide"></div>
+          </div>
+        </div>
+        <p style="font-size:13px;color:var(--text2);text-align:center;">
+          Position your face within the frame and click Capture
+        </p>
+      </div>
+
+      <!-- Step 4: Liveness Check -->
+      <div class="step" id="step-liveness">
+        <div class="liveness-container">
+          <div class="liveness-icon" id="livenessIcon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 0 1 7.07 17.07A10 10 0 0 1 4.93 4.93"/><path d="M12 6a6 6 0 0 1 4.24 10.24"/><path d="M12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.93 19.07l1.41-1.41"/><path d="M17.66 6.34l1.41-1.41"/></svg>
+          </div>
+          <p style="font-size:15px;font-weight:600;margin-bottom:4px;" id="livenessTitle">Checking Liveness...</p>
+          <p style="font-size:12px;color:var(--text2);margin-bottom:12px;" id="livenessSubtitle">Analyzing facial features</p>
+          <div class="progress-bar">
+            <div class="progress-fill" id="livenessProgress" style="width:0%;"></div>
+          </div>
+          <div class="liveness-status" id="livenessStatus">Processing...</div>
+        </div>
+      </div>
+
+      <!-- Step 5: Face Match -->
+      <div class="step" id="step-match">
+        <div class="match-container">
+          <p style="font-size:15px;font-weight:600;margin-bottom:16px;">Comparing Faces</p>
+          <div class="match-faces" style="flex-wrap:wrap;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+              <div class="match-face-box">
+                <img id="enrolledFace" src="/assets/academic.jpg" alt="enrolled" />
+              </div>
+              <span class="match-face-label">Enrolled</span>
+            </div>
+            <div class="match-compare-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+              <div class="match-face-box">
+                <img id="capturedFaceImg" style="display:none;" alt="captured" />
+              </div>
+              <span class="match-face-label">Captured</span>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--text2);text-align:left;background:var(--surface2);padding:8px 12px;border-radius:6px;line-height:1.8;margin:0 auto 16px;width:fit-content;">
+            <div><strong style="color:var(--text);">Full Name:</strong> Kevin Guadalupe Vega</div>
+            <div><strong style="color:var(--text);">Enrolled ID Type:</strong> PWD ID</div>
+            <div><strong style="color:var(--text);">ID Number:</strong> PWD-2024-0815-00427</div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="matchProgress" style="width:0%;background:linear-gradient(90deg,var(--danger),var(--warning),var(--success));"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;">
+            <div style="background:var(--surface2);padding:10px;border-radius:8px;text-align:center;">
+              <div style="font-size:11px;color:var(--text2);">Liveness Score</div>
+              <div style="font-size:20px;font-weight:700;" id="livenessScoreDisplay">--</div>
+            </div>
+            <div style="background:var(--surface2);padding:10px;border-radius:8px;text-align:center;">
+              <div style="font-size:11px;color:var(--text2);">Similarity Score</div>
+              <div style="font-size:20px;font-weight:700;" id="similarityScoreDisplay">--</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 6: Result -->
+      <div class="step" id="step-result">
+        <div class="result-container" id="resultContainer">
+          <!-- populated by showResult() -->
+        </div>
+      </div>
+    </div>
+
+    <div class="widget-footer" id="widgetFooter">
+      <button class="btn-secondary" id="cancelBtn">Cancel</button>
+      <button class="btn-primary" id="actionBtn" onclick="nextStep()" style="width:auto;margin-top:0;">Continue</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   SVI Biometric Auth — Interactive Prototype
+   ============================================================ */
+
+// --- State ---
+const state = {
+  step: 0,
+  steps: ['session', 'confirm', 'camera', 'liveness', 'match', 'result'],
+  attempts: 0,
+  maxAttempts: 3,
+  success: false,
+  verificationToken: null,
+  livenessScore: 0,
+  matchConfidence: 0,
+  cameraStream: null,
+  cameraCanvas: null,
+  captured: false,
+  capturedImageData: null,
+};
+
+const STEP_LABELS = ['Step 1 of 5', 'Step 2 of 5', 'Step 3 of 5', 'Step 4 of 5', 'Step 5 of 5', 'Complete'];
+
+// --- Logging ---
+const logs = [];
+function log(level, msg) {
+  const time = new Date().toISOString().slice(11, 19);
+  logs.push({ time, level, msg });
+  const el = document.getElementById('console');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `<span class="time">[${time}]</span> <span class="${level}">${level.toUpperCase()}</span> ${msg}`;
+  el.appendChild(entry);
+  el.scrollTop = el.scrollHeight;
+  console.log(`[${time}] [${level}] ${msg}`);
+}
+function goBack() {
+  if (document.referrer && document.referrer.startsWith(window.location.origin)) {
+    window.history.back();
+  } else {
+    window.location.href = '/';
+  }
+}
+
+// --- Modal ---
+function openModal() {
+  document.getElementById('modal').classList.add('open');
+  document.getElementById('startBtn').disabled = true;
+  log('info', 'Widget modal opened');
+}
+function closeModal() {
+  stopCamera();
+  document.getElementById('modal').classList.remove('open');
+  document.getElementById('startBtn').disabled = false;
+  log('info', 'Widget modal closed by user');
+  resetWidget();
+}
+
+// --- Step Navigation ---
+function showStep(index) {
+  state.step = index;
+  document.querySelectorAll('.step').forEach((el, i) => {
+    el.classList.toggle('active', i === index);
+  });
+  document.getElementById('stepIndicator').textContent = STEP_LABELS[index] || '';
+
+  const actionBtn = document.getElementById('actionBtn');
+  const cancelBtn = document.getElementById('cancelBtn');
+  const isLast = index === state.steps.length - 1;
+  const isFirst = index === 0;
+
+  // Cancel button: back to confirm on camera step, close modal otherwise
+  if (index === 2) {
+    cancelBtn.textContent = 'Back';
+    cancelBtn.onclick = () => { stopCamera(); showStep(1); };
+  } else {
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.onclick = closeModal;
+  }
+
+  if (isFirst && state.attempts === 0) {
+    actionBtn.style.display = 'none';
+  } else if (isLast) {
+    actionBtn.textContent = 'Done';
+    actionBtn.style.display = 'block';
+    actionBtn.onclick = () => {
+      stopCamera();
+      document.getElementById('modal').classList.remove('open');
+      document.getElementById('startBtn').disabled = false;
+      if (state.success) {
+        document.getElementById('preAuthSection').style.display = 'none';
+        document.getElementById('postAuthSection').style.display = 'block';
+        document.getElementById('refNo').textContent = 'REF-20260715-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+        log('info', 'Identity verified — awaiting transfer confirmation');
+      }
+      resetWidget();
+    };
+  } else {
+    actionBtn.textContent = 'Continue';
+    actionBtn.style.display = 'block';
+    actionBtn.onclick = nextStep;
+  }
+}
+
+function nextStep() {
+  const next = state.step + 1;
+  if (next >= state.steps.length) {
+    closeModal();
+    return;
+  }
+  showStep(next);
+  triggerStep(next);
+}
+
+function resetWidget() {
+  state.step = 0;
+  state.attempts = 0;
+  state.success = false;
+  state.verificationToken = null;
+  state.captured = false;
+  state.capturedImageData = null;
+  const capturedImg = document.getElementById('capturedFaceImg');
+  if (capturedImg) capturedImg.style.display = 'none';
+  showStep(0);
+  document.getElementById('actionBtn').style.display = 'none';
+}
+
+// --- Step Triggers ---
+function triggerStep(index) {
+  switch (state.steps[index]) {
+    case 'confirm': break; // static content
+    case 'camera': initCamera(); break;
+    case 'liveness': runLiveness(); break;
+    case 'match': runFaceMatch(); break;
+    case 'result': populateResult(); break;
+  }
+}
+
+// --- Step 1: Session Loading ---
+function startVerification() {
+  state.attempts++;
+  openModal();
+  showStep(0);
+  log('info', `Starting verification (attempt ${state.attempts}/${state.maxAttempts})`);
+
+  // Simulate session creation
+  setTimeout(() => {
+    const token = 'st_' + Array.from({length: 40}, () => Math.random().toString(36)[2]).join('');
+    state.verificationToken = token;
+    log('success', `Session created: ${token.slice(0, 16)}...`);
+    log('info', 'Transaction bound: TXN-20260715-001, Kevin Vega (BPI) → Louie Lara (GCash), P17,490.00');
+
+    // Auto-advance to confirm step
+    showStep(1);
+    document.getElementById('actionBtn').style.display = 'block';
+  }, 1200);
+}
+
+// --- Step 3: Camera ---
+async function initCamera() {
+  const canvas = document.getElementById('faceCanvas');
+  state.cameraCanvas = canvas;
+  const preview = document.getElementById('cameraPreview');
+
+  // Enumerate devices, putting virtual cameras last
+  let devices = [];
+  try {
+    const all = await navigator.mediaDevices.enumerateDevices();
+    devices = all.filter(d => d.kind === 'videoinput')
+      .sort((a, b) => {
+        const aV = /obs|virtual|streamlabs|display|capture/i.test(a.label) ? 1 : 0;
+        const bV = /obs|virtual|streamlabs|display|capture/i.test(b.label) ? 1 : 0;
+        return aV - bV;
+      });
+  } catch (_) {}
+
+  // Build a prioritized list of device IDs + fallback constraints
+  const attempts = [];
+
+  // 1. Each physical camera by deviceId (virtual ones already at end)
+  for (const d of devices) {
+    attempts.push({ deviceId: { exact: d.deviceId } });
+  }
+
+  // 2. facingMode user (lets browser pick best selfie camera)
+  attempts.push({ facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } });
+
+  // 3. Generic fallbacks
+  attempts.push({ width: { ideal: 640 }, height: { ideal: 480 } });
+  attempts.push({ width: 320, height: 240 });
+  attempts.push(true);
+
+  // Try each until one works
+  let stream = null;
+  let lastError = null;
+  let usedDeviceLabel = null;
+
+  for (const constraint of attempts) {
+    try {
+      const videoConstraint = constraint === true ? true : { ...constraint };
+      stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraint });
+      // Find which device label was used
+      if (constraint && typeof constraint === 'object' && constraint.deviceId) {
+        const match = devices.find(d => d.deviceId === constraint.deviceId.exact);
+        usedDeviceLabel = match ? match.label : 'USB Camera';
+      } else {
+        // Check active track
+        const track = stream.getVideoTracks()[0];
+        usedDeviceLabel = track?.label || 'Camera';
+      }
+      break;
+    } catch (e) {
+      lastError = e.message || String(e);
+      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    }
+  }
+
+  if (stream) {
+    state.cameraStream = stream;
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    video.play();
+    video.style.display = 'none';
+    preview.appendChild(video);
+
+    const ctx = canvas.getContext('2d');
+    canvas.width = preview.clientWidth || 320;
+    canvas.height = preview.clientHeight || 240;
+
+    function drawFrame() {
+      if (video.readyState >= 2 && !state.captured) {
+        ctx.save();
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+        ctx.restore();
+      }
+      if (state.steps[state.step] === 'camera' && !state.captured) {
+        requestAnimationFrame(drawFrame);
+      }
+    }
+    video.onloadedmetadata = () => drawFrame();
+    document.querySelector('.face-guide').style.display = 'block';
+    log('success', `Camera initialized: ${usedDeviceLabel || 'Unknown'}`);
+
+    // Add camera switcher if multiple cameras
+    if (devices.length > 1) {
+      addCameraSwitcher(devices, stream, video, canvas, preview);
+    }
+
+    const actionBtn = document.getElementById('actionBtn');
+    actionBtn.textContent = 'Capture Face';
+    actionBtn.onclick = captureFace;
+  } else {
+    log('warn', `All cameras unavailable: ${lastError}. Using simulation.`);
+    drawSimulatedFace(canvas);
+    document.querySelector('.face-guide').style.display = 'block';
+    const actionBtn = document.getElementById('actionBtn');
+    actionBtn.textContent = 'Capture Face (Simulated)';
+    actionBtn.onclick = captureFace;
+  }
+}
+
+function addCameraSwitcher(devices, currentStream, video, canvas, preview) {
+  // Remove old switcher if any
+  const old = document.getElementById('camera-switcher');
+  if (old) old.remove();
+
+  const wrapper = document.createElement('div');
+  wrapper.id = 'camera-switcher';
+  wrapper.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:12px;';
+
+  const label = document.createElement('span');
+  label.style.cssText = 'font-size:12px;color:var(--text2);white-space:nowrap;';
+  label.textContent = 'Camera:';
+
+  const select = document.createElement('select');
+  select.style.cssText = 'flex:1;padding:6px 8px;border-radius:6px;border:1px solid var(--surface2);background:var(--surface2);color:var(--text);font-size:12px;outline:none;';
+
+  devices.forEach((d, i) => {
+    const opt = document.createElement('option');
+    opt.value = d.deviceId;
+    let label = d.label || `Camera ${i + 1}`;
+    if (/obs|virtual|streamlabs/i.test(label)) label += ' (virtual)';
+    opt.textContent = label;
+    if (currentStream) {
+      const track = currentStream.getVideoTracks()[0];
+      if (track && track.label === d.label) opt.selected = true;
+    }
+    select.appendChild(opt);
+  });
+
+  select.onchange = async () => {
+    try {
+      // Stop current
+      currentStream.getTracks().forEach(t => t.stop());
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: { exact: select.value } }
+      });
+      state.cameraStream = newStream;
+      video.srcObject = newStream;
+      video.play();
+      log('info', `Switched to camera: ${select.options[select.selectedIndex].text}`);
+    } catch (e) {
+      log('error', `Failed to switch camera: ${e.message}`);
+    }
+  };
+
+  wrapper.appendChild(label);
+  wrapper.appendChild(select);
+  preview.parentNode.insertBefore(wrapper, preview);
+}
+
+function drawSimulatedFace(canvas) {
+  const preview = document.getElementById('cameraPreview');
+  canvas.width = preview.clientWidth || 320;
+  canvas.height = preview.clientHeight || 240;
+  const ctx = canvas.getContext('2d');
+
+  let hue = 0;
+  function animate() {
+    if (state.steps[state.step] !== 'camera') return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Dark background
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Simulated face (oval)
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2 - 10;
+    const rw = 70;
+    const rh = 90;
+
+    // Face oval
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rw, rh, 0, 0, Math.PI * 2);
+    ctx.fillStyle = `hsl(${30 + Math.sin(hue) * 5}, 40%, ${35 + Math.sin(hue * 0.7) * 5}%)`;
+    ctx.fill();
+
+    // Eyes
+    const eyeY = cy - 25;
+    const eyeSpacing = 25;
+    for (let side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.ellipse(cx + side * eyeSpacing, eyeY, 10, 6, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(cx + side * eyeSpacing, eyeY, 4, 4, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#222';
+      ctx.fill();
+    }
+
+    // Nose
+    ctx.beginPath();
+    ctx.moveTo(cx - 4, cy + 5);
+    ctx.lineTo(cx + 4, cy + 5);
+    ctx.lineTo(cx, cy + 20);
+    ctx.closePath();
+    ctx.fillStyle = `hsl(30, 30%, ${30 + Math.sin(hue * 0.5) * 3}%)`;
+    ctx.fill();
+
+    // Mouth
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 40, 20, 6, 0, 0, Math.PI);
+    ctx.strokeStyle = '#b91c1c';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    hue += 0.02;
+    requestAnimationFrame(animate);
+  }
+  animate();
+  log('info', 'Simulated camera feed active');
+}
+
+function captureFace() {
+  log('info', 'Face captured');
+  state.captured = true;
+  const canvas = document.getElementById('faceCanvas');
+  const preview = document.getElementById('cameraPreview');
+
+  // Flash effect
+  const flash = document.createElement('div');
+  flash.style.cssText = 'position:absolute;inset:0;background:#fff;z-index:10;animation:fadeOut 0.3s ease forwards;';
+  preview.appendChild(flash);
+  setTimeout(() => flash.remove(), 300);
+
+  // Freeze the current frame as a still image
+  const still = document.createElement('canvas');
+  still.width = canvas.width;
+  still.height = canvas.height;
+  still.getContext('2d').drawImage(canvas, 0, 0);
+  canvas.getContext('2d').drawImage(still, 0, 0);
+  state.capturedImageData = still.toDataURL();
+
+  // Stop camera stream
+  stopCamera();
+
+  const actionBtn = document.getElementById('actionBtn');
+  actionBtn.textContent = 'Continue';
+  actionBtn.onclick = () => {
+    nextStep();
+  };
+  document.querySelector('.camera-scan-line').style.display = 'none';
+  document.querySelector('.face-guide').style.display = 'none';
+}
+
+function stopCamera() {
+  if (state.cameraStream) {
+    state.cameraStream.getTracks().forEach(t => t.stop());
+    state.cameraStream = null;
+    log('info', 'Camera released');
+  }
+}
+
+// --- Step 4: Liveness Check ---
+function runLiveness() {
+  const progress = document.getElementById('livenessProgress');
+  const status = document.getElementById('livenessStatus');
+  const title = document.getElementById('livenessTitle');
+  const subtitle = document.getElementById('livenessSubtitle');
+  const icon = document.getElementById('livenessIcon');
+  const actionBtn = document.getElementById('actionBtn');
+  actionBtn.style.display = 'none';
+
+  const phases = [
+    { pct: 15, text: 'Analyzing skin texture...', title: 'Passive Liveness Check', sub: '8-metric heuristic analysis' },
+    { pct: 30, text: 'Checking for spoof artifacts...', title: 'Spoof Detection', sub: 'Moiré, banding, reflection analysis' },
+    { pct: 45, text: 'Verifying depth and contours...', title: '3D Depth Analysis', sub: 'Facial contour mapping' },
+    { pct: 60, text: 'Detecting natural micro-movements...', title: 'Motion Analysis', sub: 'Sub-pixel movement detection' },
+    { pct: 75, text: 'Cross-referencing with enrolled data...', title: 'Template Comparison', sub: 'Biometric signature match' },
+    { pct: 90, text: 'Finalizing liveness verdict...', title: 'Final Verification', sub: 'Liveness & identification successfully computed' },
+  ];
+
+  let phaseIndex = 0;
+  function advancePhase() {
+    if (phaseIndex >= phases.length) {
+      // Complete
+      state.livenessScore = 0.91 + Math.random() * 0.09;
+      progress.style.width = '100%';
+      status.textContent = '';
+      icon.innerHTML = state.livenessScore > 0.7
+        ? '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>'
+        : '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6"/><path d="M9 9l6 6"/></svg>';
+      title.textContent = state.livenessScore > 0.7 ? 'Verification & Identification Confirmed' : 'Verification Failed';
+
+      setTimeout(() => {
+        actionBtn.style.display = 'block';
+        actionBtn.textContent = 'Continue';
+        actionBtn.onclick = () => { nextStep(); };
+      }, 500);
+
+      log(state.livenessScore > 0.7 ? 'success' : 'warn',
+        `Liveness check complete: ${(state.livenessScore * 100).toFixed(2)}% (threshold: 70%)`);
+      return;
+    }
+
+    const phase = phases[phaseIndex];
+    progress.style.width = phase.pct + '%';
+    status.textContent = phase.text;
+    title.textContent = phase.title;
+    subtitle.textContent = phase.sub;
+    phaseIndex++;
+
+    // Random natural pauses
+    const delay = 400 + Math.random() * 600;
+    setTimeout(advancePhase, delay);
+  }
+
+  log('info', 'Liveness check started');
+  advancePhase();
+}
+
+// --- Step 5: Face Match ---
+function runFaceMatch() {
+  const progress = document.getElementById('matchProgress');
+  const actionBtn = document.getElementById('actionBtn');
+  actionBtn.style.display = 'none';
+
+  // Show captured image
+  const capturedImg = document.getElementById('capturedFaceImg');
+  if (state.capturedImageData) {
+    capturedImg.src = state.capturedImageData;
+    capturedImg.style.display = 'block';
+  }
+
+  // Populate liveness score
+  const livenessDisplay = document.getElementById('livenessScoreDisplay');
+  livenessDisplay.textContent = (state.livenessScore * 100).toFixed(2) + '%';
+  livenessDisplay.style.color = state.livenessScore > 0.7 ? 'var(--success)' : 'var(--danger)';
+  document.getElementById('similarityScoreDisplay').textContent = '--';
+
+  let score = 0;
+  const target = 0.91 + Math.random() * 0.09; // 91-100%
+
+  function animateMatch() {
+    score += (target - score) * 0.08;
+    if (score > target - 0.5) score = target;
+
+    const pct = (score * 100).toFixed(2);
+    progress.style.width = parseFloat(pct) + '%';
+
+    if (score < target) {
+      requestAnimationFrame(animateMatch);
+    } else {
+      state.matchConfidence = score;
+      const simDisplay = document.getElementById('similarityScoreDisplay');
+      simDisplay.textContent = (score * 100).toFixed(2) + '%';
+      simDisplay.style.color = score > 0.7 ? 'var(--success)' : 'var(--danger)';
+      setTimeout(() => {
+        actionBtn.style.display = 'block';
+        actionBtn.textContent = 'View Result';
+        actionBtn.onclick = () => { nextStep(); };
+      }, 400);
+
+      log(score > 0.7 ? 'success' : 'warn',
+        `Face match complete: ${(score * 100).toFixed(2)}% (threshold: 70%)`);
+    }
+  }
+
+  log('info', 'Face matching started');
+  animateMatch();
+}
+
+// --- Step 6: Result ---
+function populateResult() {
+  const container = document.getElementById('resultContainer');
+  const passed = state.livenessScore > 0.7 && state.matchConfidence > 0.7;
+  state.success = passed;
+
+  if (passed) {
+    const vt = 'vt_' + Array.from({length: 48}, () => Math.random().toString(36)[2]).join('');
+    state.verificationToken = vt;
+
+    container.innerHTML = `
+      <div class="result-checkmark">
+        <svg viewBox="0 0 72 72">
+          <circle cx="36" cy="36" r="30"/>
+          <path d="M22 36l8 8 20-20"/>
+        </svg>
+      </div>
+      <div class="result-title" style="color:var(--success);">Verification Successful</div>
+      <div class="result-desc">
+        Identity verified for transaction <strong>TXN-20260715-001</strong><br>
+        From: <strong>Kevin Vega</strong> (BPI · 201057556) &rarr; <strong>Louie Lara</strong> (GCash · 09760044732)<br>
+        Amount: <strong>&#8369;17,490.00</strong>
+      </div>
+      <div class="result-token">${vt}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div style="background:var(--surface2);padding:10px;border-radius:8px;">
+          <div style="font-size:12px;color:var(--text2);">Liveness</div>
+          <div style="font-size:18px;font-weight:700;color:var(--success);">${(state.livenessScore * 100).toFixed(2)}%</div>
+        </div>
+        <div style="background:var(--surface2);padding:10px;border-radius:8px;">
+          <div style="font-size:12px;color:var(--text2);">Face Match</div>
+          <div style="font-size:18px;font-weight:700;color:var(--success);">${(state.matchConfidence * 100).toFixed(2)}%</div>
+        </div>
+      </div>
+    `;
+
+    log('success', '=== VERIFICATION COMPLETE ===');
+    log('success', `Liveness: ${(state.livenessScore * 100).toFixed(2)}%`);
+    log('success', `Face match: ${(state.matchConfidence * 100).toFixed(2)}%`);
+    log('success', `Token: ${vt}`);
+    log('info', 'Callback sent to client: POST https://client.com/api/verify-callback');
+    log('info', 'Transaction TXN-20260715-001 marked as verified');
+
+    // Simulate callback
+    setTimeout(() => {
+      log('success', 'Client callback received: 200 OK');
+      log('info', 'Transaction completed: P17,490.00 sent from Kevin Vega (BPI) to Louie Lara (GCash)');
+    }, 1500);
+
+  } else {
+    container.innerHTML = `
+      <div style="margin-bottom:16px;">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6"/><path d="M9 9l6 6"/></svg>
+      </div>
+      <div class="result-title" style="color:var(--danger);">Verification Failed</div>
+      <div class="result-desc">
+        ${state.livenessScore <= 0.7
+          ? 'Liveness check could not confirm you are a real person.'
+          : 'Face match confidence is below the required threshold.'}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div style="background:var(--surface2);padding:10px;border-radius:8px;">
+          <div style="font-size:12px;color:var(--text2);">Liveness</div>
+          <div style="font-size:18px;font-weight:700;${state.livenessScore > 0.7 ? 'color:var(--success);' : 'color:var(--danger);'}">${(state.livenessScore * 100).toFixed(2)}%</div>
+        </div>
+        <div style="background:var(--surface2);padding:10px;border-radius:8px;">
+          <div style="font-size:12px;color:var(--text2);">Face Match</div>
+          <div style="font-size:18px;font-weight:700;${state.matchConfidence > 0.7 ? 'color:var(--success);' : 'color:var(--danger);'}">${(state.matchConfidence * 100).toFixed(2)}%</div>
+        </div>
+      </div>
+      ${state.attempts < state.maxAttempts ? `
+        <p class="retry-count">Attempt ${state.attempts} of ${state.maxAttempts}</p>
+      ` : `
+        <p class="retry-count">Maximum attempts reached. Please contact support.</p>
+      `}
+    `;
+
+    log('error', '=== VERIFICATION FAILED ===');
+    log('error', `Liveness: ${(state.livenessScore * 100).toFixed(2)}% (need >70%)`);
+    log('error', `Face match: ${(state.matchConfidence * 100).toFixed(2)}% (need >70%)`);
+
+    // Show retry button
+    const actionBtn = document.getElementById('actionBtn');
+    if (state.attempts < state.maxAttempts) {
+      actionBtn.textContent = 'Retry Verification';
+      actionBtn.onclick = () => {
+        closeModal();
+        setTimeout(() => startVerification(), 300);
+      };
+    } else {
+      actionBtn.textContent = 'Close';
+      actionBtn.onclick = closeModal;
+    }
+    actionBtn.style.display = 'block';
+    return; // keep default Done behavior suppressed
+  }
+}
+
+// --- Init ---
+document.getElementById('txn-date').textContent = new Date().toLocaleDateString('en-PH', {
+  year: 'numeric', month: 'long', day: 'numeric'
+});
+
+log('info', 'SVI Biometric Auth Prototype loaded');
+log('info', 'Click "Verify Identity to Continue" to start');
+log('info', 'Transaction: TXN-20260715-001, Kevin Vega (BPI) → Louie Lara (GCash), P17,490.00');
+
+document.getElementById('confirmTransferBtn').onclick = () => {
+  document.getElementById('postAuthSection').style.display = 'none';
+  document.querySelector('#mainCard > .badge').style.display = 'none';
+  document.querySelector('#mainCard > h1').style.display = 'none';
+  document.querySelector('#mainCard > .subtitle').style.display = 'none';
+  document.querySelectorAll('#mainCard > .txn-row').forEach(el => el.style.display = 'none');
+  document.getElementById('transferSuccess').style.display = 'block';
+  log('success', '=== TRANSFER COMPLETED ===');
+  log('success', 'P17,490.00 sent from Kevin Vega to Louie Lara');
+};
+</script>
+
+</body>
+</html>

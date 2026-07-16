@@ -70,6 +70,7 @@ export default function App() {
   const [showLivenessHow, setShowLivenessHow] = useState(false);
   const [showLivenessFails, setShowLivenessFails] = useState(false);
   const [showPresentation, setShowPresentation] = useState(false);
+  const [showPrototype, setShowPrototype] = useState(false);
   const [initialSlide, setInitialSlide] = useState(0);
   const [idFaceBox, setIdFaceBox] = useState<FaceBox | null>(null);
   const [selfieFaceBox, setSelfieFaceBox] = useState<FaceBox | null>(null);
@@ -87,6 +88,8 @@ export default function App() {
 
   useEffect(() => {
     function handleRoute() {
+      setShowPrototype(window.location.pathname === '/prototype');
+      if (window.location.pathname === '/prototype') return;
       const presMatch = window.location.pathname.match(/^\/(face-id|liveness|ocr)\/presentation\/(\d+)$/);
       if (presMatch) {
         const feat = presMatch[1] === 'face-id' ? 'id_to_face' : presMatch[1] === 'liveness' ? 'liveness' : 'ocr';
@@ -464,7 +467,7 @@ export default function App() {
           ]).map((f) => (
             <button
               key={f.key}
-              onClick={() => { setShowPresentation(false); setFeature(f.key); window.history.pushState(null, '', '/' + ({ id_to_face: 'face-id', liveness: 'liveness', ocr: 'ocr' })[f.key]); }}
+              onClick={() => { setShowPresentation(false); setShowPrototype(false); setFeature(f.key); window.history.pushState(null, '', '/' + ({ id_to_face: 'face-id', liveness: 'liveness', ocr: 'ocr' })[f.key]); }}
               style={{
                 width: '100%', textAlign: 'left', padding: '10px 10px', fontSize: 12, fontWeight: 600,
                 border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
@@ -478,6 +481,13 @@ export default function App() {
             </button>
           ))}
 
+          <div style={{ padding: '12px 10px 4px', fontSize: 10, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 1 }}>Prototypes</div>
+
+          <button onClick={() => { window.history.pushState(null, '', '/prototype'); setShowPrototype(true); }}
+            style={{ width: '100%', textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 500, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: '#6366f1', background: showPrototype ? '#334155' : 'transparent' }}>
+            <span>🔐</span><span>Biometric Auth Demo</span>
+          </button>
+
           <div style={{ padding: '12px 10px 4px', fontSize: 10, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 1 }}>Presentations</div>
 
           {([
@@ -487,7 +497,7 @@ export default function App() {
           ]).map((f) => (
             <button
               key={'p-' + f.key}
-              onClick={() => { window.history.pushState(null, '', '/' + f.path + '/presentation/' + f.slide); setShowPresentation(true); setInitialSlide(f.slide); setFeature(f.key); }}
+              onClick={() => { window.history.pushState(null, '', '/' + f.path + '/presentation/' + f.slide); setShowPresentation(true); setShowPrototype(false); setInitialSlide(f.slide); setFeature(f.key); }}
               style={{
                 width: '100%', textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 500,
                 border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
@@ -523,10 +533,10 @@ export default function App() {
 
         </div>
         {/* === Center: Main content === */}
-        <div style={{ flex: '1 1 0', minWidth: 280 }}>
+        <div style={{ flex: '1 1 0', minWidth: 280, position: 'relative' }}>
 
           {/* ==================== ID TO FACE ==================== */}
-          <div style={{ display: feature === 'id_to_face' ? 'block' : 'none' }}>
+          <div style={{ display: feature === 'id_to_face' && !showPrototype ? 'block' : 'none' }}>
             <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
               {(['single', 'batch', 'csv'] as const).map((m) => (
                 <button
@@ -609,7 +619,7 @@ export default function App() {
           </div>
 
           {/* ==================== LIVENESS ==================== */}
-          <div style={{ display: feature === 'liveness' ? 'block' : 'none' }}>
+          <div style={{ display: feature === 'liveness' && !showPrototype ? 'block' : 'none' }}>
             <div style={{ maxWidth: 680, margin: '0 auto' }}>
               <h3 style={{ color: '#e2e8f0', fontWeight: 600, fontSize: 15, marginBottom: 8, textAlign: 'center' }}>Liveness Detection Test</h3>
               <video ref={livenessTestVideoRef} style={{ display: 'none' }} playsInline muted />
@@ -867,7 +877,7 @@ export default function App() {
           </div>
 
           {/* ==================== OCR ==================== */}
-          <div style={{ display: feature === 'ocr' ? 'block' : 'none' }}>
+          <div style={{ display: feature === 'ocr' && !showPrototype ? 'block' : 'none' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
               {ocrEntries.map((entry, idx) => (
                 <div key={entry.key} style={{ display: 'flex', gap: 16, alignItems: 'flex-start', justifyContent: 'center', padding: 12, borderRadius: 8, background: '#1e293b', border: '1px solid #334155' }}>
@@ -1372,6 +1382,10 @@ export default function App() {
                 <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Set <strong>{aiParserProvider.toUpperCase()}_API_KEY</strong> env var on server.</div>
               </div>
             </div>
+          )}
+
+          {showPrototype && (
+            <iframe src="/prototype.html" style={{ width: '100%', height: '100%', border: 'none', position: 'absolute', top: 0, left: 0 }} />
           )}
 
         </div>
