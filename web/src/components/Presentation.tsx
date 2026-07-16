@@ -374,7 +374,7 @@ export default function Presentation({ feature = 'id_to_face', initialSlide = 0,
                     jira: 'CPS-289',
                     links: [
                       { label: 'Jira: CPS-289', url: 'https://svi-jira.atlassian.net/browse/CPS-289' },
-                      { label: 'Confluence', url: 'https://svi-jira.atlassian.net/wiki/spaces/~71202071852762867849479b4d350bd48b7534/pages/250740911/CPS-221+Spike+Biometric+Face+Matching+UX+vs.+Async+Backend' },
+                      { label: 'Confluence', url: 'https://svi-jira.atlassian.net/wiki/spaces/~71202071852762867849479b4d350bd48b7534/pages/268075010/CPS-289+SPIKE+Architecture+Integration+Design+for+Biometric+Transaction+Authentication' },
                     ],
                     gradFrom: '#fbbf24', gradMid: '#f59e0b', gradTo: '#fcd34d',
                     btnGradFrom: '#d97706', btnGradTo: '#f59e0b',

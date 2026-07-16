@@ -1640,7 +1640,7 @@ export const biometricSlides: Slide[] = [
         >
           <a href="https://svi-jira.atlassian.net/browse/CPS-289" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Jira: CPS-289</a>
           {' · '}
-          <a href="https://svi-jira.atlassian.net/wiki/spaces/~71202071852762867849479b4d350bd48b7534/pages/250740911/CPS-221+Spike+Biometric+Face+Matching+UX+vs.+Async+Backend" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Confluence</a>
+          <a href="https://svi-jira.atlassian.net/wiki/spaces/~71202071852762867849479b4d350bd48b7534/pages/268075010/CPS-289+SPIKE+Architecture+Integration+Design+for+Biometric+Transaction+Authentication" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Confluence</a>
         </motion.div>
         <motion.div
           initial={{ width: 0 }}
