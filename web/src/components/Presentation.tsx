@@ -359,6 +359,26 @@ export default function Presentation({ feature = 'id_to_face', initialSlide = 0,
                     gradFrom: '#818cf8', gradMid: '#4ade80', gradTo: '#22c55e',
                     btnGradFrom: '#16a34a', btnGradTo: '#22c55e',
                   },
+                  'bio-title': {
+                    icon: <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 6 }}>
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>,
+                    title: 'Biometric Transaction Authentication', subtitle: 'Architecture & Integration Design — CPS-289', fullTitle: 'CPS-289: SPIKE: Architecture & Integration Design for Biometric Transaction Authentication',
+                    badges: [
+                      { label: 'Iframe Widget', color: '#fbbf24', bgFrom: 'rgba(245,158,11,0.25)', bgTo: 'rgba(251,191,36,0.15)' },
+                      { label: 'Layered Liveness', color: '#86efac', bgFrom: 'rgba(34,197,94,0.25)', bgTo: 'rgba(74,222,128,0.15)' },
+                      { label: '3 Providers', color: '#a5b4fc', bgFrom: 'rgba(99,102,241,0.25)', bgTo: 'rgba(129,140,248,0.15)' },
+                      { label: 'Redis + Cassandra', color: '#d8b4fe', bgFrom: 'rgba(139,92,246,0.25)', bgTo: 'rgba(192,132,252,0.15)' },
+                    ],
+                    desc: 'Secure, plug-and-play architecture for injecting biometric verification into client apps before high-value transactions. Iframe widget + backend session API, layered liveness, and transaction binding without exposing identity data.',
+                    jira: 'CPS-289',
+                    links: [
+                      { label: 'Jira: CPS-289', url: 'https://svi-jira.atlassian.net/browse/CPS-289' },
+                      { label: 'Confluence', url: 'https://svi-jira.atlassian.net/wiki/spaces/~71202071852762867849479b4d350bd48b7534/pages/250740911/CPS-221+Spike+Biometric+Face+Matching+UX+vs.+Async+Backend' },
+                    ],
+                    gradFrom: '#fbbf24', gradMid: '#f59e0b', gradTo: '#fcd34d',
+                    btnGradFrom: '#d97706', btnGradTo: '#f59e0b',
+                  },
                 };
 
                 const cfg = titleConfig[sid];
@@ -443,7 +463,7 @@ export default function Presentation({ feature = 'id_to_face', initialSlide = 0,
                 }
                 return null;
               })()}
-              {currentSlides[current].id !== 'app' && currentSlides[current].id !== 'liveness-title' && currentSlides[current].id !== 'ocr-title' && currentSlides[current].content === null ? (
+              {currentSlides[current].id !== 'app' && currentSlides[current].id !== 'liveness-title' && currentSlides[current].id !== 'ocr-title' && currentSlides[current].id !== 'bio-title' && currentSlides[current].content === null ? (
                 <div style={{ textAlign: 'center', paddingTop: isMobile ? '4vh' : '10vh' }}>
                   <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
                     <div style={{ fontSize: isMobile ? 26 : 36, fontWeight: 800, background: 'linear-gradient(135deg, #818cf8, #a78bfa, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: 8 }}>
