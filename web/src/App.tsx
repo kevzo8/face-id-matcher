@@ -520,7 +520,7 @@ export default function App() {
 
           {([
             { key: 'id_to_face' as const, label: 'ID to Face', color: '#a855f7', icon: '\u2696', demo: 'https://screenrec.com/share/irItDuPKEv' },
-            { key: 'liveness' as const, label: 'Liveness Test', color: '#f97316', icon: '\u25C9', demo: null },
+            { key: 'liveness' as const, label: 'Liveness Test', color: '#f97316', icon: '\u25C9', demo: 'https://screenrec.com/share/jARxoyaW2G' },
             { key: 'ocr' as const, label: 'OCR & ID Type', color: '#22c55e', icon: '\u2630', demo: null },
           ]).map((f) => (
             f.demo ? (

@@ -334,6 +334,7 @@ export default function Presentation({ feature = 'id_to_face', initialSlide = 0,
                     links: [
                       { label: 'Jira: CPS-222', url: 'https://svi-jira.atlassian.net/browse/CPS-222' },
                       { label: 'Confluence', url: 'https://svi-jira.atlassian.net/wiki/spaces/~71202071852762867849479b4d350bd48b7534/pages/250740911/CPS-221+Spike+Biometric+Face+Matching+UX+vs.+Async+Backend' },
+                      { label: 'Demo Video', url: 'https://screenrec.com/share/jARxoyaW2G' },
                     ],
                     gradFrom: '#f97316', gradMid: '#ea580c', gradTo: '#fdba74',
                     btnGradFrom: '#ea580c', btnGradTo: '#f97316',
