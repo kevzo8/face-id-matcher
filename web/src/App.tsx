@@ -521,7 +521,8 @@ export default function App() {
           {([
             { key: 'id_to_face' as const, label: 'ID to Face', color: '#a855f7', icon: '\u2696', demo: 'https://screenrec.com/share/irItDuPKEv' },
             { key: 'liveness' as const, label: 'Liveness Test', color: '#f97316', icon: '\u25C9', demo: 'https://screenrec.com/share/jARxoyaW2G' },
-            { key: 'ocr' as const, label: 'OCR & ID Type', color: '#22c55e', icon: '\u2630', demo: null },
+            { key: 'ocr' as const, label: 'OCR & ID Type', color: '#22c55e', icon: '\u2630', demo: 'https://screenrec.com/share/P5ULAjxOBZ' },
+            { key: 'biometric' as const, label: 'Biometric Auth', color: '#fbbf24', icon: '\u26A1', demo: 'https://screenrec.com/share/NBHv1XiC8j' },
           ]).map((f) => (
             f.demo ? (
               <a key={'d-' + f.key} href={f.demo} target="_blank" rel="noopener noreferrer"
