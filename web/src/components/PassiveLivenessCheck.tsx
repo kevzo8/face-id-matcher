@@ -16,7 +16,7 @@ interface PassiveResult {
 interface Props {
   onComplete: (result: PassiveResult) => void;
   serverUrl: string;
-  provider?: 'faceplusplus' | 'faceplusplus_hybrid' | 'aws' | 'aws_hybrid' | 'heuristic' | 'aws_detect_labels';
+  provider?: 'faceplusplus' | 'faceplusplus_hybrid' | 'aws' | 'aws_hybrid' | 'heuristic' | 'aws_detect_labels' | 'aws_detect_labels_hybrid' | 'aws_detect_labels_heuristic';
   faceplusServerUrl?: string;
   awsServerUrl?: string;
 }
@@ -212,6 +212,125 @@ export default function PassiveLivenessCheck({ onComplete, serverUrl, provider =
             doneRef.current = true;
 
             stream.getTracks().forEach(t => t.stop());
+
+            if (provider === 'aws_detect_labels_heuristic') {
+              const [passiveRes, objectsRes] = await Promise.all([
+                fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/passive`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ image: fullB64, bbox, provider: 'heuristic' }),
+                }),
+                fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/detect-objects`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ image: fullB64 }),
+                }),
+              ]);
+              const [passiveData, objectsData] = await Promise.all([passiveRes.json(), objectsRes.json()]);
+
+              const info: { label: string; value: string }[] = [];
+              if (objectsData.raw_labels) {
+                for (const lbl of objectsData.raw_labels) {
+                  info.push({ label: lbl.label, value: `${lbl.confidence.toFixed(0)}%` });
+                }
+              }
+
+              const spoofRisk = objectsData.spoof_risk || 'low';
+              const isSpoof = spoofRisk === 'high' || spoofRisk === 'medium';
+
+              const passiveScore = passiveData.score ?? 0;
+              const passiveConfidence = passiveData.confidence ?? 0;
+              const penalty = isSpoof ? 0.3 : 0;
+              const combinedScore = Math.max(0, passiveScore * (1 - penalty));
+              const combinedConfidence = Math.max(0, passiveConfidence * (1 - penalty));
+
+              const breakdown: { label: string; pts: number }[] = [
+                ...(passiveData.breakdown || []),
+                { label: `Spoof penalty (${objectsData.spoof_risk || 'low'})`, pts: Math.round(passiveScore - combinedScore) },
+              ];
+
+              onComplete({
+                is_real: combinedScore > 14,
+                confidence: combinedConfidence,
+                score: Math.round(combinedScore),
+                details: isSpoof
+                  ? `Spoof risk: ${objectsData.spoof_risk}. ${objectsData.spoof_objects_detected?.map((o: any) => o.label).join(', ') || ''}`
+                  : passiveData.details || 'No spoof objects detected',
+                snapshotUrl,
+                breakdown,
+                info: info.length > 0 ? info : undefined,
+                provider: 'aws_detect_labels_hybrid',
+              });
+              return;
+            }
+
+            if (provider === 'aws_detect_labels_hybrid') {
+              const [passiveRes, objectsRes, facesRes] = await Promise.all([
+                fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/passive`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ image: fullB64, bbox, provider: 'aws_hybrid' }),
+                }),
+                fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/detect-objects`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ image: fullB64 }),
+                }),
+                fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/detect-faces`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ image: fullB64 }),
+                }),
+              ]);
+              const [passiveData, objectsData, facesData] = await Promise.all([passiveRes.json(), objectsRes.json(), facesRes.json()]);
+
+              const info: { label: string; value: string }[] = [];
+              if (facesData?.face_detected) {
+                if (facesData.age_low != null && facesData.age_high != null) info.push({ label: 'Age', value: `${facesData.age_low}-${facesData.age_high}` });
+                if (facesData.gender) info.push({ label: 'Gender', value: facesData.gender });
+                if (facesData.expression) info.push({ label: 'Expression', value: facesData.expression });
+                info.push({ label: 'Face Confidence', value: `${facesData.confidence?.toFixed(1) ?? '?'}%` });
+                info.push({ label: 'Eyes Open', value: facesData.eyes_open ? `Yes (${facesData.eyes_open_confidence?.toFixed(0) ?? '?'}%)` : 'No' });
+                info.push({ label: 'Lighting', value: facesData.quality_brightness?.toFixed(0) ?? '?' });
+                info.push({ label: 'Sharpness', value: facesData.quality_sharpness?.toFixed(0) ?? '?' });
+              } else {
+                info.push({ label: 'AWS Face', value: 'No face detected' });
+              }
+
+              if (objectsData.raw_labels) {
+                for (const lbl of objectsData.raw_labels) {
+                  info.push({ label: lbl.label, value: `${lbl.confidence.toFixed(0)}%` });
+                }
+              }
+
+              const spoofRisk = objectsData.spoof_risk || 'low';
+              const isSpoof = spoofRisk === 'high' || spoofRisk === 'medium';
+
+              const passiveScore = passiveData.score ?? 0;
+              const passiveConfidence = passiveData.confidence ?? 0;
+              const penalty = isSpoof ? 0.3 : 0;
+              const combinedScore = Math.max(0, passiveScore * (1 - penalty));
+              const combinedConfidence = Math.max(0, passiveConfidence * (1 - penalty));
+
+              const breakdown: { label: string; pts: number }[] = [
+                ...(passiveData.breakdown || []),
+                { label: `Spoof penalty (${objectsData.spoof_risk || 'low'})`, pts: Math.round(passiveScore - combinedScore) },
+              ];
+
+              onComplete({
+                is_real: combinedScore > 14,
+                confidence: combinedConfidence,
+                score: Math.round(combinedScore),
+                details: isSpoof
+                  ? `Spoof risk: ${objectsData.spoof_risk}. ${objectsData.spoof_objects_detected?.map((o: any) => o.label).join(', ') || ''}`
+                  : passiveData.details || 'No spoof objects detected',
+                snapshotUrl,
+                breakdown,
+                info: info.length > 0 ? info : undefined,
+                provider: 'aws_detect_labels_hybrid',
+              });
+              return;
+            }
 
             if (provider === 'aws_detect_labels') {
               const res = await fetch(`${serverUrl.replace(/\/+$/, '')}/liveness/detect-objects`, {

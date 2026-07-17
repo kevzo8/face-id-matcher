@@ -58,7 +58,7 @@ export default function App() {
   const [aiParserProvider, setAiParserProvider] = useState<'groq' | 'openai' | 'gemini'>('groq');
   const [aiResult, setAiResult] = useState<{ id_type_code?: number; id_type_name?: string; personal_data?: { label: string; value: string }[]; other_fields?: { label: string; value: string }[]; id_information?: { id_label?: string; id_type_code?: number; id_type_name?: string; id_number?: string }[] } | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
-  const [livenessProvider, setLivenessProvider] = useState<LivenessProvider>('open_face_liveness');
+  const [livenessProvider, setLivenessProvider] = useState<LivenessProvider>('aws_detect_faces_objects');
   const [livenessServerUrl, setLivenessServerUrl] = useState('https://face-id-matcher.onrender.com');
   const [obServerUrl, setObServerUrl] = useState('https://openbiometrics.onrender.com');
   const [faceplusServerUrl, setFaceplusServerUrl] = useState('https://face-id-matcher.onrender.com');
@@ -86,7 +86,7 @@ export default function App() {
   const [livenessTestVideo, setLivenessTestVideo] = useState<HTMLVideoElement | null>(null);
   const [livenessTestMode, setLivenessTestMode] = useState<'active' | 'passive' | 'upload' | null>(null);
   const [passiveLivenessResult, setPassiveLivenessResult] = useState<{ is_real: boolean; confidence: number; score: number; snapshotUrl?: string; details?: string; error?: string; breakdown?: { label: string; pts: number }[]; info?: { label: string; value: string }[] } | null>(null);
-  const [passiveLivenessProvider, setPassiveLivenessProvider] = useState<'faceplusplus' | 'faceplusplus_hybrid' | 'aws' | 'aws_hybrid' | 'heuristic' | 'aws_detect_labels'>('heuristic');
+  const [passiveLivenessProvider, setPassiveLivenessProvider] = useState<'faceplusplus' | 'faceplusplus_hybrid' | 'aws' | 'aws_hybrid' | 'heuristic' | 'aws_detect_labels' | 'aws_detect_labels_hybrid' | 'aws_detect_labels_heuristic'>('aws_detect_labels_hybrid');
   const livenessTestVideoRef = useRef<HTMLVideoElement>(null);
   const playbackRef = useRef<HTMLVideoElement>(null);
 
@@ -1251,6 +1251,8 @@ export default function App() {
                 <option value="aws">AWS DetectFaces ($0.001/check)</option>
                 <option value="aws_hybrid">AWS + Heuristic ($0.001/check)</option>
                 <option value="aws_detect_labels">AWS DetectLabels ($0.001/check)</option>
+                <option value="aws_detect_labels_hybrid">AWS Face & Label + Heuristic ($0.002/check)</option>
+                <option value="aws_detect_labels_heuristic">AWS DetectLabels + Heuristic ($0.001/check)</option>
                 <option value="faceplusplus">Face++ Passive ($0.00019/check)</option>
                 <option value="faceplusplus_hybrid">Face++ + Heuristic ($0.00019/check)</option>
               </select>
