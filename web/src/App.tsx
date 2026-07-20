@@ -1219,8 +1219,11 @@ export default function App() {
               {livenessProvider !== 'open_face_liveness' && (
                 <>
                   <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1 }}>Server URL</div>
-                  <input type="text" value={livenessServerUrl} onChange={(e) => setLivenessServerUrl(e.target.value)}
-                    style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box' }} />
+                  <select value={livenessServerUrl} onChange={(e) => setLivenessServerUrl(e.target.value)}
+                    style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box', marginBottom: 8 }}>
+                    <option value="https://face-id-matcher.onrender.com">Render (https://face-id-matcher.onrender.com)</option>
+                    <option value="http://localhost:8000">Localhost (http://localhost:8000)</option>
+                  </select>
                 </>
               )}
               {livenessProvider === 'openbiometrics' && (
@@ -1321,8 +1324,11 @@ export default function App() {
                 {passiveLivenessProvider === 'aws_detect_labels' && (
                   <>
                     <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Server URL</div>
-                    <input type="text" value={livenessServerUrl} onChange={(e) => setLivenessServerUrl(e.target.value)}
-                    style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box', marginBottom: 8 }} />
+                    <select value={livenessServerUrl} onChange={(e) => setLivenessServerUrl(e.target.value)}
+                      style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box', marginBottom: 8 }}>
+                      <option value="https://face-id-matcher.onrender.com">Render (https://face-id-matcher.onrender.com)</option>
+                      <option value="http://localhost:8000">Localhost (http://localhost:8000)</option>
+                    </select>
                     <strong style={{ color: '#22c55e' }}>AWS DetectLabels</strong> &mdash; Object/spoof detection ($0.001/check).
                     <br />
                     <span style={{ fontSize: 10, color: '#64748b', marginTop: 4, display: 'block' }}>
@@ -1334,8 +1340,11 @@ export default function App() {
                 {passiveLivenessProvider === 'heuristic' && (
                   <>
                     <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Server URL</div>
-                    <input type="text" value={livenessServerUrl} onChange={(e) => setLivenessServerUrl(e.target.value)}
-                    style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box', marginBottom: 8 }} />
+                    <select value={livenessServerUrl} onChange={(e) => setLivenessServerUrl(e.target.value)}
+                      style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box', marginBottom: 8 }}>
+                      <option value="https://face-id-matcher.onrender.com">Render (https://face-id-matcher.onrender.com)</option>
+                      <option value="http://localhost:8000">Localhost (http://localhost:8000)</option>
+                    </select>
                     <strong style={{ color: '#4ade80' }}>Heuristic (Local)</strong> &mdash; Server-side numpy/PIL analysis ($0, no API calls).
                     <br />
                     <span style={{ fontSize: 10, color: '#64748b', marginTop: 4, display: 'block' }}>

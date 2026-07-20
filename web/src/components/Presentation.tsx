@@ -129,8 +129,8 @@ export default function Presentation({ feature = 'id_to_face', initialSlide = 0,
       >
         <div style={{ padding: '18px 16px', borderBottom: `1px solid ${t.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>Face ID Matcher</div>
-            <div style={{ fontSize: 11, color: t.textMuted, marginTop: 2 }}>CPS-221 POC</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>SVI - Secure Verification & Identification</div>
+            <div style={{ fontSize: 11, color: t.textMuted, marginTop: 2 }}>Biometric Transaction Authentication</div>
           </div>
           {isMobile && (
             <button onClick={() => setSidebarOpen(false)} style={{ ...btnStyle, padding: '2px 6px' }}>✕</button>
@@ -301,7 +301,7 @@ export default function Presentation({ feature = 'id_to_face', initialSlide = 0,
                       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
                       <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
                     </svg>,
-                    title: 'Face ID Matcher', subtitle: 'Biometric Face Matching — CPS-221', fullTitle: 'CPS-221: Spike — Biometric Face Matching (UX vs. Async Backend)',
+                    title: 'SVI - Secure Verification & Identification', subtitle: 'Biometric Transaction Authentication', fullTitle: 'SVI - Secure Verification & Identification',
                     badges: [
                       { label: '7 Providers', color: '#a5b4fc', bgFrom: 'rgba(99,102,241,0.25)', bgTo: 'rgba(129,140,248,0.15)' },
                       { label: '40 Test Pairs', color: '#86efac', bgFrom: 'rgba(34,197,94,0.25)', bgTo: 'rgba(74,222,128,0.15)' },
