@@ -41,9 +41,18 @@ class AWSDetectFacesProvider:
             if sharpness > 40: score += 5
 
             return {
+                "face_detected": True,
                 "is_real": score > 14,
-                "confidence": round(score / 20.0, 4),
+                "confidence": confidence,
+                "eyes_open": eyes_open,
+                "eyes_open_confidence": eyes_open_conf,
+                "quality_brightness": brightness,
+                "quality_sharpness": sharpness,
                 "score": score,
+                "age_low": face.get("AgeRange", {}).get("Low"),
+                "age_high": face.get("AgeRange", {}).get("High"),
+                "gender": face.get("Gender", {}).get("Value"),
+                "expression": max(emotions, key=lambda e: e.get("Confidence", 0)).get("Type") if face.get("Emotions") else None,
                 "breakdown": [
                     {"label": "Face Confidence", "pts": 5 if confidence > 90 else 0},
                     {"label": "Eyes Open", "pts": 5 if eyes_open and eyes_open_conf > 80 else 0},
@@ -60,7 +69,13 @@ class AWSDetectFacesProvider:
                 "error": None,
             }
         except Exception as e:
-            return {"is_real": False, "confidence": 0, "score": 0, "error": str(e)}
+            return {
+                "face_detected": False,
+                "is_real": False, "confidence": 0, "score": 0,
+                "eyes_open": False, "eyes_open_confidence": 0,
+                "quality_brightness": 0, "quality_sharpness": 0,
+                "error": str(e)
+            }
 
     def is_available(self) -> bool:
         try:

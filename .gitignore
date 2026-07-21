@@ -1,35 +1,70 @@
+# ─── Dependencies ───────────────────────────────────────────────────────────
 node_modules/
+server/node_modules/
+web/node_modules/
+
+# ─── Python ──────────────────────────────────────────────────────────────────
 __pycache__/
 *.pyc
 *.pyo
-.env
-.env.local
+*.egg-info/
 dist/
+*.egg
+.venv/
+venv/
+env/
+
+# ─── Environment / Secrets ─────────────────────────────────────────────────
+.env
+.env.*
+*.pem
+*credentials*
+*secret*
+*.key
+aws-config
+
+# ─── Build output ───────────────────────────────────────────────────────────
+dist/
+build/
 target/
-*.log
+*.tsbuildinfo
+web/dist/
+
+# ─── IDE / Editor ──────────────────────────────────────────────────────────
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-# Kaggle dataset images (too large for git)
+# ─── OS ─────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ─── Logs ──────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+
+# ─── Data / Models (too large) ─────────────────────────────────────────────
 samples/kaggle/Selfies ID Images dataset/
-
-# DeepFace Python 3.12 venv (separate env, contains TensorFlow + DLLs)
 deepface-env/
-
-# InsightFace compiled libraries (7.6GB ONNX models + DLLs)
 batch/lib/
+*.onnx
+*.pth
+*.pt
 
-# Sample images (may contain PII)
-samples/dirty-pairs/41_ID_Paolo.jpg
-samples/dirty-pairs/41_Photo_Paolo.jpg
+# ─── Sample images (may contain PII) ──────────────────────────────────────
+samples/dirty-pairs/41_*.jpg
 
-# Generated result CSVs (timestamped)
+# ─── Generated results ─────────────────────────────────────────────────────
 results_*.csv
 batch/results_*.csv
-
-# Sample exports
 samples/hq/
 samples/results/
 
-# Vercel deploy output
+# ─── Vercel ─────────────────────────────────────────────────────────────────
 web/.vercel
+
+# ─── Docker ─────────────────────────────────────────────────────────────────
+# (Dockerfile and docker-compose.yml should be committed — not ignored)

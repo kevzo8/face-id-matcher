@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import config
-from .api.routes import router
+from .api.routes import router, poc_router
 
 
 @asynccontextmanager
@@ -38,3 +38,4 @@ app.add_middleware(
 )
 
 app.include_router(router, prefix="/api/v1")
+app.include_router(poc_router)

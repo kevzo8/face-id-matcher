@@ -41,6 +41,9 @@ def check_sdk_version(x_sdk_version: str | None):
             pass
 
 
+# ─── New API (session-based, v1) ────────────────────────────────────────────
+
+
 @router.post("/session/create", response_model=SessionCreateResponse)
 async def create_session(authorization: str = Header(None)):
     verify_auth(authorization)
@@ -105,10 +108,108 @@ async def run_liveness(
     )
 
 
-@router.get("/health")
+# ─── Backward-compatible POC endpoints (no prefix, no auth) ────────────────
+
+poc_router = APIRouter()
+
+
+@poc_router.post("/liveness/passive")
+async def passive_liveness(request: Request):
+    body = await request.json()
+    image_b64 = body.get("image")
+    if not image_b64:
+        raise HTTPException(status_code=400, detail="No image provided")
+
+    try:
+        image_bytes = base64.b64decode(image_b64)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid base64 image")
+
+    result, provider, used_fallback = engine.process_passive(image_bytes)
+
+    response = {
+        "is_real": result.get("is_real", False),
+        "confidence": result.get("confidence", 0),
+        "score": result.get("score", 0),
+        "details": "Passed" if result.get("is_real") else "Failed",
+        "provider": provider,
+        "error": result.get("error"),
+    }
+
+    if result.get("breakdown"):
+        response["breakdown"] = result["breakdown"]
+    if result.get("info"):
+        response["info"] = result["info"]
+
+    return response
+
+
+@poc_router.post("/liveness/detect-faces")
+async def detect_faces_liveness(request: Request):
+    body = await request.json()
+    image_b64 = body.get("image")
+    if not image_b64:
+        raise HTTPException(status_code=400, detail="No image provided")
+
+    try:
+        image_bytes = base64.b64decode(image_b64)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid base64 image")
+
+    if engine.aws_detect_faces and engine.aws_detect_faces.is_available():
+        result = engine.aws_detect_faces.predict(image_bytes)
+        return {
+            "face_detected": result.get("face_detected", False),
+            "confidence": result.get("confidence", 0),
+            "eyes_open": result.get("eyes_open", False),
+            "eyes_open_confidence": result.get("eyes_open_confidence", 0),
+            "quality_brightness": result.get("quality_brightness", 0),
+            "quality_sharpness": result.get("quality_sharpness", 0),
+            "score": result.get("score", 0),
+            "age_low": result.get("age_low"),
+            "age_high": result.get("age_high"),
+            "gender": result.get("gender"),
+            "expression": result.get("expression"),
+            "error": None,
+        }
+    else:
+        return {"error": "AWS DetectFaces not available"}
+
+
+@poc_router.post("/liveness/detect-objects")
+async def detect_objects_liveness(request: Request):
+    body = await request.json()
+    image_b64 = body.get("image")
+    if not image_b64:
+        raise HTTPException(status_code=400, detail="No image provided")
+
+    try:
+        image_bytes = base64.b64decode(image_b64)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid base64 image")
+
+    if engine.aws_detect_labels and engine.aws_detect_labels.is_available():
+        result = engine.aws_detect_labels.predict(image_bytes)
+        return {
+            "spoof_objects_detected": result.get("spoof_objects_detected", []),
+            "has_phone": result.get("has_phone", False),
+            "has_hand": result.get("has_hand", False),
+            "has_screen": result.get("has_screen", False),
+            "has_photo": result.get("has_photo", False),
+            "has_id": result.get("has_id", False),
+            "spoof_risk": result.get("spoof_risk", "low"),
+            "raw_labels": result.get("raw_labels", []),
+            "error": None,
+        }
+    else:
+        return {"error": "AWS DetectLabels not available"}
+
+
+@poc_router.get("/health")
 async def health():
     return {
         "status": "ok",
         "environment": config.environment,
         "providers": engine.get_status(),
     }
+
