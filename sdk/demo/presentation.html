@@ -60,7 +60,7 @@ pre{font-size:11px}
     <span class="badge">FastAPI Backend</span>
   </div>
   <p style="color:#64748b;font-size:14px;">Version 1.0.0 &mdash; July 2026</p>
-  <img src="../../web/public/assets/svi-biometrics-api.png" alt="SVI Biometrics API" style="max-width:100%;height:auto;margin-top:12px;">
+  <img src="../../web/public/assets/svi-biometrics-api.png" alt="SVI Biometrics API" style="max-width:100%;max-height:80vh;height:auto;margin-top:12px;">
   <div class="footer">Arrow keys or click numbers below to navigate</div>
 </section>
 
@@ -112,9 +112,6 @@ pre{font-size:11px}
       <ul style="font-size:13px;">
         <li><code>POST /api/v1/session/create</code></li>
         <li><code>POST /api/v1/liveness</code></li>
-        <li><code>POST /liveness/passive</code> (legacy)</li>
-        <li><code>POST /liveness/detect-faces</code> (AWS)</li>
-        <li><code>POST /liveness/detect-objects</code> (AWS)</li>
         <li><code>GET /health</code></li>
       </ul>
     </div>
@@ -263,34 +260,12 @@ Authorization: Bearer &lt;key&gt;
   "error":        null }</pre>
     </div>
     <div>
-      <h3>Legacy Endpoints (no auth)</h3>
+      <h3>GET /health</h3>
       <pre>
-POST /liveness/passive
-  Heuristic liveness on an image
-
-POST /liveness/detect-faces
-  AWS Rekognition face analysis
-
-POST /liveness/detect-objects
-  AWS Rekognition spoof detection
-
-GET  /health
-  Server + provider status</pre>
-
-      <h3>POST /liveness/passive</h3>
-      <pre>
-// Request
-{ "image":    "base64...",
-  "provider": "heuristic" }
-
 // Response
-{ "is_real":    true,
-  "confidence": 0.85,
-  "score":      72,
-  "details":    "Passed",
-  "provider":   "heuristic",
-  "breakdown":  [...],
-  "error":      null }</pre>
+{ "status": "ok",
+  "environment": "production",
+  "providers": { ... } }</pre>
     </div>
   </div>
 </section>
