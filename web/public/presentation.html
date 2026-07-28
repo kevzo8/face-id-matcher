@@ -552,9 +552,9 @@ document.addEventListener('keydown', function(e) {
       await sleep(100);
       await typeText(els[2], 'I', 60);
       await sleep(100);
-      await typeText(els[3], 'Biometrics', 45);
-      await sleep(600);
     }
+    await typeText(els[3], 'Biometrics', 45);
+    await sleep(600);
 
     for (var i = 0; i < 3; i++) {
       await appendText(els[i], suffixes[i].orig, 40);
