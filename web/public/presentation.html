@@ -637,8 +637,11 @@ document.addEventListener('keydown', function(e) {
   var current = -1;
   for (var i = 0; i < slides.length; i++) {
     var rect = slides[i].getBoundingClientRect();
-    if (rect.top <= 100 && rect.bottom > 100) { current = i; break; }
+    // slide is "current" if it covers the center of viewport
+    var centerY = window.innerHeight / 2;
+    if (rect.top <= centerY && rect.bottom > centerY) { current = i; break; }
   }
+  if (current === -1) return; // no slide found at center
   if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
     if (current < slides.length - 1) slides[current + 1].scrollIntoView({ behavior: 'smooth' });
     e.preventDefault();
