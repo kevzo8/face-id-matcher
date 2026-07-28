@@ -566,6 +566,7 @@ document.addEventListener('keydown', function(e) {
       await backspace(els[i], 1, 25);
       await sleep(80);
     }
+    await backspace(els[3], 0, 25);
     await sleep(400);
 
     await fadeOut(sub, 400);
@@ -577,7 +578,6 @@ document.addEventListener('keydown', function(e) {
       await appendText(els[i], suffixes[i].alt, 40);
       await sleep(200);
     }
-    await fadeReplace(els[3], 'Corporation', 300);
 
     if (firstRun) {
       var footer = document.getElementById('s10-footer');
@@ -597,8 +597,6 @@ document.addEventListener('keydown', function(e) {
       await backspace(els[i], 1, 25);
       await sleep(80);
     }
-    await fadeReplace(els[3], 'Biometrics', 300);
-    await sleep(400);
 
     await fadeOut(sub, 400);
     sub.textContent = 'presenting';
