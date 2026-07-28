@@ -389,8 +389,8 @@ face-id-matcher/
 <!-- SLIDE 10: Thank You -->
 <section class="slide" id="s10" style="justify-content:center;">
   <div style="max-width:700px;padding-left:60px;">
-    <div id="s10-sub" style="font-size:15px;color:#64748b;margin-bottom:16px;min-width:12ch;white-space:nowrap;opacity:0;"></div>
-    <div id="s10-words" style="font-family:'Fira Code','JetBrains Mono',monospace;font-size:42px;font-weight:800;line-height:1.4;">
+    <div id="s10-sub" style="font-size:16px;color:#94a3b8;font-weight:700;letter-spacing:0.5px;margin-bottom:16px;min-width:12ch;white-space:nowrap;opacity:0;"></div>
+    <div id="s10-words" style="font-family:'Fira Code','JetBrains Mono','Courier New',monospace;font-size:42px;font-weight:800;line-height:1.4;">
       <div id="sl1" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:14ch;white-space:nowrap;"></div>
       <div id="sl2" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:14ch;white-space:nowrap;"></div>
       <div id="sl3" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:18ch;white-space:nowrap;"></div>
@@ -445,6 +445,15 @@ face-id-matcher/
   async function fadeOut(el, dur) {
     el.style.transition = 'opacity ' + dur + 'ms';
     el.style.opacity = '0';
+    await sleep(dur);
+  }
+
+  async function fadeReplace(el, newText, dur) {
+    el.style.transition = 'opacity ' + dur + 'ms';
+    el.style.opacity = '0';
+    await sleep(dur);
+    el.textContent = newText;
+    el.style.opacity = '1';
     await sleep(dur);
   }
 
@@ -506,17 +515,15 @@ face-id-matcher/
       await appendText(els[i], suffixes[i].alt, 40);
       await sleep(200);
     }
-    // Replace Biometrics → Corporation via backspace
-    await backspace(els[3], 0, 25);
-    await typeText(els[3], 'Corporation', 40);
+    // Replace Biometrics → Corporation (fade)
+    await fadeReplace(els[3], 'Corporation', 300);
     await sleep(2500);
 
     for (var i = 0; i < 3; i++) {
       await backspace(els[i], 1, 25);
       await sleep(80);
     }
-    await backspace(els[3], 0, 25);
-    await typeText(els[3], 'Biometrics', 40);
+    await fadeReplace(els[3], 'Biometrics', 300);
     await sleep(400);
 
     await fadeOut(sub, 400);
