@@ -46,7 +46,8 @@ pre{font-size:11px}
 <div class="nav">
   <a href="#s1">1</a><a href="#s2">2</a><a href="#s3">3</a>
   <a href="#s4">4</a><a href="#s5">5</a><a href="#s6">6</a>
-  <a href="#s7">7</a><a href="#s8">8</a><a href="#s9">9</a><a href="#s10">10</a>
+  <a href="#s7">7</a><a href="#s8">8</a><a href="#s9">9</a>
+  <a href="#s10">10</a>
 </div>
 
 <!-- SLIDE 1: Title -->
@@ -376,70 +377,107 @@ face-id-matcher/
     +-- tsconfig.json</pre>
     </div>
     <div style="display:flex;flex-direction:column;justify-content:center;">
-      <div class="card" style="border-color:#3b82f6;">
-        <p style="font-size:14px;font-weight:600;color:#60a5fa;margin-bottom:6px;">Key Design Decision</p>
-        <p style="font-size:13px;line-height:1.6;">The SDK does all scoring <strong>client-side</strong> using MediaPipe. The backend is for session management, audit logging, and optional cloud provider fallbacks.</p>
-        <p style="font-size:13px;line-height:1.6;margin-top:6px;">No images leave the browser unless you explicitly call the API.</p>
-      </div>
-      <p style="font-size:13px;color:#64748b;margin-top:16px;">End of presentation</p>
-    </div>
-  </div>
-</section>
+<div class="card" style="border-color:#3b82f6;">
+         <p style="font-size:14px;font-weight:600;color:#60a5fa;margin-bottom:6px;">Key Design Decision</p>
+         <p style="font-size:13px;line-height:1.6;">The SDK does all scoring <strong>client-side</strong> using MediaPipe. The backend is for session management, audit logging, and optional cloud provider fallbacks.</p>
+         <p style="font-size:13px;line-height:1.6;margin-top:6px;">No images leave the browser unless you explicitly call the API.</p>
+       </div>
+       <p style="font-size:13px;color:#64748b;margin-top:16px;">End of presentation</p>
+     </div>
+   </div>
+ </section>
 
-<!-- SLIDE 10: Thank You -->
-<section class="slide" id="s10" style="padding-top:60px;">
-  <div style="max-width:700px;padding-left:60px;">
-    <div id="s10-sub" style="font-size:16px;color:#94a3b8;font-weight:700;letter-spacing:0.5px;margin-bottom:16px;min-width:12ch;white-space:nowrap;opacity:0;"></div>
-    <div id="s10-words" style="font-family:'Fira Code','JetBrains Mono','Courier New',monospace;font-size:42px;font-weight:800;line-height:1.4;">
-      <div id="sl1" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:14ch;white-space:nowrap;"></div>
-      <div id="sl2" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:14ch;white-space:nowrap;"></div>
-      <div id="sl3" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:18ch;white-space:nowrap;"></div>
-      <div id="sl4" style="color:#e2e8f0;min-width:11ch;white-space:nowrap;"></div>
-    </div>
+ <!-- SLIDE 10: Thank You -->
+ <section class="slide" id="s10" style="padding-top:60px;">
+   <div style="max-width:700px;padding-left:60px;">
+     <div id="s10-sub" style="font-size:16px;color:#94a3b8;font-weight:700;letter-spacing:0.5px;margin-bottom:16px;min-width:12ch;white-space:nowrap;opacity:0;"></div>
+     <div id="s10-words" style="font-family:'Fira Code','JetBrains Mono','Courier New',monospace;font-size:42px;font-weight:800;line-height:1.4;">
+       <div id="sl1" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:14ch;white-space:nowrap;"></div>
+       <div id="sl2" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:14ch;white-space:nowrap;"></div>
+       <div id="sl3" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:18ch;white-space:nowrap;"></div>
+       <div id="sl4" style="color:#e2e8f0;min-width:11ch;white-space:nowrap;"></div>
+     </div>
+ 
+     <div id="s10-footer" style="display:none;margin-top:40px;">
+       <p style="font-size:15px;color:#94a3b8;line-height:1.7;">
+         Identity verification for the modern web<br>
+         Privacy-first &mdash; no images leave the browser<br>
+         Powered by SVI
+       </p>
+       <p style="font-size:18px;color:#64748b;margin-top:24px;">Built by <strong style="color:#e2e8f0;">Kevin G. Vega</strong></p>
+       <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+         <a href="https://vegamatcher.kevinguadalupevega.com/demo.html" target="_blank" style="display:inline-block;padding:8px 18px;background:#3b82f6;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Demo App</a>
+         <a href="https://screenrec.com/share/liGRYgbyJ8" target="_blank" style="display:inline-block;padding:8px 18px;background:#1e293b;border:1px solid #3b82f6;color:#60a5fa;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Demo Video</a>
+         <a href="https://svi-jira.atlassian.net/browse/CPS-343" target="_blank" style="display:inline-block;padding:8px 18px;background:#1e293b;border:1px solid #3b82f6;color:#60a5fa;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">CPS-343</a>
+       </div>
+     </div>
+   </div>
+   <div class="footer" style="margin-top:auto;">Arrow keys or click numbers below to navigate</div>
+ </section>
 
-    <div id="s10-footer" style="display:none;margin-top:40px;">
-      <p style="font-size:15px;color:#94a3b8;line-height:1.7;">
-        Identity verification for the modern web<br>
-        Privacy-first &mdash; no images leave the browser<br>
-        Powered by SVI
-      </p>
-      <p style="font-size:18px;color:#64748b;margin-top:24px;">Built by <strong style="color:#e2e8f0;">Kevin G. Vega</strong></p>
-      <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
-        <a href="https://vegamatcher.kevinguadalupevega.com/demo.html" target="_blank" style="display:inline-block;padding:8px 18px;background:#3b82f6;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Demo App</a>
-        <a href="https://screenrec.com/share/liGRYgbyJ8" target="_blank" style="display:inline-block;padding:8px 18px;background:#1e293b;border:1px solid #3b82f6;color:#60a5fa;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Demo Video</a>
-        <a href="https://svi-jira.atlassian.net/browse/CPS-343" target="_blank" style="display:inline-block;padding:8px 18px;background:#1e293b;border:1px solid #3b82f6;color:#60a5fa;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">CPS-343</a>
-      </div>
-    </div>
-  </div>
-  <div class="footer" style="margin-top:auto;">Arrow keys or click numbers below to navigate</div>
-</section>
-    <div id="s10-sub" style="font-size:16px;color:#94a3b8;font-weight:700;letter-spacing:0.5px;margin-bottom:16px;min-width:12ch;white-space:nowrap;opacity:0;"></div>
-    <div id="s10-words" style="font-family:'Fira Code','JetBrains Mono','Courier New',monospace;font-size:42px;font-weight:800;line-height:1.4;">
-      <div id="sl1" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:14ch;white-space:nowrap;"></div>
-      <div id="sl2" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:14ch;white-space:nowrap;"></div>
-      <div id="sl3" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:18ch;white-space:nowrap;"></div>
-      <div id="sl4" style="color:#e2e8f0;min-width:11ch;white-space:nowrap;"></div>
-    </div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'dark',
+  themeVariables: {
+    primaryColor: '#1e3a5f',
+    primaryBorderColor: '#3b82f6',
+    primaryTextColor: '#e2e8f0',
+    lineColor: '#3b82f6',
+    secondaryColor: '#1e293b',
+    tertiaryColor: '#0f172a',
+    fontSize: '14px',
+  },
+  flowchart: { useMaxWidth: true, htmlLabels: true, padding: 12 },
+});
 
-    <div id="s10-footer" style="display:none;margin-top:40px;">
-      <p style="font-size:15px;color:#94a3b8;line-height:1.7;">
-        Identity verification for the modern web<br>
-        Privacy-first &mdash; no images leave the browser<br>
-        Powered by SVI
-      </p>
-      <p style="font-size:18px;color:#64748b;margin-top:24px;">Built by <strong style="color:#e2e8f0;">Kevin G. Vega</strong></p>
-      <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
-        <a href="https://vegamatcher.kevinguadalupevega.com/demo.html" target="_blank" style="display:inline-block;padding:8px 18px;background:#3b82f6;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Demo App</a>
-        <a href="https://screenrec.com/share/liGRYgbyJ8" target="_blank" style="display:inline-block;padding:8px 18px;background:#1e293b;border:1px solid #3b82f6;color:#60a5fa;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Demo Video</a>
-        <a href="https://svi-jira.atlassian.net/browse/CPS-343" target="_blank" style="display:inline-block;padding:8px 18px;background:#1e293b;border:1px solid #3b82f6;color:#60a5fa;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">CPS-343</a>
-      </div>
-    </div>
-  </div>
-  <div class="footer" style="margin-top:auto;">Arrow keys or click numbers below to navigate</div>
-</section>
+// slide number + nav highlight
+var slideNum = document.getElementById('slideNum');
+var navLinks = document.querySelectorAll('.nav a');
+function updateSlideNum() {
+  var slides = document.querySelectorAll('.slide');
+  for (var i = 0; i < slides.length; i++) {
+    var rect = slides[i].getBoundingClientRect();
+    // slide is "current" if it covers the center of viewport
+    var centerY = window.innerHeight / 2;
+    if (rect.top <= centerY && rect.bottom > centerY) {
+      slideNum.textContent = (i + 1) + ' / ' + slides.length;
+      navLinks.forEach(function(l) { l.classList.remove('active'); });
+      if (navLinks[i]) navLinks[i].classList.add('active');
+      break;
+    }
+  }
+}
+window.addEventListener('scroll', updateSlideNum);
+updateSlideNum();
+
+// keyboard nav
+document.addEventListener('keydown', function(e) {
+  // Ignore if typing in an input/textarea
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+    return;
+  }
+  var slides = document.querySelectorAll('.slide');
+  var current = -1;
+  for (var i = 0; i < slides.length; i++) {
+    var rect = slides[i].getBoundingClientRect();
+    var centerY = window.innerHeight / 2;
+    if (rect.top <= centerY && rect.bottom > centerY) { current = i; break; }
+  }
+  if (current === -1) return;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+    if (current < slides.length - 1) slides[current + 1].scrollIntoView({ behavior: 'smooth' });
+    e.preventDefault();
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    if (current > 0) slides[current - 1].scrollIntoView({ behavior: 'smooth' });
+    e.preventDefault();
+  }
+});
+</script>
 
 <script>
-// ─── Slide 10 typewriter + fade animation ────────────────────────────────
+// ─── Slide 10 typewriter + fade animation ─────────────────────────────
 (function() {
   var els = [
     document.getElementById('sl1'),
@@ -450,8 +488,8 @@ face-id-matcher/
 
   var suffixes = [
     { orig: 'ecure',          alt: 'oftware' },
-    { orig: 'erification &',   alt: 'entures' },
-    { orig: 'dentification of',   alt: 'nternational' }
+    { orig: 'erification &',  alt: 'entures' },
+    { orig: 'dentification of', alt: 'nternational' }
   ];
 
   var sub = document.getElementById('s10-sub');
@@ -518,35 +556,29 @@ face-id-matcher/
       await sleep(600);
     }
 
-    // Append original suffixes (ecure, erification &, dentification)
     for (var i = 0; i < 3; i++) {
       await appendText(els[i], suffixes[i].orig, 40);
       await sleep(200);
     }
     await sleep(2000);
 
-    // Backspace suffixes
     for (var i = 0; i < 3; i++) {
       await backspace(els[i], 1, 25);
       await sleep(80);
     }
     await sleep(400);
 
-    // Swap subtitle: presenting → by
     await fadeOut(sub, 400);
     sub.textContent = 'by';
     await fadeIn(sub, 400);
     await sleep(300);
 
-    // Append alternate suffixes (oftware, entures, nternational)
     for (var i = 0; i < 3; i++) {
       await appendText(els[i], suffixes[i].alt, 40);
       await sleep(200);
     }
-    // Replace Biometrics → Corporation (fade)
     await fadeReplace(els[3], 'Corporation', 300);
 
-    // Show footer on first cycle
     if (firstRun) {
       var footer = document.getElementById('s10-footer');
       if (footer) {
@@ -561,16 +593,13 @@ face-id-matcher/
 
     await sleep(2500);
 
-    // Backspace alternate suffixes
     for (var i = 0; i < 3; i++) {
       await backspace(els[i], 1, 25);
       await sleep(80);
     }
-    // Replace Corporation → Biometrics (fade)
     await fadeReplace(els[3], 'Biometrics', 300);
     await sleep(400);
 
-    // Swap subtitle: by → presenting
     await fadeOut(sub, 400);
     sub.textContent = 'presenting';
     await fadeIn(sub, 400);
@@ -592,64 +621,6 @@ face-id-matcher/
   window.addEventListener('scroll', checkSlide);
   checkSlide();
 })();
-</script>
-<script>
-mermaid.initialize({
-  startOnLoad: true,
-  theme: 'dark',
-  themeVariables: {
-    primaryColor: '#1e3a5f',
-    primaryBorderColor: '#3b82f6',
-    primaryTextColor: '#e2e8f0',
-    lineColor: '#3b82f6',
-    secondaryColor: '#1e293b',
-    tertiaryColor: '#0f172a',
-    fontSize: '14px',
-  },
-  flowchart: { useMaxWidth: true, htmlLabels: true, padding: 12 },
-});
-
-// slide number + nav highlight
-var slideNum = document.getElementById('slideNum');
-var navLinks = document.querySelectorAll('.nav a');
-function updateSlideNum() {
-  var slides = document.querySelectorAll('.slide');
-  for (var i = 0; i < slides.length; i++) {
-    var rect = slides[i].getBoundingClientRect();
-    if (rect.top <= 100 && rect.bottom > 100) {
-      slideNum.textContent = (i + 1) + ' / ' + slides.length;
-      navLinks.forEach(function(l) { l.classList.remove('active'); });
-      if (navLinks[i]) navLinks[i].classList.add('active');
-      break;
-    }
-  }
-}
-window.addEventListener('scroll', updateSlideNum);
-updateSlideNum();
-
-// keyboard nav
-document.addEventListener('keydown', function(e) {
-  // Ignore if typing in an input/textarea
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
-    return;
-  }
-  var slides = document.querySelectorAll('.slide');
-  var current = -1;
-  for (var i = 0; i < slides.length; i++) {
-    var rect = slides[i].getBoundingClientRect();
-    // slide is "current" if it covers the center of viewport
-    var centerY = window.innerHeight / 2;
-    if (rect.top <= centerY && rect.bottom > centerY) { current = i; break; }
-  }
-  if (current === -1) return; // no slide found at center
-  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-    if (current < slides.length - 1) slides[current + 1].scrollIntoView({ behavior: 'smooth' });
-    e.preventDefault();
-  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-    if (current > 0) slides[current - 1].scrollIntoView({ behavior: 'smooth' });
-    e.preventDefault();
-  }
-});
 </script>
 </body>
 </html>
