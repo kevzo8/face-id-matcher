@@ -112,6 +112,8 @@ pre{font-size:11px}
       <ul style="font-size:13px;">
         <li><code>POST /api/v1/session/create</code></li>
         <li><code>POST /api/v1/liveness</code></li>
+        <li><code>POST /liveness/detect-faces</code> (AWS)</li>
+        <li><code>POST /liveness/detect-objects</code> (AWS)</li>
         <li><code>GET /health</code></li>
       </ul>
     </div>
@@ -260,6 +262,25 @@ Authorization: Bearer &lt;key&gt;
   "error":        null }</pre>
     </div>
     <div>
+      <h3>POST /liveness/detect-faces (AWS)</h3>
+      <pre>
+// Request:  { "image": "base64..." }
+// Response: { "face_detected": true,
+//             "confidence": 0.99,
+//             "eyes_open": true,
+//             "quality_sharpness": 0.8,
+//             "age_low": 25, "age_high": 35,
+//             "gender": "Male", "expression": "Happy" }</pre>
+
+      <h3>POST /liveness/detect-objects (AWS)</h3>
+      <pre>
+// Request:  { "image": "base64..." }
+// Response: { "has_phone": false,
+//             "has_screen": false,
+//             "has_photo": false,
+//             "spoof_risk": "low",
+//             "raw_labels": [...] }</pre>
+
       <h3>GET /health</h3>
       <pre>
 // Response
