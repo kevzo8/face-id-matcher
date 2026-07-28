@@ -578,6 +578,7 @@ document.addEventListener('keydown', function(e) {
       await appendText(els[i], suffixes[i].alt, 40);
       await sleep(200);
     }
+    await fadeReplace(els[3], 'Corporation', 300);
 
     if (firstRun) {
       var footer = document.getElementById('s10-footer');
