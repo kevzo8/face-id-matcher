@@ -66,6 +66,7 @@ pre{font-size:11px}
     <span class="badge">MediaPipe</span>
     <span class="badge">Rollup</span>
     <span class="badge">FastAPI Backend</span>
+    <span class="badge">AWS</span>
   </div>
   <p style="color:#64748b;font-size:14px;">Version 1.0.0 &mdash; July 2026</p>
   <img src="assets/svi-biometrics-api.png" alt="SVI Biometrics API" style="width:80%;max-height:80vh;height:auto;margin:12px auto 0;display:block;">
@@ -377,15 +378,22 @@ face-id-matcher/
     +-- tsconfig.json</pre>
     </div>
     <div style="display:flex;flex-direction:column;justify-content:center;">
-<div class="card" style="border-color:#3b82f6;">
-         <p style="font-size:14px;font-weight:600;color:#60a5fa;margin-bottom:6px;">Key Design Decision</p>
-         <p style="font-size:13px;line-height:1.6;">The SDK does all scoring <strong>client-side</strong> using MediaPipe. The backend is for session management, audit logging, and optional cloud provider fallbacks.</p>
-         <p style="font-size:13px;line-height:1.6;margin-top:6px;">No images leave the browser unless you explicitly call the API.</p>
-       </div>
-       <p style="font-size:13px;color:#64748b;margin-top:16px;">End of presentation</p>
-     </div>
-   </div>
- </section>
+      <div class="card" style="border-color:#3b82f6;">
+        <p style="font-size:14px;font-weight:600;color:#60a5fa;margin-bottom:6px;">Key Design Decision</p>
+        <p style="font-size:13px;line-height:1.6;">The SDK does all scoring <strong>client-side</strong> using MediaPipe. The backend is for session management, audit logging, and optional cloud provider fallbacks.</p>
+        <p style="font-size:13px;line-height:1.6;margin-top:6px;">No images leave the browser unless you explicitly call the API.</p>
+        <div style="font-size:12px;color:#94a3b8;line-height:1.6;margin-top:8px;">
+          <strong>AWS Integration</strong><br>
+          <strong>Face Detection (AWS Rekognition):</strong> Asynchronous analysis of uploaded images for facial attributes like age, gender, expressions, and quality metrics.<br>
+          <strong>Object Detection (AWS Rekognition):</strong> Identifies common objects in images with confidence scores and bounding boxes.<br>
+          <strong>Session & Audit (Backend):</strong> Stores metadata, logs, and optional fallback data in PostgreSQL/RDS for audit and compliance.<br>
+          <strong>Provider Fallback:</strong> Can switch to AWS services when local heuristic scoring fails or requires cross-cloud verification.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div style="font-size:13px;color:#64748b;margin-top:40px;text-align:center;">Authors: Kevin G. Vega | SVI Biometrics &mdash; Liveness SDK</div>
 
  <!-- SLIDE 10: Thank You -->
  <section class="slide" id="s10" style="padding-top:60px;">
@@ -395,22 +403,22 @@ face-id-matcher/
        <div id="sl1" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:14ch;white-space:nowrap;"></div>
        <div id="sl2" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:14ch;white-space:nowrap;"></div>
        <div id="sl3" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:18ch;white-space:nowrap;"></div>
-       <div id="sl4" style="color:#e2e8f0;min-width:11ch;min-height:1.4em;white-space:nowrap;visibility:hidden;"></div>
+       <div id="sl4" style="color:#e2e8f0;min-width:11ch;min-height:1.4em;white-space:nowrap;"></div>
+      <div id="sl4-placeholder" style="color:#e2e8f0;min-width:11ch;min-height:1.4em;white-space:nowrap;display:none;">-</div>
      </div>
  
-     <div id="s10-footer" style="display:none;margin-top:40px;">
-       <p style="font-size:15px;color:#94a3b8;line-height:1.7;">
-         Identity verification for the modern web<br>
-         Privacy-first &mdash; no images leave the browser<br>
-         Powered by SVI
-       </p>
-       <p style="font-size:18px;color:#64748b;margin-top:24px;">Built by <strong style="color:#e2e8f0;">Kevin G. Vega</strong></p>
-       <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
-         <a href="https://vegamatcher.kevinguadalupevega.com/demo.html" target="_blank" style="display:inline-block;padding:8px 18px;background:#3b82f6;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Demo App</a>
-         <a href="https://screenrec.com/share/liGRYgbyJ8" target="_blank" style="display:inline-block;padding:8px 18px;background:#1e293b;border:1px solid #3b82f6;color:#60a5fa;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Demo Video</a>
-         <a href="https://svi-jira.atlassian.net/browse/CPS-343" target="_blank" style="display:inline-block;padding:8px 18px;background:#1e293b;border:1px solid #3b82f6;color:#60a5fa;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">CPS-343</a>
-       </div>
-     </div>
+          <div id="s10-footer" style="display:none;margin-top:40px;">
+            <p style="font-size:15px;color:#94a3b8;line-height:1.7;">
+              Identity verification for the modern web<br>
+              Privacy-first &mdash; no images leave the browser<br>
+              Powered by SVI &mdash; Built by Kevin G. Vega
+            </p>
+            <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+              <a href="https://vegamatcher.kevinguadalupevega.com/demo.html" target="_blank" style="display:inline-block;padding:8px 18px;background:#3b82f6;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Demo App</a>
+              <a href="https://screenrec.com/share/liGRYgbyJ8" target="_blank" style="display:inline-block;padding:8px 18px;background:#1e293b;border:1px solid #3b82f6;color:#60a5fa;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Demo Video</a>
+              <a href="https://svi-jira.atlassian.net/browse/CPS-343" target="_blank" style="display:inline-block;padding:8px 18px;background:#1e293b;border:1px solid #3b82f6;color:#60a5fa;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">CPS-343</a>
+            </div>
+          </div>
    </div>
    <div class="footer" style="margin-top:auto;">Arrow keys or click numbers below to navigate</div>
  </section>
@@ -504,10 +512,13 @@ document.addEventListener('keydown', function(e) {
     await sleep(dur);
   }
 
-  async function fadeOut(el, dur) {
+  async function fadeOut(el, dur, showPlaceholder) {
     el.style.transition = 'opacity ' + dur + 'ms';
     el.style.opacity = '0';
     await sleep(dur);
+    if (showPlaceholder && el.textContent === '') {
+      document.getElementById('sl4-placeholder').style.display = 'inline';
+    }
   }
 
   async function fadeReplace(el, newText, dur) {
@@ -515,6 +526,11 @@ document.addEventListener('keydown', function(e) {
     el.style.opacity = '0';
     await sleep(dur);
     el.textContent = newText;
+    if (newText === '') {
+      document.getElementById('sl4-placeholder').style.display = 'inline';
+    } else {
+      document.getElementById('sl4-placeholder').style.display = 'none';
+    }
     el.style.opacity = '1';
     await sleep(dur);
   }
