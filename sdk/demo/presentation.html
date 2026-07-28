@@ -388,27 +388,29 @@ face-id-matcher/
 
 <!-- SLIDE 10: Thank You -->
 <section class="slide" id="s10" style="justify-content:center;">
-  <div id="s10-words" style="font-size:44px;font-weight:800;line-height:1.4;text-align:left;padding-left:60px;max-width:700px;">
-    <div id="sl1" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;"></div>
-    <div id="sl2" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;"></div>
-    <div id="sl3" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;"></div>
-    <div id="sl4" style="color:#e2e8f0;"></div>
-  </div>
+  <div style="max-width:700px;padding-left:60px;">
+    <div id="s10-sub" style="font-size:15px;color:#64748b;margin-bottom:16px;min-width:12ch;white-space:nowrap;"></div>
+    <div id="s10-words" style="font-family:'Fira Code','JetBrains Mono',monospace;font-size:42px;font-weight:800;line-height:1.4;">
+      <div id="sl1" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:14ch;white-space:nowrap;"></div>
+      <div id="sl2" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:14ch;white-space:nowrap;"></div>
+      <div id="sl3" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:18ch;white-space:nowrap;"></div>
+      <div id="sl4" style="color:#e2e8f0;min-width:11ch;white-space:nowrap;"></div>
+    </div>
 
-  <div id="s10-footer" style="display:none;margin-top:40px;padding-left:60px;max-width:700px;">
-    <p style="font-size:15px;color:#94a3b8;line-height:1.7;">
-      Identity verification for the modern web<br>
-      Privacy-first &mdash; no images leave the browser<br>
-      Powered by MediaPipe &amp; SVI
-    </p>
-    <p style="font-size:18px;color:#64748b;margin-top:24px;">Built by <strong style="color:#e2e8f0;">Kevin G. Vega</strong></p>
-    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
-      <a href="https://vegamatcher.kevinguadalupevega.com/demo.html" target="_blank" style="display:inline-block;padding:8px 18px;background:#3b82f6;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Demo App</a>
-      <a href="https://screenrec.com/share/liGRYgbyJ8" target="_blank" style="display:inline-block;padding:8px 18px;background:#1e293b;border:1px solid #3b82f6;color:#60a5fa;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Demo Video</a>
-      <a href="https://svi-jira.atlassian.net/browse/CPS-343" target="_blank" style="display:inline-block;padding:8px 18px;background:#1e293b;border:1px solid #3b82f6;color:#60a5fa;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">CPS-343</a>
+    <div id="s10-footer" style="display:none;margin-top:40px;">
+      <p style="font-size:15px;color:#94a3b8;line-height:1.7;">
+        Identity verification for the modern web<br>
+        Privacy-first &mdash; no images leave the browser<br>
+        Powered by MediaPipe &amp; SVI
+      </p>
+      <p style="font-size:18px;color:#64748b;margin-top:24px;">Built by <strong style="color:#e2e8f0;">Kevin G. Vega</strong></p>
+      <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+        <a href="https://vegamatcher.kevinguadalupevega.com/demo.html" target="_blank" style="display:inline-block;padding:8px 18px;background:#3b82f6;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Demo App</a>
+        <a href="https://screenrec.com/share/liGRYgbyJ8" target="_blank" style="display:inline-block;padding:8px 18px;background:#1e293b;border:1px solid #3b82f6;color:#60a5fa;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Demo Video</a>
+        <a href="https://svi-jira.atlassian.net/browse/CPS-343" target="_blank" style="display:inline-block;padding:8px 18px;background:#1e293b;border:1px solid #3b82f6;color:#60a5fa;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">CPS-343</a>
+      </div>
     </div>
   </div>
-
   <div class="footer" style="margin-top:auto;">Arrow keys or click numbers below to navigate</div>
 </section>
 
@@ -433,39 +435,54 @@ face-id-matcher/
     return new Promise(function(resolve) { setTimeout(resolve, ms); });
   }
 
-  async function typeLine(el, text, speed) {
-    el.textContent = '';
+  async function typeText(el, text, speed) {
     for (var i = 0; i < text.length; i++) {
-      el.textContent += text[i];
+      el.textContent = text.substring(0, i + 1);
       await sleep(speed);
     }
   }
 
-  async function transitionLine(el, toText, speed) {
-    for (var i = 0; i <= toText.length; i++) {
-      el.textContent = toText.substring(0, i);
-      await sleep(speed);
+  async function typeOut(speed) {
+    var sub = document.getElementById('s10-sub');
+    await typeText(sub, 'presenting', 40);
+    await sleep(200);
+    for (var i = 0; i < els.length; i++) {
+      await typeText(els[i], phrases[i].orig, 50);
+      await sleep(150);
+    }
+  }
+
+  async function transitionToAlt(speed) {
+    var sub = document.getElementById('s10-sub');
+    sub.textContent = '';
+    await typeText(sub, 'by', 60);
+    await sleep(200);
+    for (var i = 0; i < els.length; i++) {
+      els[i].textContent = '';
+      await typeText(els[i], phrases[i].alt, 45);
+      await sleep(150);
+    }
+  }
+
+  async function transitionToOrig(speed) {
+    var sub = document.getElementById('s10-sub');
+    sub.textContent = '';
+    await typeText(sub, 'presenting', 40);
+    await sleep(200);
+    for (var i = 0; i < els.length; i++) {
+      els[i].textContent = '';
+      await typeText(els[i], phrases[i].orig, 45);
+      await sleep(150);
     }
   }
 
   async function runCycle() {
-    for (var i = 0; i < els.length; i++) {
-      await typeLine(els[i], phrases[i].orig, 50);
-      await sleep(100);
-    }
-    await sleep(1800);
-
-    for (var i = 0; i < els.length; i++) {
-      await transitionLine(els[i], phrases[i].alt, 40);
-      await sleep(120);
-    }
-    await sleep(2200);
-
-    for (var i = 0; i < els.length; i++) {
-      await transitionLine(els[i], phrases[i].orig, 40);
-      await sleep(120);
-    }
-    await sleep(1800);
+    await typeOut(50);
+    await sleep(2000);
+    await transitionToAlt(45);
+    await sleep(2500);
+    await transitionToOrig(45);
+    await sleep(2000);
   }
 
   var started = false;
