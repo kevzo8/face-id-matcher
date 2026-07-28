@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<!--
+  ═══════════════════════════════════════════════════════════════════════════════
+  SVI Liveness SDK – Demo Page (Vercel deploy copy)
+  ═══════════════════════════════════════════════════════════════════════════════
+  What this is:
+    A minimal demo that loads the SVI Liveness SDK and calls the backend API.
+    It shows how easy it is to integrate liveness detection into any web page.
+
+  How it works:
+    1. Loads the SDK (bundled with MediaPipe) via a single <script> tag.
+    2. Creates an SDK instance with SviLiveness.create({...}).
+    3. SDK handles camera, face detection, challenge flow, and scoring.
+    4. Results are returned via onComplete callback.
+    5. The demo logs everything to the output panel so you can see what's happening.
+
+  To run locally:
+    1. Start the backend:   python run.py   (from backend/)
+    2. Open this page:      open demo.html  (or serve from any static server)
+    3. Click "Start Check" and follow the prompts.
+  ═══════════════════════════════════════════════════════════════════════════════
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SVI Liveness SDK Demo</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .card {
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 480px;
+      width: 100%;
+      border: 1px solid #334155;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+    }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    .sub { color: #64748b; font-size: 12px; margin-bottom: 20px; }
+    .controls { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .controls button {
+      padding: 8px 16px; border: 1px solid #334155; border-radius: 8px;
+      background: #0f172a; color: #94a3b8; cursor: pointer; font-size: 13px;
+      transition: all 0.2s;
+    }
+    .controls button:hover { border-color: #3b82f6; color: #3b82f6; }
+    .controls button.active { background: #1e3a5f; border-color: #3b82f6; color: #60a5fa; }
+    .server-url { margin-bottom: 16px; }
+    .server-url label { font-size: 11px; color: #64748b; display: block; margin-bottom: 4px; }
+    .server-url input {
+      width: 100%; padding: 8px 12px; border: 1px solid #334155; border-radius: 8px;
+      background: #0f172a; color: #e2e8f0; font-size: 13px; outline: none;
+    }
+    .server-url input:focus { border-color: #3b82f6; }
+    #svi-root { margin-top: 16px; min-height: 320px; background: #000; border-radius: 12px; overflow: hidden; position: relative; }
+    .video { width: 100%; height: 100%; object-fit: cover; display: block; transform: scaleX(-1); }
+    .output { margin-top: 12px; padding: 12px; background: #0f172a; border-radius: 8px; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 11px; color: #94a3b8; max-height: 200px; overflow-y: auto; white-space: pre-wrap; }
+    .loading { display: flex; justify-content: center; align-items: center; height: 240px; color: #64748b; font-size: 14px; }
+    .error { color: #ef4444; padding: 16px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>SVI Liveness SDK</h1>
+    <div class="sub">v1.0.0 &mdash; Camera &amp; Backend Integration</div>
+
+    <div class="server-url">
+      <label>Backend URL</label>
+      <input id="backend-url" type="text" value="http://localhost:8000" placeholder="http://localhost:8000" />
+    </div>
+
+    <div class="controls">
+      <button id="btn-passive" class="active" data-mode="passive">Passive</button>
+      <button id="btn-active" data-mode="active">Active</button>
+    </div>
+
+    <div id="svi-root">
+      <div class="loading">Loading MediaPipe &amp; SDK...</div>
+    </div>
+
+    <div id="output" class="output"></div>
+  </div>
+
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
+  <script src="svi-liveness.dev.js"></script>
+
+  <script>
+    let currentMode     = 'passive';
+    let currentInstance = null;
+    let videoElement    = null;
+
+    let logInitialized = false;
+    function log(msg) {
+      const el = document.getElementById('output');
+      if (!el) return;
+      if (!logInitialized) { el.textContent = ''; logInitialized = true; }
+      el.textContent = new Date().toLocaleTimeString() + ' - ' + msg + '\n' + el.textContent;
+      console.log('[demo]', msg);
+    }
+
+    function setupVideo() {
+      const container = document.getElementById('svi-root');
+      if (!container) return;
+      const loading = container.querySelector('.loading');
+      if (loading) loading.remove();
+      if (!videoElement) {
+        videoElement = document.createElement('video');
+        videoElement.className = 'video';
+        videoElement.autoplay = true;
+        videoElement.playsInline = true;
+        videoElement.muted = true;
+        videoElement.style.width = '100%';
+        videoElement.style.height = '100%';
+        videoElement.style.objectFit = 'cover';
+        videoElement.style.display = 'block';
+        videoElement.style.transform = 'scaleX(-1)';
+        document.getElementById('svi-root').appendChild(videoElement);
+      }
+    }
+    async function startCamera() {
+      return navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
+      });
+    }
+
+    function createInstance() {
+      if (currentInstance) { currentInstance.destroy(); currentInstance = null; }
+
+      if (!window.SviLiveness || !window.SviLiveness.create) {
+        log('ERROR: SDK not available');
+        return;
+      }
+
+      currentInstance = window.SviLiveness.create({
+        backendUrl:  document.getElementById('backend-url').value.trim() || 'http://localhost:8000',
+        mode:        currentMode,
+        containerId: 'svi-root',
+
+        onComplete: function(result) {
+          log('PASSED=' + result.passed +
+              '  CONF=' + Math.round(result.confidence * 100) + '%' +
+              '  PROV=' + result.provider +
+              '  TXN=' + result.txnId +
+              '  HAS_FACE=' + (result.capturedFaceBase64 ? 'yes' : 'no'));
+          if (result.capturedFaceBase64) {
+            var img = document.createElement('img');
+            img.src = 'data:image/jpeg;base64,' + result.capturedFaceBase64;
+            img.style.cssText = 'width:80px;border-radius:6px;margin-top:6px;border:1px solid #334155;';
+            document.getElementById('output').appendChild(img);
+          }
+        },
+
+        onError: function(err) {
+          log('ERROR [' + (err.code || 'UNKNOWN') + ']: ' + err.message);
+        },
+
+        theme: { primaryColor: '#3b82f6' },
+      });
+
+      setupVideo();
+      startCamera().then(function(stream) {
+        if (videoElement) videoElement.srcObject = stream;
+        currentInstance.start().then(function() {
+          log('Ready — camera ready. Click "Start Check" to begin.');
+        }).catch(function(err) {
+          log('SDK Error: ' + err.message);
+        });
+      }).catch(function(err) {
+        log('Camera error: ' + err.message);
+      });
+    }
+
+    document.querySelectorAll('[data-mode]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('[data-mode]').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        currentMode = btn.dataset.mode;
+        createInstance();
+      });
+    });
+
+    document.getElementById('backend-url').addEventListener('change', createInstance);
+
+    window.addEventListener('svi:api-log', function(e) {
+      var d = e.detail;
+      var status = typeof d.response === 'string' ? d.response :
+        d.response && d.response.error ? 'ERROR: ' + d.response.error :
+        d.response && d.response.passed !== undefined ? 'passed=' + d.response.passed + ' conf=' + d.response.confidence :
+        d.response && d.response.session_id ? 'session=' + d.response.session_id :
+        d.response && d.response.is_real !== undefined ? 'is_real=' + d.response.is_real :
+        d.response && d.response === '\u2014' ? '...' : JSON.stringify(d.response);
+      log(d.method + ' ' + d.url.split('/').pop() + ' -> ' + status);
+    });
+
+    (function waitForSDK() {
+      if (window.SviLiveness && window.SviLiveness.create) {
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', createInstance);
+        } else {
+          createInstance();
+        }
+      } else {
+        setTimeout(waitForSDK, 50);
+      }
+    })();
+  </script>
+</body>
+</html>
