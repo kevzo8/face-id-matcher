@@ -25,7 +25,7 @@ pre{background:#0f172a;color:#e2e8f0;padding:14px 18px;border-radius:8px;font-si
 .step-num{background:#3b82f6;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
 .nav{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:100}
 .nav a{display:inline-block;padding:6px 16px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#94a3b8;text-decoration:none;font-size:12px;font-weight:600}
-.nav a:hover{border-color:#3b82f6;color:#60a5fa}
+.nav a:hover,.nav a.active{border-color:#3b82f6;color:#60a5fa;background:#1e3a5f}
 .slide-num{position:fixed;top:16px;right:24px;color:#334155;font-size:14px;font-weight:600}
 pre code{display:inline;background:none;padding:0;color:inherit;font-size:inherit}
 .mermaid{background:#0f172a;border-radius:10px;padding:10px;display:flex;justify-content:center;align-items:center;height:100%;min-height:280px}
@@ -395,14 +395,17 @@ mermaid.initialize({
   flowchart: { useMaxWidth: true, htmlLabels: true, padding: 12 },
 });
 
-// slide number
+// slide number + nav highlight
 var slideNum = document.getElementById('slideNum');
+var navLinks = document.querySelectorAll('.nav a');
 function updateSlideNum() {
   var slides = document.querySelectorAll('.slide');
   for (var i = 0; i < slides.length; i++) {
     var rect = slides[i].getBoundingClientRect();
     if (rect.top <= 100 && rect.bottom > 100) {
       slideNum.textContent = (i + 1) + ' / ' + slides.length;
+      navLinks.forEach(function(l) { l.classList.remove('active'); });
+      if (navLinks[i]) navLinks[i].classList.add('active');
       break;
     }
   }
