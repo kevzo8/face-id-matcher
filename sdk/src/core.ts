@@ -41,19 +41,20 @@ export class SviLivenessCore {
 
   async createSession(): Promise<void> {
     try {
+      const url = `${this.config.backendUrl.replace(/\/+$/, '')}/api/v1/session/create`;
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'X-Sdk-Version': VERSION,
       };
       if (this.config.apiKey) headers['Authorization'] = `Bearer ${this.config.apiKey}`;
 
-      const res = await fetch(`${this.config.backendUrl.replace(/\/+$/, '')}/api/v1/session/create`, {
-        method: 'POST',
-        headers,
-      });
-      if (!res.ok) throw new Error(`Session creation failed: ${res.status}`);
+      this.emitApiLog('POST', url, {}, '—');
+
+      const res = await fetch(url, { method: 'POST', headers });
       const data: SessionResponse = await res.json();
+      if (!res.ok) throw new Error(`Session creation failed: ${res.status}`);
       this.sessionId = data.session_id;
+      this.emitApiLog('POST', url, {}, data);
     } catch (e) {
       this.config.onError({ code: 'SESSION_ERROR', message: (e as Error).message });
     }
@@ -131,13 +132,17 @@ export class SviLivenessCore {
   }
 
   async callLivenessApi(image: string, challengeData?: Record<string, unknown>): Promise<LivenessResult> {
+    const url = `${this.config.backendUrl.replace(/\/+$/, '')}/api/v1/liveness`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'X-Sdk-Version': VERSION,
     };
     if (this.config.apiKey) headers['Authorization'] = `Bearer ${this.config.apiKey}`;
 
-    const res = await fetch(`${this.config.backendUrl.replace(/\/+$/, '')}/api/v1/liveness`, {
+    const reqBody = { mode: this.mode, image: image.slice(0, 40) + '...[truncated]', session_id: this.sessionId, challenge_data: challengeData || null };
+    this.emitApiLog('POST', url, reqBody, '—');
+
+    const res = await fetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -150,10 +155,12 @@ export class SviLivenessCore {
 
     if (!res.ok) {
       const err = await res.text();
+      this.emitApiLog('POST', url, reqBody, { error: err });
       throw new Error(`Liveness API error (${res.status}): ${err}`);
     }
 
     const data: LivenessApiResponse = await res.json();
+    this.emitApiLog('POST', url, reqBody, data);
     return {
       passed: data.passed,
       confidence: data.confidence,
@@ -165,21 +172,41 @@ export class SviLivenessCore {
   }
 
   async callPassiveEndpoint(image: string): Promise<{ is_real: boolean; confidence: number; score: number; breakdown?: any[]; info?: any[]; error?: string }> {
-    const res = await fetch(`${this.config.backendUrl.replace(/\/+$/, '')}/liveness/passive`, {
+    const url = `${this.config.backendUrl.replace(/\/+$/, '')}/liveness/passive`;
+    const reqBody = { image: image.slice(0, 40) + '...[truncated]', provider: 'heuristic' };
+    this.emitApiLog('POST', url, reqBody, '—');
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ image, provider: 'heuristic' }),
     });
-    return res.json();
+    const data = await res.json();
+    this.emitApiLog('POST', url, reqBody, data);
+    return data;
   }
 
   async callDetectObjects(image: string): Promise<{ is_real: boolean; confidence: number; score: number; breakdown?: any[]; info?: any[]; error?: string }> {
-    const res = await fetch(`${this.config.backendUrl.replace(/\/+$/, '')}/liveness/detect-objects`, {
+    const url = `${this.config.backendUrl.replace(/\/+$/, '')}/liveness/detect-objects`;
+    const reqBody = { image: image.slice(0, 40) + '...[truncated]' };
+    this.emitApiLog('POST', url, reqBody, '—');
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ image }),
     });
-    return res.json();
+    const data = await res.json();
+    this.emitApiLog('POST', url, reqBody, data);
+    return data;
+  }
+
+  private emitApiLog(method: string, url: string, request: any, response: any): void {
+    const prefix = url.includes('/session/') ? '[SESSION]' : url.includes('/liveness') ? '[LIVENESS]' : '[API]';
+    console.log(`%c${prefix} ${method} ${url}`, 'color:#3b82f6;font-weight:bold');
+    console.log('  REQ:', request);
+    console.log('  RES:', response);
+    window.dispatchEvent(new CustomEvent('svi:api-log', {
+      detail: { method, url, request, response, timestamp: new Date().toISOString() },
+    }));
   }
 
   getContainer(): HTMLElement | null {
