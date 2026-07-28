@@ -129,7 +129,7 @@ export function calculateHeadPose(landmarks: any): { yaw: number; pitch: number;
 export function detectHeadMovement(
   landmarks: any,
   prevLandmarks: any | null,
-  threshold = 0.05
+  threshold = 2.0
 ): { yaw: number; pitch: number; moved: boolean } {
   if (!prevLandmarks) {
     return { yaw: 0, pitch: 0, moved: false };
