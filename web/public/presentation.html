@@ -389,7 +389,7 @@ face-id-matcher/
 <!-- SLIDE 10: Thank You -->
 <section class="slide" id="s10" style="justify-content:center;">
   <div style="max-width:700px;padding-left:60px;">
-    <div id="s10-sub" style="font-size:15px;color:#64748b;margin-bottom:16px;min-width:12ch;white-space:nowrap;"></div>
+    <div id="s10-sub" style="font-size:15px;color:#64748b;margin-bottom:16px;min-width:12ch;white-space:nowrap;opacity:0;"></div>
     <div id="s10-words" style="font-family:'Fira Code','JetBrains Mono',monospace;font-size:42px;font-weight:800;line-height:1.4;">
       <div id="sl1" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:14ch;white-space:nowrap;"></div>
       <div id="sl2" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:14ch;white-space:nowrap;"></div>
@@ -415,7 +415,7 @@ face-id-matcher/
 </section>
 
 <script>
-// ─── Slide 10 typewriter animation ───────────────────────────────────────
+// ─── Slide 10 typewriter + fade animation ────────────────────────────────
 (function() {
   var els = [
     document.getElementById('sl1'),
@@ -424,65 +424,112 @@ face-id-matcher/
     document.getElementById('sl4')
   ];
 
-  var phrases = [
-    { orig: 'Secure',           alt: 'Software' },
-    { orig: 'Verification &',    alt: 'Ventures' },
-    { orig: 'Identification of', alt: 'International' },
-    { orig: 'Biometrics',       alt: 'Corporation' }
+  var suffixes = [
+    { orig: 'ecure',          alt: 'oftware' },
+    { orig: 'erification &',   alt: 'entures' },
+    { orig: 'dentification',   alt: 'nternational' }
   ];
+
+  var sub = document.getElementById('s10-sub');
 
   function sleep(ms) {
     return new Promise(function(resolve) { setTimeout(resolve, ms); });
   }
 
+  async function fadeIn(el, dur) {
+    el.style.transition = 'opacity ' + dur + 'ms';
+    el.style.opacity = '1';
+    await sleep(dur);
+  }
+
+  async function fadeOut(el, dur) {
+    el.style.transition = 'opacity ' + dur + 'ms';
+    el.style.opacity = '0';
+    await sleep(dur);
+  }
+
   async function typeText(el, text, speed) {
+    el.textContent = '';
     for (var i = 0; i < text.length; i++) {
-      el.textContent = text.substring(0, i + 1);
+      el.textContent += text[i];
       await sleep(speed);
     }
   }
 
-  async function typeOut(speed) {
-    var sub = document.getElementById('s10-sub');
-    await typeText(sub, 'presenting', 40);
-    await sleep(200);
-    for (var i = 0; i < els.length; i++) {
-      await typeText(els[i], phrases[i].orig, 50);
-      await sleep(150);
+  async function appendText(el, suffix, speed) {
+    for (var i = 0; i < suffix.length; i++) {
+      el.textContent += suffix[i];
+      await sleep(speed);
     }
   }
 
-  async function transitionToAlt(speed) {
-    var sub = document.getElementById('s10-sub');
-    sub.textContent = '';
-    await typeText(sub, 'by', 60);
-    await sleep(200);
-    for (var i = 0; i < els.length; i++) {
-      els[i].textContent = '';
-      await typeText(els[i], phrases[i].alt, 45);
-      await sleep(150);
+  async function backspace(el, keepLen, speed) {
+    while (el.textContent.length > keepLen) {
+      el.textContent = el.textContent.substring(0, el.textContent.length - 1);
+      await sleep(speed);
     }
   }
 
-  async function transitionToOrig(speed) {
-    var sub = document.getElementById('s10-sub');
-    sub.textContent = '';
-    await typeText(sub, 'presenting', 40);
-    await sleep(200);
-    for (var i = 0; i < els.length; i++) {
-      els[i].textContent = '';
-      await typeText(els[i], phrases[i].orig, 45);
-      await sleep(150);
+  async function fullCycle(firstRun) {
+    if (firstRun) {
+      sub.textContent = 'presenting';
+      await fadeIn(sub, 600);
+      await sleep(300);
+      await typeText(els[0], 'S', 60);
+      await sleep(100);
+      await typeText(els[1], 'V', 60);
+      await sleep(100);
+      await typeText(els[2], 'I', 60);
+      await sleep(100);
+      await typeText(els[3], 'Biometrics', 45);
+      await sleep(600);
     }
-  }
 
-  async function runCycle() {
-    await typeOut(50);
+    // Append original suffixes (ecure, erification &, dentification)
+    for (var i = 0; i < 3; i++) {
+      await appendText(els[i], suffixes[i].orig, 40);
+      await sleep(200);
+    }
     await sleep(2000);
-    await transitionToAlt(45);
+
+    // Backspace suffixes
+    for (var i = 0; i < 3; i++) {
+      await backspace(els[i], 1, 25);
+      await sleep(80);
+    }
+    await sleep(400);
+
+    // Swap subtitle: presenting → by
+    await fadeOut(sub, 400);
+    sub.textContent = 'by';
+    await fadeIn(sub, 400);
+    await sleep(300);
+
+    // Append alternate suffixes (oftware, entures, nternational)
+    for (var i = 0; i < 3; i++) {
+      await appendText(els[i], suffixes[i].alt, 40);
+      await sleep(200);
+    }
+    // Replace Biometrics → Corporation
+    els[3].textContent = '';
+    await typeText(els[3], 'Corporation', 40);
     await sleep(2500);
-    await transitionToOrig(45);
-    await sleep(2000);
+
+    // Backspace alternate suffixes
+    for (var i = 0; i < 3; i++) {
+      await backspace(els[i], 1, 25);
+      await sleep(80);
+    }
+    // Replace Corporation → Biometrics
+    els[3].textContent = '';
+    await typeText(els[3], 'Biometrics', 40);
+    await sleep(400);
+
+    // Swap subtitle: by → presenting
+    await fadeOut(sub, 400);
+    sub.textContent = 'presenting';
+    await fadeIn(sub, 400);
+    await sleep(300);
   }
 
   var started = false;
@@ -492,7 +539,7 @@ face-id-matcher/
     if (rect.top < window.innerHeight && rect.bottom > 0) {
       started = true;
       (async function() {
-        await runCycle();
+        await fullCycle(true);
         var footer = document.getElementById('s10-footer');
         if (footer) {
           footer.style.display = 'block';
@@ -502,7 +549,7 @@ face-id-matcher/
             footer.style.opacity = '1';
           }, 50);
         }
-        while (true) { await runCycle(); }
+        while (true) { await fullCycle(false); }
       })();
     }
   }
