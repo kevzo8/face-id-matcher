@@ -46,7 +46,7 @@ export function renderResult(container: HTMLElement, result: { passed: boolean; 
   }
 
   container.innerHTML = `
-    <div style="background:${passedBg};border:1px solid ${passedBorder};border-radius:8px;padding:12px;text-align:center;">
+    <div style="max-width:240px;margin:12px auto 0;background:${passedBg};border:1px solid ${passedBorder};border-radius:8px;padding:12px;text-align:center;">
       <div style="font-size:20px;font-weight:700;color:${passedText};margin-bottom:4px;">${passedLabel}</div>
       <div style="font-size:32px;font-weight:800;color:${result.passed ? '#bbf7d0' : '#fecaca'};margin-bottom:4px;">${Math.round(result.confidence * 100)}%</div>
       <div style="color:${passedText};font-size:12px;">${result.passed ? 'Real face detected' : 'Spoof detected'}</div>

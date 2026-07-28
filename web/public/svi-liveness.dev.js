@@ -160,7 +160,7 @@ var SviLiveness = (function (exports) {
             infoHtml = `<div style="margin-top:6px;font-size:10px;color:#64748b;">${result.info.map(i => `<div>${i.label}: <strong style="color:#94a3b8;">${i.value}</strong></div>`).join('')}</div>`;
         }
         container.innerHTML = `
-    <div style="background:${passedBg};border:1px solid ${passedBorder};border-radius:8px;padding:12px;text-align:center;">
+    <div style="max-width:240px;margin:12px auto 0;background:${passedBg};border:1px solid ${passedBorder};border-radius:8px;padding:12px;text-align:center;">
       <div style="font-size:20px;font-weight:700;color:${passedText};margin-bottom:4px;">${passedLabel}</div>
       <div style="font-size:32px;font-weight:800;color:${result.passed ? '#bbf7d0' : '#fecaca'};margin-bottom:4px;">${Math.round(result.confidence * 100)}%</div>
       <div style="color:${passedText};font-size:12px;">${result.passed ? 'Real face detected' : 'Spoof detected'}</div>
