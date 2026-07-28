@@ -97,7 +97,7 @@ var SviLiveness = (function (exports) {
         const roll = Math.sin((rightEyeCenter.y - leftEyeCenter.y) * 100);
         return { yaw: Math.max(-45, Math.min(45, yaw)), pitch: Math.max(-30, Math.min(30, pitch)), roll };
     }
-    function detectHeadMovement(landmarks, prevLandmarks, threshold = 2.0) {
+    function detectHeadMovement(landmarks, prevLandmarks, threshold = 0.5) {
         if (!prevLandmarks) {
             return { yaw: 0, pitch: 0, moved: false };
         }
@@ -724,7 +724,7 @@ var SviLiveness = (function (exports) {
                         let prevStill = null;
                         for (const landmarks of frames) {
                             if (prevStill) {
-                                const result = detectHeadMovement(landmarks, prevStill);
+                                const result = detectHeadMovement(landmarks, prevStill, 3.0);
                                 if (!result.moved)
                                     stillCount++;
                             }

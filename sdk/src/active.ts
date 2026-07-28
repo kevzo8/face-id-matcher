@@ -178,7 +178,7 @@ export class SviActiveLiveness extends SviLivenessCore {
           let prevStill: NormalizedLandmarkList | null = null;
           for (const landmarks of frames) {
             if (prevStill) {
-              const result = detectHeadMovement(landmarks, prevStill);
+              const result = detectHeadMovement(landmarks, prevStill, 3.0);
               if (!result.moved) stillCount++;
             }
             prevStill = landmarks;
