@@ -401,7 +401,7 @@ face-id-matcher/
       <p style="font-size:15px;color:#94a3b8;line-height:1.7;">
         Identity verification for the modern web<br>
         Privacy-first &mdash; no images leave the browser<br>
-        Powered by MediaPipe &amp; SVI
+        Powered by SVI
       </p>
       <p style="font-size:18px;color:#64748b;margin-top:24px;">Built by <strong style="color:#e2e8f0;">Kevin G. Vega</strong></p>
       <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
@@ -517,6 +517,19 @@ face-id-matcher/
     }
     // Replace Biometrics → Corporation (fade)
     await fadeReplace(els[3], 'Corporation', 300);
+
+    if (firstRun) {
+      var footer = document.getElementById('s10-footer');
+      if (footer) {
+        footer.style.display = 'block';
+        footer.style.opacity = '0';
+        setTimeout(function() {
+          footer.style.transition = 'opacity 0.8s';
+          footer.style.opacity = '1';
+        }, 50);
+      }
+    }
+
     await sleep(2500);
 
     for (var i = 0; i < 3; i++) {
@@ -540,15 +553,6 @@ face-id-matcher/
       started = true;
       (async function() {
         await fullCycle(true);
-        var footer = document.getElementById('s10-footer');
-        if (footer) {
-          footer.style.display = 'block';
-          footer.style.opacity = '0';
-          setTimeout(function() {
-            footer.style.transition = 'opacity 0.8s';
-            footer.style.opacity = '1';
-          }, 50);
-        }
         while (true) { await fullCycle(false); }
       })();
     }
