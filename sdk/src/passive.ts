@@ -155,7 +155,7 @@ export class SviPassiveLiveness extends SviLivenessCore {
       score = breakdown.reduce((a, b) => a + b.pts, 0);
     }
 
-    const passed = score >= 38;
+    const passed = score >= 35; // 70% of 50
 
     const result: LivenessResult = {
       passed,

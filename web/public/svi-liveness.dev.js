@@ -502,7 +502,7 @@ var SviLiveness = (function (exports) {
                 breakdown.push({ label: 'Brightness', pts: brightnessScore });
                 score = breakdown.reduce((a, b) => a + b.pts, 0);
             }
-            const passed = score >= 38;
+            const passed = score >= 35; // 70% of 50
             const result = {
                 passed,
                 confidence: Math.min(1, score / 50),
@@ -770,7 +770,7 @@ var SviLiveness = (function (exports) {
             const totalScore = scores.reduce((a, b) => a + b, 0);
             const maxScore = CHALLENGES.length * 15; // 6 challenges × 15 = 90
             const finalScore = Math.min(totalScore, maxScore);
-            const passed = finalScore >= maxScore * 0.75; // 75% threshold
+            const passed = finalScore >= maxScore * 0.70; // 70% threshold
             // Prepare result
             const result = {
                 passed,

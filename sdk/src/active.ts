@@ -231,7 +231,7 @@ export class SviActiveLiveness extends SviLivenessCore {
     const totalScore = scores.reduce((a, b) => a + b, 0);
     const maxScore = CHALLENGES.length * 15; // 6 challenges × 15 = 90
     const finalScore = Math.min(totalScore, maxScore);
-    const passed = finalScore >= maxScore * 0.75; // 75% threshold
+    const passed = finalScore >= maxScore * 0.70; // 70% threshold
 
     // Prepare result
     const result: LivenessResult = {
