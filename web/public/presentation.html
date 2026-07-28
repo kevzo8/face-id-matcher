@@ -427,7 +427,7 @@ face-id-matcher/
   var suffixes = [
     { orig: 'ecure',          alt: 'oftware' },
     { orig: 'erification &',   alt: 'entures' },
-    { orig: 'dentification',   alt: 'nternational' }
+    { orig: 'dentification of',   alt: 'nternational' }
   ];
 
   var sub = document.getElementById('s10-sub');
@@ -510,8 +510,8 @@ face-id-matcher/
       await appendText(els[i], suffixes[i].alt, 40);
       await sleep(200);
     }
-    // Replace Biometrics → Corporation
-    els[3].textContent = '';
+    // Replace Biometrics → Corporation via backspace
+    await backspace(els[3], 0, 25);
     await typeText(els[3], 'Corporation', 40);
     await sleep(2500);
 
@@ -520,8 +520,8 @@ face-id-matcher/
       await backspace(els[i], 1, 25);
       await sleep(80);
     }
-    // Replace Corporation → Biometrics
-    els[3].textContent = '';
+    // Replace Corporation → Biometrics via backspace
+    await backspace(els[3], 0, 25);
     await typeText(els[3], 'Biometrics', 40);
     await sleep(400);
 
