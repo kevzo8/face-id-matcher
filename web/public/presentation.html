@@ -629,6 +629,10 @@ updateSlideNum();
 
 // keyboard nav
 document.addEventListener('keydown', function(e) {
+  // Ignore if typing in an input/textarea
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+    return;
+  }
   var slides = document.querySelectorAll('.slide');
   var current = -1;
   for (var i = 0; i < slides.length; i++) {
