@@ -214,6 +214,8 @@ var sdk = SviLiveness.create({
   onComplete:  function(result) {
     console.log('Passed:', result.passed);
     console.log('Score:', result.score + '%');
+    console.log('Face:', result.capturedFaceBase64
+      ? 'captured' : 'none');
   },
   onError:     function(err) {
     console.error(err.code, err.message);
@@ -244,7 +246,7 @@ Authorization: Bearer &lt;key&gt;
   "expires_at": "2026-07-28T..." }</pre>
 
       <h3>POST /api/v1/liveness</h3>
-      <p style="font-size:12px;color:#94a3b8;">Run liveness on a captured image.</p>
+      <p style="font-size:12px;color:#94a3b8;">Returns liveness result + captured face image.</p>
       <pre>
 // Request
 { "mode":  "active|passive",
