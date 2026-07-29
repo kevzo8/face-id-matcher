@@ -383,81 +383,68 @@ face-id-matcher/
         <p style="font-size:13px;line-height:1.6;">The SDK does all scoring <strong>client-side</strong> using MediaPipe. The backend is for session management, audit logging, and optional cloud provider fallbacks.</p>
         <p style="font-size:13px;line-height:1.6;margin-top:6px;">No images leave the browser unless you explicitly call the API.</p>
       </div>
-      <div class="card" style="border-color:#3b82f6;margin-top:12px;">
-        <p style="font-size:14px;font-weight:600;color:#60a5fa;margin-bottom:6px;">Tech Stack</p>
-        <div style="margin-top:8px;">
-          <div class="card" style="padding:8px 12px;margin-bottom:6px;border-color:#334155;">
-            <strong style="font-size:12px;color:#e2e8f0;">TypeScript</strong>
-            <p style="font-size:11px;color:#94a3b8;margin:4px 0 0;line-height:1.5;">Typed superset of JavaScript that compiles to plain JS. Used for building the SDK with type safety and modern ES features.</p>
-          </div>
-          <div class="card" style="padding:8px 12px;margin-bottom:6px;border-color:#334155;">
-            <strong style="font-size:12px;color:#e2e8f0;">MediaPipe</strong>
-            <p style="font-size:11px;color:#94a3b8;margin:4px 0 0;line-height:1.5;">Google's cross-platform ML pipeline framework. Used here for real-time FaceLandmarker detection to analyze facial landmarks (eyes, nose, head pose) directly in the browser.</p>
-          </div>
-          <div class="card" style="padding:8px 12px;margin-bottom:6px;border-color:#334155;">
-            <strong style="font-size:12px;color:#e2e8f0;">Rollup</strong>
-            <p style="font-size:11px;color:#94a3b8;margin:4px 0 0;line-height:1.5;">Module bundler that compiles the TypeScript SDK into a single self-contained JavaScript file (svi-liveness.js) with tree-shaking for minimal bundle size.</p>
-          </div>
-          <div class="card" style="padding:8px 12px;margin-bottom:6px;border-color:#334155;">
-            <strong style="font-size:12px;color:#e2e8f0;">FastAPI Backend</strong>
-            <p style="font-size:11px;color:#94a3b8;margin:4px 0 0;line-height:1.5;">Python async web framework for session management, audit logging, and routing requests to cloud providers (AWS, OpenFace).</p>
-          </div>
-          <div class="card" style="padding:8px 12px;border-color:#334155;">
-            <strong style="font-size:12px;color:#e2e8f0;">AWS</strong>
-            <p style="font-size:11px;color:#94a3b8;margin:4px 0 0;line-height:1.5;">Cloud provider for optional Rekognition (face/object detection), Kinesis Video Streams (video ingestion), and RDS/PostgreSQL (session storage & audit).</p>
-          </div>
-        </div>
-      </div>
-      <div class="card" style="border-color:#3b82f6;margin-top:12px;">
-        <p style="font-size:14px;font-weight:600;color:#60a5fa;margin-bottom:6px;">AWS Services</p>
-        <div style="margin-top:8px;">
-          <div class="card" style="padding:8px 12px;margin-bottom:6px;border-color:#334155;">
-            <strong style="font-size:12px;color:#e2e8f0;">Face Detection (AWS Rekognition)</strong>
-            <p style="font-size:11px;color:#94a3b8;margin:4px 0 0;line-height:1.5;">Asynchronous analysis of uploaded images for facial attributes like age, gender, expressions, and quality metrics.</p>
-          </div>
-          <div class="card" style="padding:8px 12px;margin-bottom:6px;border-color:#334155;">
-            <strong style="font-size:12px;color:#e2e8f0;">Object Detection (AWS Rekognition)</strong>
-            <p style="font-size:11px;color:#94a3b8;margin:4px 0 0;line-height:1.5;">Identifies common objects in images with confidence scores and bounding boxes.</p>
-          </div>
-          <div class="card" style="padding:8px 12px;border-color:#334155;">
-            <strong style="font-size:12px;color:#e2e8f0;">Kinesis Video Streams</strong>
-            <p style="font-size:11px;color:#94a3b8;margin:4px 0 0;line-height:1.5;">Ingests and processes live video streams for real-time and recorded liveness analysis.</p>
-          </div>
-        </div>
-      </div>
     </div>
   </section>
 
   <div style="font-size:13px;color:#64748b;margin-top:40px;text-align:center;">Authors: Kevin G. Vega | SVI Biometrics &mdash; Liveness SDK</div>
 
- <!-- SLIDE 10: Thank You -->
- <section class="slide" id="s10" style="padding-top:60px;">
-   <div style="max-width:700px;padding-left:60px;">
-     <div id="s10-sub" style="font-size:16px;color:#94a3b8;font-weight:700;letter-spacing:0.5px;margin-bottom:16px;min-width:12ch;white-space:nowrap;opacity:0;"></div>
-     <div id="s10-words" style="font-family:'Fira Code','JetBrains Mono','Courier New',monospace;font-size:42px;font-weight:800;line-height:1.4;">
-       <div id="sl1" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:14ch;white-space:nowrap;"></div>
-       <div id="sl2" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:14ch;white-space:nowrap;"></div>
-       <div id="sl3" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:18ch;white-space:nowrap;"></div>
-       <div id="sl4" style="color:#e2e8f0;min-width:11ch;min-height:1.4em;white-space:nowrap;"></div>
-      <div id="sl4-placeholder" style="color:#e2e8f0;min-width:11ch;min-height:1.4em;white-space:nowrap;display:none;">-</div>
-     </div>
- 
-           <div id="s10-footer" style="display:none;margin-top:40px;">
-             <p style="font-size:15px;color:#94a3b8;line-height:1.7;">
-               Identity verification for the modern web<br>
-               Privacy-first &mdash; no images leave the browser<br>
-               Powered by SVI
-             </p>
-             <p style="font-size:18px;color:#64748b;margin-top:24px;">Built by <strong style="color:#e2e8f0;">Kevin G. Vega</strong></p>
-            <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
-              <a href="https://vegamatcher.kevinguadalupevega.com/demo.html" target="_blank" style="display:inline-block;padding:8px 18px;background:#3b82f6;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Demo App</a>
-              <a href="https://screenrec.com/share/liGRYgbyJ8" target="_blank" style="display:inline-block;padding:8px 18px;background:#1e293b;border:1px solid #3b82f6;color:#60a5fa;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Demo Video</a>
-              <a href="https://svi-jira.atlassian.net/browse/CPS-343" target="_blank" style="display:inline-block;padding:8px 18px;background:#1e293b;border:1px solid #3b82f6;color:#60a5fa;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">CPS-343</a>
+  <!-- SLIDE 10: Thank You -->
+  <section class="slide" id="s10" style="padding-top:60px;">
+    <div style="display:flex;gap:40px;max-width:1100px;margin:0 auto;width:100%;">
+      <div style="flex:1;max-width:700px;">
+        <div id="s10-sub" style="font-size:16px;color:#94a3b8;font-weight:700;letter-spacing:0.5px;margin-bottom:16px;min-width:12ch;white-space:nowrap;opacity:0;"></div>
+        <div id="s10-words" style="font-family:'Fira Code','JetBrains Mono','Courier New',monospace;font-size:42px;font-weight:800;line-height:1.4;">
+          <div id="sl1" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:14ch;white-space:nowrap;"></div>
+          <div id="sl2" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:14ch;white-space:nowrap;"></div>
+          <div id="sl3" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:18ch;white-space:nowrap;"></div>
+          <div id="sl4" style="color:#e2e8f0;min-width:11ch;min-height:1.4em;white-space:nowrap;"></div>
+          <div id="sl4-placeholder" style="color:#e2e8f0;min-width:11ch;min-height:1.4em;white-space:nowrap;display:none;">-</div>
+        </div>
+
+        <div id="s10-footer" style="display:none;margin-top:40px;">
+          <p style="font-size:15px;color:#94a3b8;line-height:1.7;">
+            Identity verification for the modern web<br>
+            Privacy-first &mdash; no images leave the browser<br>
+            Powered by SVI
+          </p>
+          <p style="font-size:18px;color:#64748b;margin-top:24px;">Built by <strong style="color:#e2e8f0;">Kevin G. Vega</strong></p>
+          <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+            <a href="https://vegamatcher.kevinguadalupevega.com/demo.html" target="_blank" style="display:inline-block;padding:8px 18px;background:#3b82f6;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Demo App</a>
+            <a href="https://screenrec.com/share/liGRYgbyJ8" target="_blank" style="display:inline-block;padding:8px 18px;background:#1e293b;border:1px solid #3b82f6;color:#60a5fa;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Demo Video</a>
+            <a href="https://svi-jira.atlassian.net/browse/CPS-343" target="_blank" style="display:inline-block;padding:8px 18px;background:#1e293b;border:1px solid #3b82f6;color:#60a5fa;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">CPS-343</a>
+          </div>
+        </div>
+      </div>
+      <div id="s10-techstack" style="flex:0 0 300px;display:none;padding-top:60px;">
+        <div class="card" style="border-color:#3b82f6;">
+          <p style="font-size:13px;font-weight:600;color:#60a5fa;margin-bottom:6px;">Tech Stack</p>
+          <div style="margin-top:6px;">
+            <div class="card" style="padding:6px 10px;margin-bottom:4px;border-color:#334155;">
+              <p style="font-size:11px;font-weight:600;color:#e2e8f0;margin:0;">TypeScript</p>
+              <p style="font-size:10px;color:#94a3b8;margin:2px 0 0;line-height:1.4;">Typed JS superset for type-safe SDK development.</p>
+            </div>
+            <div class="card" style="padding:6px 10px;margin-bottom:4px;border-color:#334155;">
+              <p style="font-size:11px;font-weight:600;color:#e2e8f0;margin:0;">MediaPipe</p>
+              <p style="font-size:10px;color:#94a3b8;margin:2px 0 0;line-height:1.4;">Google ML pipeline for real-time FaceLandmarker detection.</p>
+            </div>
+            <div class="card" style="padding:6px 10px;margin-bottom:4px;border-color:#334155;">
+              <p style="font-size:11px;font-weight:600;color:#e2e8f0;margin:0;">Rollup</p>
+              <p style="font-size:10px;color:#94a3b8;margin:2px 0 0;line-height:1.4;">Bundler producing a single tree-shaken JS file.</p>
+            </div>
+            <div class="card" style="padding:6px 10px;margin-bottom:4px;border-color:#334155;">
+              <p style="font-size:11px;font-weight:600;color:#e2e8f0;margin:0;">FastAPI Backend</p>
+              <p style="font-size:10px;color:#94a3b8;margin:2px 0 0;line-height:1.4;">Python async framework for sessions, audit, cloud routing.</p>
+            </div>
+            <div class="card" style="padding:6px 10px;border-color:#334155;">
+              <p style="font-size:11px;font-weight:600;color:#e2e8f0;margin:0;">AWS</p>
+              <p style="font-size:10px;color:#94a3b8;margin:2px 0 0;line-height:1.4;">Rekognition, Kinesis Video Streams, RDS/PostgreSQL.</p>
             </div>
           </div>
-   </div>
-   <div class="footer" style="margin-top:auto;">Arrow keys or click numbers below to navigate</div>
- </section>
+        </div>
+      </div>
+    </div>
+    <div class="footer" style="margin-top:auto;">Arrow keys or click numbers below to navigate</div>
+  </section>
 
 <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
 <script>
@@ -640,6 +627,15 @@ document.addEventListener('keydown', function(e) {
         setTimeout(function() {
           footer.style.transition = 'opacity 0.8s';
           footer.style.opacity = '1';
+        }, 50);
+      }
+      var techstack = document.getElementById('s10-techstack');
+      if (techstack) {
+        techstack.style.display = 'block';
+        techstack.style.opacity = '0';
+        setTimeout(function() {
+          techstack.style.transition = 'opacity 0.8s';
+          techstack.style.opacity = '1';
         }, 50);
       }
     }
