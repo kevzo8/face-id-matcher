@@ -382,13 +382,21 @@ face-id-matcher/
         <p style="font-size:14px;font-weight:600;color:#60a5fa;margin-bottom:6px;">Key Design Decision</p>
         <p style="font-size:13px;line-height:1.6;">The SDK does all scoring <strong>client-side</strong> using MediaPipe. The backend is for session management, audit logging, and optional cloud provider fallbacks.</p>
         <p style="font-size:13px;line-height:1.6;margin-top:6px;">No images leave the browser unless you explicitly call the API.</p>
-        <div style="font-size:12px;color:#94a3b8;line-height:1.6;margin-top:8px;">
-          <strong>AWS Integration</strong><br>
-          <strong>Face Detection (AWS Rekognition):</strong> Asynchronous analysis of uploaded images for facial attributes like age, gender, expressions, and quality metrics.<br>
-          <strong>Object Detection (AWS Rekognition):</strong> Identifies common objects in images with confidence scores and bounding boxes.<br>
-          <strong>Session & Audit (Backend):</strong> Stores metadata, logs, and optional fallback data in PostgreSQL/RDS for audit and compliance.<br>
-          <strong>Provider Fallback:</strong> Can switch to AWS services when local heuristic scoring fails or requires cross-cloud verification.
+      </div>
+      <div class="card" style="border-color:#3b82f6;margin-top:12px;">
+        <p style="font-size:14px;font-weight:600;color:#60a5fa;margin-bottom:6px;">AWS Integration</p>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+          <span class="badge">Face Detection (AWS Rekognition)</span>
+          <span class="badge">Object Detection (AWS Rekognition)</span>
+          <span class="badge">Session & Audit</span>
+          <span class="badge">Provider Fallback</span>
         </div>
+        <p style="font-size:10px;color:#94a3b8;line-height:1.5;margin:0;">
+          Asynchronous face analysis for attributes (age, gender, expressions, quality).<br>
+          Identifies objects with confidence scores and bounding boxes.<br>
+          Stores metadata, logs, and optional fallback data in PostgreSQL/RDS.<br>
+          Switches to AWS when local heuristic scoring fails or needs cross-cloud verification.
+        </p>
       </div>
     </div>
   </section>
@@ -407,12 +415,13 @@ face-id-matcher/
       <div id="sl4-placeholder" style="color:#e2e8f0;min-width:11ch;min-height:1.4em;white-space:nowrap;display:none;">-</div>
      </div>
  
-          <div id="s10-footer" style="display:none;margin-top:40px;">
-            <p style="font-size:15px;color:#94a3b8;line-height:1.7;">
-              Identity verification for the modern web<br>
-              Privacy-first &mdash; no images leave the browser<br>
-              Powered by SVI &mdash; Built by Kevin G. Vega
-            </p>
+           <div id="s10-footer" style="display:none;margin-top:40px;">
+             <p style="font-size:15px;color:#94a3b8;line-height:1.7;">
+               Identity verification for the modern web<br>
+               Privacy-first &mdash; no images leave the browser<br>
+               Powered by SVI
+             </p>
+             <p style="font-size:18px;color:#64748b;margin-top:24px;">Built by <strong style="color:#e2e8f0;">Kevin G. Vega</strong></p>
             <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
               <a href="https://vegamatcher.kevinguadalupevega.com/demo.html" target="_blank" style="display:inline-block;padding:8px 18px;background:#3b82f6;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Demo App</a>
               <a href="https://screenrec.com/share/liGRYgbyJ8" target="_blank" style="display:inline-block;padding:8px 18px;background:#1e293b;border:1px solid #3b82f6;color:#60a5fa;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Demo Video</a>
