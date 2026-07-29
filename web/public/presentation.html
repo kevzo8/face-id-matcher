@@ -384,23 +384,27 @@ face-id-matcher/
         <p style="font-size:13px;line-height:1.6;margin-top:6px;">No images leave the browser unless you explicitly call the API.</p>
       </div>
       <div class="card" style="border-color:#3b82f6;margin-top:12px;">
-        <p style="font-size:14px;font-weight:600;color:#60a5fa;margin-bottom:6px;">AWS Integration</p>
+        <p style="font-size:14px;font-weight:600;color:#60a5fa;margin-bottom:6px;">Tech Stack</p>
         <div style="margin-top:8px;">
           <div class="card" style="padding:8px 12px;margin-bottom:6px;border-color:#334155;">
-            <strong style="font-size:12px;color:#e2e8f0;">Face Detection (AWS Rekognition)</strong>
-            <p style="font-size:11px;color:#94a3b8;margin:4px 0 0;line-height:1.5;">Asynchronous analysis of uploaded images for facial attributes like age, gender, expressions, and quality metrics.</p>
+            <strong style="font-size:12px;color:#e2e8f0;">TypeScript</strong>
+            <p style="font-size:11px;color:#94a3b8;margin:4px 0 0;line-height:1.5;">Typed superset of JavaScript that compiles to plain JS. Used for building the SDK with type safety and modern ES features.</p>
           </div>
           <div class="card" style="padding:8px 12px;margin-bottom:6px;border-color:#334155;">
-            <strong style="font-size:12px;color:#e2e8f0;">Object Detection (AWS Rekognition)</strong>
-            <p style="font-size:11px;color:#94a3b8;margin:4px 0 0;line-height:1.5;">Identifies common objects in images with confidence scores and bounding boxes.</p>
+            <strong style="font-size:12px;color:#e2e8f0;">MediaPipe</strong>
+            <p style="font-size:11px;color:#94a3b8;margin:4px 0 0;line-height:1.5;">Google's cross-platform ML pipeline framework. Used here for real-time FaceLandmarker detection to analyze facial landmarks (eyes, nose, head pose) directly in the browser.</p>
           </div>
           <div class="card" style="padding:8px 12px;margin-bottom:6px;border-color:#334155;">
-            <strong style="font-size:12px;color:#e2e8f0;">Session & Audit</strong>
-            <p style="font-size:11px;color:#94a3b8;margin:4px 0 0;line-height:1.5;">Stores metadata, logs, and optional fallback data in PostgreSQL/RDS for audit and compliance.</p>
+            <strong style="font-size:12px;color:#e2e8f0;">Rollup</strong>
+            <p style="font-size:11px;color:#94a3b8;margin:4px 0 0;line-height:1.5;">Module bundler that compiles the TypeScript SDK into a single self-contained JavaScript file (svi-liveness.js) with tree-shaking for minimal bundle size.</p>
+          </div>
+          <div class="card" style="padding:8px 12px;margin-bottom:6px;border-color:#334155;">
+            <strong style="font-size:12px;color:#e2e8f0;">FastAPI Backend</strong>
+            <p style="font-size:11px;color:#94a3b8;margin:4px 0 0;line-height:1.5;">Python async web framework for session management, audit logging, and routing requests to cloud providers (AWS, OpenFace).</p>
           </div>
           <div class="card" style="padding:8px 12px;border-color:#334155;">
-            <strong style="font-size:12px;color:#e2e8f0;">Provider Fallback</strong>
-            <p style="font-size:11px;color:#94a3b8;margin:4px 0 0;line-height:1.5;">Can switch to AWS services when local heuristic scoring fails or requires cross-cloud verification.</p>
+            <strong style="font-size:12px;color:#e2e8f0;">AWS</strong>
+            <p style="font-size:11px;color:#94a3b8;margin:4px 0 0;line-height:1.5;">Cloud provider for optional Rekognition (face/object detection), Kinesis Video Streams (video ingestion), and RDS/PostgreSQL (session storage & audit).</p>
           </div>
         </div>
       </div>
