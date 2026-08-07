@@ -211,6 +211,24 @@ npm install
 npm run build   # outputs dist/svi-id-ocr.js (iife), .esm.js, .dev.js, + types
 ```
 
+### Choosing an API
+
+Both entry points share the same engine and produce identical results. Pick the
+one that fits your context:
+
+| | Library API (`extractDocument`) | Web component (`<svi-id-ocr>`) |
+|---|---|---|
+| Best for | React/Vue/app code | Markup-first / vanilla JS / no build step |
+| Style | Function call returning a `Promise` | DOM element + methods + events |
+| Rendering | None (headless) | Optional host element |
+| Framework | Any (ES module) | Any (custom element) |
+
+- Use the **library API** when you're inside a component framework and want a
+  simple `await extractDocument(...)`.
+- Use the **web component** when you prefer a DOM element in HTML, listen for
+  `svi-ocr-success` / `svi-ocr-error` events, or target a page without a
+  bundler.
+
 Headless library usage:
 
 ```ts
