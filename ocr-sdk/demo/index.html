@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SVI ID OCR SDK Demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; background: #f5f6f8; color: #1a1a1a; }
+    .card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem; }
+    label { font-weight: 600; display: block; margin-bottom: .5rem; }
+    input[type=file] { margin-bottom: 1rem; }
+    button { background: #0b6e4f; color: #fff; border: 0; padding: .6rem 1.2rem; border-radius: 6px; cursor: pointer; }
+    button:disabled { background: #999; cursor: not-allowed; }
+    pre { background: #111; color: #7dffb0; padding: 1rem; border-radius: 6px; overflow: auto; font-size: .85rem; }
+    #log { background: #1e1e2e; color: #cdd6f4; }
+  </style>
+</head>
+<body>
+  <h1>SVI ID OCR SDK — Demo</h1>
+
+  <div class="card">
+    <label for="files">Upload one or more ID document images</label>
+    <input type="file" id="files" multiple accept="image/*" />
+    <button id="extract">Extract (library API)</button>
+    <button id="extractComp" disabled>Extract (web component)</button>
+    <p><em>Consumer apps decide which images / order to submit — the SDK never infers front/back.</em></p>
+  </div>
+
+  <div class="card">
+    <label>Standardized JSON output</label>
+    <pre id="log">Awaiting input…</pre>
+  </div>
+
+  <script type="module">
+    import { extractDocument } from '../frontend/src/index.ts';
+
+    const fileInput = document.getElementById('files');
+    const log = document.getElementById('log');
+    const extractBtn = document.getElementById('extract');
+    const extractCompBtn = document.getElementById('extractComp');
+
+    const toBase64 = (file) =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+    async function run(useComponent) {
+      if (!fileInput.files.length) {
+        log.textContent = 'Please select at least one image.';
+        return;
+      }
+      const images = await Promise.all(
+        Array.from(fileInput.files).map((f) => toBase64(f).then((image) => ({ image, label: f.name }))),
+      );
+
+      try {
+        let result;
+        if (useComponent) {
+          const el = document.createElement('svi-id-ocr');
+          result = await el.extract(images);
+        } else {
+          result = await extractDocument(images, { endpoint: '/ocr/extract' });
+        }
+        log.textContent = JSON.stringify(result, null, 2);
+      } catch (err) {
+        log.textContent = 'ERROR: ' + (err instanceof Error ? err.message : String(err));
+      }
+    }
+
+    extractBtn.addEventListener('click', () => run(false));
+    extractCompBtn.addEventListener('click', () => run(true));
+  </script>
+</body>
+</html>

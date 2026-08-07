@@ -1,0 +1,24 @@
+{
+  "name": "svi-id-ocr-sdk",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "SVI Reusable ID OCR Front-End SDK (CPS-381) - headless TypeScript library + optional web component",
+  "main": "dist/svi-id-ocr.js",
+  "module": "dist/svi-id-ocr.esm.js",
+  "types": "dist/types/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w"
+  },
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^12.1.0",
+    "rollup": "^4.24.0",
+    "tslib": "^2.8.0",
+    "typescript": "^5.6.0"
+  }
+}

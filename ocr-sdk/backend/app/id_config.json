@@ -1,0 +1,19 @@
+{
+  "identity_types": [
+    { "id_type_code": 0,  "country": "Philippines", "id_type": "OTHERS",       "issuing_authority": "OTHERS", "id_type_name": "Others",            "document_type": "OTHER",               "is_active": true },
+    { "id_type_code": 1,  "country": "Philippines", "id_type": "PASSPORT",     "issuing_authority": "DFA",  "id_type_name": "Passport",          "document_type": "PASSPORT",            "is_active": true },
+    { "id_type_code": 2,  "country": "Philippines", "id_type": "PNID",         "issuing_authority": "PSA",  "id_type_name": "National ID (ePhilID)", "document_type": "PHILIPPINE_NATIONAL_ID", "is_active": true },
+    { "id_type_code": 3,  "country": "Philippines", "id_type": "PNID",         "issuing_authority": "PSA",  "id_type_name": "National ID (PhilID Card)", "document_type": "PHILIPPINE_NATIONAL_ID", "is_active": true },
+    { "id_type_code": 4,  "country": "Philippines", "id_type": "UMID",         "issuing_authority": "SSS",  "id_type_name": "UMID",              "document_type": "UMID",                "is_active": true },
+    { "id_type_code": 5,  "country": "Philippines", "id_type": "PRC_ID",       "issuing_authority": "PRC",  "id_type_name": "PRC ID",            "document_type": "PRC_ID",              "is_active": true },
+    { "id_type_code": 6,  "country": "Philippines", "id_type": "SSS_ID",       "issuing_authority": "SSS",  "id_type_name": "SSS ID",            "document_type": "SSS_ID",              "is_active": true },
+    { "id_type_code": 7,  "country": "Philippines", "id_type": "GSIS_ID",      "issuing_authority": "GSIS", "id_type_name": "GSIS ID",           "document_type": "GSIS_ID",             "is_active": true },
+    { "id_type_code": 8,  "country": "Philippines", "id_type": "TIN",          "issuing_authority": "BIR",  "id_type_name": "TIN Card",          "document_type": "TIN",                 "is_active": true },
+    { "id_type_code": 9,  "country": "Philippines", "id_type": "PWD_ID",       "issuing_authority": "DSWD", "id_type_name": "PWD ID",            "document_type": "PWD_ID",              "is_active": true },
+    { "id_type_code": 10, "country": "Philippines", "id_type": "SENIOR_CITIZEN_ID", "issuing_authority": "OSCA", "id_type_name": "Senior Citizen ID", "document_type": "SENIOR_CITIZEN_ID",   "is_active": true },
+    { "id_type_code": 11, "country": "Philippines", "id_type": "PHILHEALTH",   "issuing_authority": "PhilHealth", "id_type_name": "PhilHealth ID", "document_type": "PHILHEALTH",       "is_active": true },
+    { "id_type_code": 12, "country": "Philippines", "id_type": "POSTAL_ID",    "issuing_authority": "PhlPost", "id_type_name": "Postal ID",      "document_type": "POSTAL_ID",           "is_active": true },
+    { "id_type_code": 13, "country": "Philippines", "id_type": "DRIVERS_LICENSE", "issuing_authority": "LTO", "id_type_name": "Driver's License", "document_type": "DRIVERS_LICENSE",     "is_active": true },
+    { "id_type_code": 14, "country": "Philippines", "id_type": "BATAENO_PASS", "issuing_authority": "SVI",  "id_type_name": "Bataeno Pass",     "document_type": "BATAENO_PASS_ID",     "is_active": true }
+  ]
+}
