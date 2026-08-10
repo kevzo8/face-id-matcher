@@ -134,7 +134,7 @@ export class SviActiveLiveness extends SviLivenessCore {
             frames.push(detection.landmarks);
           }
         } catch { }
-      }, 200);
+      }, 100);
 
       const durationMs = challenge.duration;
       const endTime = Date.now() + durationMs;
@@ -178,7 +178,10 @@ export class SviActiveLiveness extends SviLivenessCore {
           let prevStill: NormalizedLandmarkList | null = null;
           for (const landmarks of frames) {
             if (prevStill) {
-              const result = detectHeadMovement(landmarks, prevStill, 3.0);
+              // Tolerant threshold: ignore natural tremor / jitter, only flag
+              // obvious head movement as "moved". Unlike the turn challenges,
+              // stillness should be easy to earn.
+              const result = detectHeadMovement(landmarks, prevStill, 0.1);
               if (!result.moved) stillCount++;
             }
             prevStill = landmarks;
@@ -192,12 +195,13 @@ export class SviActiveLiveness extends SviLivenessCore {
           let blinkCount = 0;
           let wasBlinking = false;
           for (const landmarks of frames) {
-            const { isBlinking } = detectBlink(landmarks);
+            const { isBlinking } = detectBlink(landmarks, 0.32);
             if (isBlinking && !wasBlinking) blinkCount++;
             wasBlinking = isBlinking;
           }
-          const blinkRate = blinkCount / (durationMs / 1000);
-          score = Math.min(15, Math.max(0, blinkRate * 7.5));
+          // Blinking EAR is very fast (~150ms). Reward even a single detected
+          // blink near-full marks instead of requiring many blinks per second.
+          score = Math.min(15, Math.max(0, blinkCount * 7.5));
           breakdown = blinkCount;
           break;
 
@@ -212,7 +216,9 @@ export class SviActiveLiveness extends SviLivenessCore {
             if (result.moved) movementCount++;
             prevLandmarks = landmarks;
           }
-          score = Math.min(15, Math.max(0, movementCount * 2));
+          // Movement per frame (~20 frames at 100ms over 2s). Reward sustained
+          // movement; even a modest turn now crosses the looser threshold.
+          score = Math.min(15, Math.max(0, movementCount * 1.5));
           breakdown = movementCount;
           break;
 

@@ -99,37 +99,33 @@ export function detectBlink(landmarks: any, threshold = 0.25): { isBlinking: boo
 
 export function calculateHeadPose(landmarks: any): { yaw: number; pitch: number; roll: number } {
   const nose = landmarks[1];
-  const leftEyeCenter = landmarks[33];
-  const rightEyeCenter = landmarks[263];
-  const leftMouth = landmarks[61];
-  const rightMouth = landmarks[291];
+  const leftCheek = landmarks[234];
+  const rightCheek = landmarks[454];
+  const forehead = landmarks[10];
+  const chin = landmarks[152];
 
-  const eyeDist = Math.sqrt(
-    Math.pow(rightEyeCenter.x - leftEyeCenter.x, 2) +
-    Math.pow(rightEyeCenter.y - leftEyeCenter.y, 2)
-  );
+  const dist = (a: any, b: any) => Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
 
-  const mouthDist = Math.sqrt(
-    Math.pow(rightMouth.x - leftMouth.x, 2) +
-    Math.pow(rightMouth.y - leftMouth.y, 2)
-  );
+  // Yaw: asymmetry of the nose between the two face silhouette points.
+  // Turning left shrinks nose->left edge; turning right shrinks nose->right edge.
+  const noseToLeft = dist(nose, leftCheek);
+  const noseToRight = dist(nose, rightCheek);
+  const yaw = (noseToRight - noseToLeft) / (noseToLeft + noseToRight + 1e-6); // ~[-1, 1]
 
-  const mouthToNose = Math.sqrt(
-    Math.pow(nose.x - (leftMouth.x + rightMouth.x) / 2, 2) +
-    Math.pow(nose.y - (leftMouth.y + rightMouth.y) / 2, 2)
-  );
+  // Pitch: where the nose sits vertically between forehead and chin.
+  const faceHeight = dist(forehead, chin);
+  const noseToForehead = dist(nose, forehead);
+  const pitch = 0.5 - noseToForehead / (faceHeight + 1e-6); // >0 looking up, <0 looking down
 
-  const yaw = (mouthToNose / eyeDist) * 45;
-  const pitch = mouthToNose > 0.3 ? 30 : -20;
-  const roll = Math.sin((rightEyeCenter.y - leftEyeCenter.y) * 100);
+  const roll = Math.atan2(rightCheek.y - leftCheek.y, rightCheek.x - leftCheek.x);
 
-  return { yaw: Math.max(-45, Math.min(45, yaw)), pitch: Math.max(-30, Math.min(30, pitch)), roll };
+  return { yaw, pitch, roll };
 }
 
 export function detectHeadMovement(
   landmarks: any,
   prevLandmarks: any | null,
-  threshold = 0.5
+  threshold = 0.04
 ): { yaw: number; pitch: number; moved: boolean } {
   if (!prevLandmarks) {
     return { yaw: 0, pitch: 0, moved: false };
