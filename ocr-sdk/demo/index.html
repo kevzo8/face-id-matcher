@@ -13,10 +13,21 @@
     button:disabled { background: #999; cursor: not-allowed; }
     pre { background: #111; color: #7dffb0; padding: 1rem; border-radius: 6px; overflow: auto; font-size: .85rem; }
     #log { background: #1e1e2e; color: #cdd6f4; }
+    #status { min-height: 1.2rem; margin-bottom: .5rem; font-weight: 600; }
+    .loading { color: #0b6e4f; }
+    .loading::before {
+      content: '';
+      display: inline-block; width: .8rem; height: .8rem; margin-right: .5rem;
+      border: 2px solid #0b6e4f; border-top-color: transparent; border-radius: 50%;
+      animation: spin .7s linear infinite; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
-  <h1>SVI ID OCR SDK — Demo</h1>
+  <h1>SVI ID OCR SDK — Demo
+    <a href="presentation.html" style="font-size:.8rem;font-weight:600;text-decoration:none;margin-left:1rem;background:#0b6e4f;color:#fff;padding:.35rem .8rem;border-radius:6px;">View Presentation</a>
+  </h1>
 
   <div class="card">
     <label for="files">Upload one or more ID document images</label>
@@ -28,8 +39,11 @@
 
   <div class="card">
     <label>Standardized JSON output</label>
+    <div id="status" aria-live="polite"></div>
     <pre id="log">Awaiting input…</pre>
   </div>
+
+  <svi-id-ocr id="ocrComp" endpoint="/ocr/extract" style="display:none"></svi-id-ocr>
 
   <script type="module">
     import { extractDocument } from '../frontend/src/index.ts';
@@ -38,6 +52,31 @@
     const log = document.getElementById('log');
     const extractBtn = document.getElementById('extract');
     const extractCompBtn = document.getElementById('extractComp');
+    const ocrComp = document.getElementById('ocrComp');
+    const statusEl = document.getElementById('status');
+
+    function setLoading(loading, message) {
+      extractBtn.disabled = loading;
+      extractCompBtn.disabled = loading;
+      if (loading) {
+        statusEl.textContent = message || 'Extracting…';
+        statusEl.className = 'loading';
+      } else {
+        statusEl.textContent = '';
+        statusEl.className = '';
+      }
+    }
+
+    // Web component path: declare <svi-id-ocr> in the DOM, listen for its
+    // events, and trigger extraction by calling el.extract(images).
+    ocrComp.addEventListener('svi-ocr-success', (e) => {
+      setLoading(false);
+      log.textContent = JSON.stringify({ ok: true, data: e.detail }, null, 2);
+    });
+    ocrComp.addEventListener('svi-ocr-error', (e) => {
+      setLoading(false);
+      log.textContent = JSON.stringify({ ok: false, error: e.detail }, null, 2);
+    });
 
     const toBase64 = (file) =>
       new Promise((resolve, reject) => {
@@ -47,31 +86,40 @@
         reader.readAsDataURL(file);
       });
 
-    async function run(useComponent) {
+    async function readImages() {
       if (!fileInput.files.length) {
         log.textContent = 'Please select at least one image.';
-        return;
+        return null;
       }
-      const images = await Promise.all(
+      return Promise.all(
         Array.from(fileInput.files).map((f) => toBase64(f).then((image) => ({ image, label: f.name }))),
       );
+    }
 
+    async function runLibrary() {
+      const images = await readImages();
+      if (!images) return;
+      setLoading(true, 'Extracting via library API…');
       try {
-        let result;
-        if (useComponent) {
-          const el = document.createElement('svi-id-ocr');
-          result = await el.extract(images);
-        } else {
-          result = await extractDocument(images, { endpoint: '/ocr/extract' });
-        }
+        const result = await extractDocument(images, { endpoint: '/ocr/extract' });
         log.textContent = JSON.stringify(result, null, 2);
       } catch (err) {
         log.textContent = 'ERROR: ' + (err instanceof Error ? err.message : String(err));
+      } finally {
+        setLoading(false);
       }
     }
 
-    extractBtn.addEventListener('click', () => run(false));
-    extractCompBtn.addEventListener('click', () => run(true));
+    async function runComponent() {
+      const images = await readImages();
+      if (!images) return;
+      setLoading(true, 'Extracting via web component…');
+      // The result arrives via the svi-ocr-success / svi-ocr-error events.
+      ocrComp.extract(images);
+    }
+
+    extractBtn.addEventListener('click', runLibrary);
+    extractCompBtn.addEventListener('click', runComponent);
   </script>
 </body>
 </html>
