@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SVI Liveness SDK — Presentation</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f172a;color:#e2e8f0}
+.slide{height:100vh;padding:40px 60px;display:flex;flex-direction:column;justify-content:center;max-width:1200px;margin:auto;overflow:hidden}
+h1{font-size:44px;font-weight:800;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:12px}
+h2{font-size:28px;font-weight:700;color:#f1f5f9;margin-bottom:16px;border-left:4px solid #3b82f6;padding-left:14px}
+h3{font-size:18px;font-weight:600;color:#93c5fd;margin:14px 0 8px}
+p,li{font-size:16px;line-height:1.6;color:#cbd5e1;margin-bottom:8px}
+ul,ol{padding-left:22px;margin-bottom:10px}
+li{margin-bottom:4px}
+code{background:#1e293b;color:#a5b4fc;padding:2px 7px;border-radius:4px;font-size:14px;font-family:'Fira Code','JetBrains Mono',monospace}
+pre{background:#0f172a;color:#e2e8f0;padding:14px 18px;border-radius:8px;font-size:12px;line-height:1.5;overflow-x:auto;border:1px solid #1e293b;margin:8px 0;font-family:'Fira Code','JetBrains Mono',monospace;white-space:pre-wrap;word-break:break-all}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:10px 0}
+.card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px}
+.card h3{margin-top:0}
+.badge{display:inline-block;background:#1e3a5f;color:#60a5fa;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;margin-right:4px}
+.footer{margin-top:auto;color:#475569;font-size:13px;border-top:1px solid #1e293b;padding-top:14px}
+.step{display:flex;align-items:flex-start;gap:12px;margin:8px 0}
+.step-num{background:#3b82f6;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+.nav{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:100}
+.nav a{display:inline-block;padding:6px 16px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#94a3b8;text-decoration:none;font-size:12px;font-weight:600}
+.nav a:hover,.nav a.active{border-color:#3b82f6;color:#60a5fa;background:#1e3a5f}
+.slide-num{position:fixed;top:16px;right:24px;color:#334155;font-size:14px;font-weight:600}
+pre code{display:inline;background:none;padding:0;color:inherit;font-size:inherit}
+.mermaid{background:#0f172a;border-radius:10px;padding:10px;display:flex;justify-content:center;align-items:center;height:100%;min-height:280px}
+.mermaid svg{max-width:100%;height:auto}
+@media (max-width:768px){
+.slide{padding:24px 16px;height:auto;min-height:100vh}
+.grid{grid-template-columns:1fr}
+h1{font-size:28px}
+h2{font-size:20px}
+p,li{font-size:14px}
+pre{font-size:11px}
+}
+</style>
+</head>
+<body>
+
+<div class="slide-num" id="slideNum"></div>
+<div class="nav">
+  <a href="#s1">1</a><a href="#s2">2</a><a href="#s3">3</a>
+  <a href="#s4">4</a><a href="#s5">5</a><a href="#s6">6</a>
+  <a href="#s7">7</a><a href="#s8">8</a><a href="#s9">9</a><a href="#s10">10</a>
+</div>
+
+<!-- SLIDE 1: Title -->
+<section class="slide" id="s1">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <h1 style="margin-bottom:0;">SVI Biometrics &mdash; Liveness SDK</h1>
+    <div style="display:flex;gap:8px;">
+      <a href="https://vegamatcher.kevinguadalupevega.com/demo.html" target="_blank" style="display:inline-block;padding:8px 18px;background:#3b82f6;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Open Demo App</a>
+      <a href="https://screenrec.com/share/liGRYgbyJ8" target="_blank" style="display:inline-block;padding:8px 18px;background:#1e293b;border:1px solid #3b82f6;color:#60a5fa;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Watch Demo Video</a>
+    </div>
+  </div>
+  <p style="font-size:13px;color:#64748b;margin-top:4px;"><strong>SVI</strong> = <strong>S</strong>ecure <strong>V</strong>erification &amp; <strong>I</strong>dentification of Biometrics</p>
+  <p style="font-size:20px;color:#94a3b8;margin-bottom:24px;">Browser-based face liveness detection &mdash; Passive &amp; Active</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;">
+    <span class="badge">TypeScript</span>
+    <span class="badge">MediaPipe</span>
+    <span class="badge">Rollup</span>
+    <span class="badge">FastAPI Backend</span>
+  </div>
+  <p style="color:#64748b;font-size:14px;">Version 1.0.0 &mdash; July 2026</p>
+  <img src="../../web/public/assets/svi-biometrics-api.png" alt="SVI Biometrics API" style="width:80%;max-height:80vh;height:auto;margin:12px auto 0;display:block;">
+  <div class="footer">Arrow keys or click numbers below to navigate</div>
+</section>
+
+<!-- SLIDE 2: What it is -->
+<section class="slide" id="s2">
+  <h2>What is the SVI Biometrics &mdash; Liveness Check SDK?</h2>
+  <p style="font-size:13px;color:#64748b;margin-bottom:12px;"><strong>SVI</strong> = <strong>S</strong>ecure <strong>V</strong>erification &amp; <strong>I</strong>dentification of Biometrics</p>
+  <p>A <strong>client-side JavaScript SDK</strong> that detects whether a user is a <strong>real person</strong> (not a photo, video, or mask) using their device camera.</p>
+  <div class="grid">
+    <div class="card">
+      <h3>Passive Liveness</h3>
+      <p style="font-size:14px;">Single snapshot analyzed locally with MediaPipe:</p>
+      <ul style="font-size:13px;">
+        <li>Face size &amp; position</li>
+        <li>Head roll angle</li>
+        <li>Image sharpness</li>
+        <li>Brightness level</li>
+      </ul>
+      <p style="font-size:12px;color:#64748b;margin-top:6px;">Takes ~1 second</p>
+    </div>
+    <div class="card">
+      <h3>Active Liveness</h3>
+      <p style="font-size:14px;">6 challenge steps the user must perform:</p>
+      <ul style="font-size:13px;">
+        <li>Look straight (stillness)</li>
+        <li>Blink slowly</li>
+        <li>Turn head left / right</li>
+        <li>Look up / down</li>
+      </ul>
+      <p style="font-size:12px;color:#64748b;margin-top:6px;">Takes ~13 seconds</p>
+    </div>
+  </div>
+  <p style="font-size:14px;color:#64748b;">Both return a score (0&ndash;100%) and pass/fail decision.</p>
+</section>
+
+<!-- SLIDE 3: Architecture -->
+<section class="slide" id="s3">
+  <h2>Architecture</h2>
+  <div class="grid" style="grid-template-columns:1fr 1.5fr;">
+    <div>
+      <h3>Browser (SDK)</h3>
+      <ul style="font-size:13px;">
+        <li><code>SviPassiveLiveness</code> &mdash; snapshot + local scoring</li>
+        <li><code>SviActiveLiveness</code> &mdash; 6 challenge steps</li>
+        <li><code>SviLivenessCore</code> &mdash; camera, session, API helpers</li>
+        <li><code>detector.ts</code> &mdash; MediaPipe FaceLandmarker wrapper</li>
+        <li><code>ui.ts</code> &mdash; Card UI with overlays</li>
+      </ul>
+      <h3 style="margin-top:12px;">Backend (FastAPI)</h3>
+      <ul style="font-size:13px;">
+        <li><code>POST /api/v1/session/create</code></li>
+        <li><code>POST /api/v1/liveness</code></li>
+        <li><code>POST /liveness/detect-faces</code> (AWS)</li>
+        <li><code>POST /liveness/detect-objects</code> (AWS)</li>
+        <li><code>GET /health</code></li>
+      </ul>
+    </div>
+    <div>
+      <div class="mermaid">
+flowchart TD
+    subgraph Browser_SDK["Browser (SDK)"]
+        P[Passive<br/>snapshot + MediaPipe] --> C[SviLivenessCore<br/>camera, session, API]
+        A[Active<br/>6 challenges + scoring] --> C
+    end
+    C -->|HTTP JSON| B[Backend FastAPI<br/>Session store / Audit /<br/>Heuristic, AWS, OpenFace]
+      </div>
+    </div>
+  </div>
+  <p style="font-size:13px;color:#94a3b8;margin-top:4px;">SDK scores client-side via MediaPipe. Backend handles sessions, audit, and cloud provider fallbacks.</p>
+</section>
+
+<!-- SLIDE 4: Passive Flow -->
+<section class="slide" id="s4">
+  <h2>Passive Liveness Flow</h2>
+  <div style="display:flex;gap:16px;flex:1;align-items:center;">
+    <div style="flex:1">
+      <div class="step"><div class="step-num">1</div><div style="font-size:14px;"><strong>Initialize</strong> &mdash; POST /api/v1/session/create</div></div>
+      <div class="step"><div class="step-num">2</div><div style="font-size:14px;"><strong>Start camera</strong> &mdash; getUserMedia</div></div>
+      <div class="step"><div class="step-num">3</div><div style="font-size:14px;"><strong>Capture frame</strong> &mdash; Video to Canvas</div></div>
+      <div class="step"><div class="step-num">4</div><div style="font-size:14px;"><strong>Detect face</strong> &mdash; MediaPipe FaceLandmarker</div></div>
+      <div class="step"><div class="step-num">5</div><div style="font-size:14px;"><strong>Score</strong> &mdash; 5 metrics below</div></div>
+    </div>
+    <div style="flex:1">
+      <pre>
+Metric         Max  What it checks
+Face Size       15  Face width in frame
+Centering       10  Nose between ears
+Head Tilt       10  Eye line angle (roll)
+Sharpness       10  Pixel variance (blur)
+Brightness       5  Average luminance
+TOTAL           50  Pass: >= 35 (70%)</pre>
+      <p style="font-size:13px;color:#64748b;">All scoring is local. No images leave the browser.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 5: Active Flow -->
+<section class="slide" id="s5">
+  <h2>Active Liveness Flow</h2>
+  <div style="display:flex;gap:16px;flex:1;align-items:center;">
+    <div style="flex:1">
+      <div class="step"><div class="step-num">1</div><div style="font-size:14px;"><strong>Session + Camera</strong> &mdash; same setup</div></div>
+      <div class="step"><div class="step-num">2</div><div style="font-size:14px;"><strong>6 Challenges</strong> &mdash; each with countdown timer</div></div>
+      <div class="step"><div class="step-num">3</div><div style="font-size:14px;"><strong>Snapshot</strong> &mdash; captured during "Look straight"</div></div>
+      <div class="step"><div class="step-num">4</div><div style="font-size:14px;"><strong>Score</strong> &mdash; per-step (0-15) summed vs 70% threshold</div></div>
+    </div>
+    <div style="flex:1">
+      <pre>
+Challenge      Dur.  Measured
+Look straight   2s   Stillness
+Blink slowly    3s   Blink count
+Turn left       2s   Yaw movement
+Turn right      2s   Yaw movement
+Look up         2s   Pitch movement
+Look down       2s   Pitch movement
+Max: 90 pts (6 x 15)  Pass: >= 63 (70%)</pre>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 6: SDK Integration -->
+<section class="slide" id="s6">
+  <h2>SDK Integration (3 Steps)</h2>
+  <div class="grid" style="grid-template-columns:1fr 2fr;">
+    <div>
+      <div class="card" style="margin-bottom:10px;padding:14px;">
+        <p style="font-size:14px;font-weight:600;color:#60a5fa;margin-bottom:4px;">Step 1</p>
+        <p style="font-size:13px;">Add the script tag.</p>
+      </div>
+      <div class="card" style="margin-bottom:10px;padding:14px;">
+        <p style="font-size:14px;font-weight:600;color:#60a5fa;margin-bottom:4px;">Step 2</p>
+        <p style="font-size:13px;">Add a container div.</p>
+      </div>
+      <div class="card" style="padding:14px;">
+        <p style="font-size:14px;font-weight:600;color:#60a5fa;margin-bottom:4px;">Step 3</p>
+        <p style="font-size:13px;">Initialize with SviLiveness.create().</p>
+      </div>
+    </div>
+    <div>
+      <pre><!-- Step 1: Load SDK (MediaPipe bundled inline) -->
+&lt;script src="svi-liveness.dev.js"&gt;&lt;/script&gt;
+
+<!-- Step 2: Container for SDK UI -->
+&lt;div id="svi-root"&gt;&lt;/div&gt;
+
+<!-- Step 3: Initialize -->
+&lt;script&gt;
+var sdk = SviLiveness.create({
+  backendUrl:  'http://localhost:8000',
+  mode:        'passive',   // 'passive' | 'active'
+  containerId: 'svi-root',
+  onComplete:  function(result) {
+    console.log('Passed:', result.passed);
+    console.log('Score:', result.score + '%');
+    console.log('Face:', result.capturedFaceBase64
+      ? 'captured' : 'none');
+  },
+  onError:     function(err) {
+    console.error(err.code, err.message);
+  },
+  theme: { primaryColor: '#3b82f6' },
+});
+
+sdk.start();  // begins camera + detection
+&lt;/script&gt;</pre>
+    </div>
+  </div>
+  <p style="font-size:13px;color:#64748b;">SDK handles camera, UI, challenges, and scoring. No CDN or external dependencies needed.</p>
+</section>
+
+<!-- SLIDE 7: API Reference -->
+<section class="slide" id="s7">
+  <h2>Backend API Reference</h2>
+  <div class="grid" style="grid-template-columns:1.1fr 0.9fr;">
+    <div>
+      <h3>POST /api/v1/session/create</h3>
+      <p style="font-size:12px;color:#94a3b8;">Creates a one-time session.</p>
+      <pre>
+// Request (Headers only, no body)
+Authorization: Bearer &lt;key&gt;
+
+// Response 200
+{ "session_id": "uuid",
+  "expires_at": "2026-07-28T..." }</pre>
+
+      <h3>POST /api/v1/liveness</h3>
+      <p style="font-size:12px;color:#94a3b8;">Returns liveness result + captured face image.</p>
+      <pre>
+// Request
+{ "mode":  "active|passive",
+  "image": "base64...",
+  "session_id": "uuid",
+  "challenge_data": null }
+
+// Response 200
+{ "passed":      true,
+  "confidence":  0.85,
+  "txn_id":      "uuid",
+  "provider":    "heuristic",
+  "used_fallback": false,
+  "captured_face": "base64...",
+  "error":        null }</pre>
+    </div>
+    <div>
+      <h3>POST /liveness/detect-faces (AWS)</h3>
+      <pre>
+// Request:  { "image": "base64..." }
+// Response: { "face_detected": true,
+//             "confidence": 0.99,
+//             "eyes_open": true,
+//             "quality_sharpness": 0.8,
+//             "age_low": 25, "age_high": 35,
+//             "gender": "Male", "expression": "Happy" }</pre>
+
+      <h3>POST /liveness/detect-objects (AWS)</h3>
+      <pre>
+// Request:  { "image": "base64..." }
+// Response: { "has_phone": false,
+//             "has_screen": false,
+//             "has_photo": false,
+//             "spoof_risk": "low",
+//             "raw_labels": [...] }</pre>
+
+      <h3>GET /health</h3>
+      <pre>
+// Response
+{ "status": "ok",
+  "environment": "production",
+  "providers": { ... } }</pre>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 8: Running Locally -->
+<section class="slide" id="s8">
+  <h2>Running Locally</h2>
+  <div class="grid" style="grid-template-columns:1fr 1fr;">
+    <div>
+      <h3>Prerequisites</h3>
+      <ul style="font-size:14px;">
+        <li>Python 3.14+</li>
+        <li>Node.js 20+ (SDK rebuild)</li>
+        <li>Webcam</li>
+      </ul>
+      <h3>1. Backend</h3>
+      <pre>
+cd backend
+pip install -r requirements.txt
+python run.py</pre>
+      <p style="font-size:13px;color:#64748b;">Starts at http://localhost:8000</p>
+    </div>
+    <div>
+      <h3>2. Demo page</h3>
+      <pre>
+cd sdk
+python -m http.server 3000</pre>
+      <p style="font-size:13px;color:#64748b;">Open http://localhost:3000/demo/</p>
+      <h3>3. Rebuild SDK (optional)</h3>
+      <pre>
+cd sdk
+npm install
+npm run build</pre>
+      <p style="font-size:13px;color:#64748b;">Outputs in dist/</p>
+    </div>
+  </div>
+  <div class="card" style="margin-top:8px;border-color:#3b82f6;padding:14px;">
+    <p style="font-size:14px;font-weight:600;color:#60a5fa;margin-bottom:2px;">Tip</p>
+    <p style="font-size:13px;">Open F12 console &rarr; API logs tagged [SESSION] and [LIVENESS] with full request/response payloads.</p>
+  </div>
+</section>
+
+<!-- SLIDE 9: Project Structure -->
+<section class="slide" id="s9">
+  <h2>Project Structure</h2>
+  <div class="grid" style="grid-template-columns:1.2fr 1fr;">
+    <div>
+      <pre class="no-highlight">
+face-id-matcher/
++-- backend/
+|   +-- app/
+|   |   +-- api/routes.py         Endpoints
+|   |   +-- core/session.py       Session store
+|   |   +-- core/audit.py         Audit logging
+|   |   +-- liveness/engine.py    Orchestration
+|   |   +-- liveness/providers/   heuristic, aws, open_face
+|   |   +-- models/schemas.py     Pydantic
+|   |   +-- config.py             Env config
+|   |   +-- main.py               FastAPI app
+|   +-- requirements.txt
+|   +-- run.py
+|   +-- Dockerfile
+|
++-- sdk/
+    +-- src/
+    |   +-- core.ts        Base class
+    |   +-- passive.ts     Passive liveness
+    |   +-- active.ts      Active + challenges
+    |   +-- detector.ts    MediaPipe wrapper
+    |   +-- ui.ts          UI rendering
+    |   +-- types.ts       TypeScript types
+    |   +-- index.ts       SviLiveness.create()
+    +-- dist/              Built output
+    +-- demo/index.html    Demo page
+    +-- package.json
+    +-- rollup.config.js
+    +-- tsconfig.json</pre>
+    </div>
+    <div style="display:flex;flex-direction:column;justify-content:center;">
+      <div class="card" style="border-color:#3b82f6;">
+        <p style="font-size:14px;font-weight:600;color:#60a5fa;margin-bottom:6px;">Key Design Decision</p>
+        <p style="font-size:13px;line-height:1.6;">The SDK does all scoring <strong>client-side</strong> using MediaPipe. The backend is for session management, audit logging, and optional cloud provider fallbacks.</p>
+        <p style="font-size:13px;line-height:1.6;margin-top:6px;">No images leave the browser unless you explicitly call the API.</p>
+      </div>
+      <p style="font-size:13px;color:#64748b;margin-top:16px;">End of presentation</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 10: Thank You -->
+<section class="slide" id="s10" style="justify-content:center;">
+  <div style="max-width:700px;padding-left:60px;">
+    <div id="s10-sub" style="font-size:16px;color:#94a3b8;font-weight:700;letter-spacing:0.5px;margin-bottom:16px;min-width:12ch;white-space:nowrap;opacity:0;"></div>
+    <div id="s10-words" style="font-family:'Fira Code','JetBrains Mono','Courier New',monospace;font-size:42px;font-weight:800;line-height:1.4;">
+      <div id="sl1" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:14ch;white-space:nowrap;"></div>
+      <div id="sl2" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:14ch;white-space:nowrap;"></div>
+      <div id="sl3" style="background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:18ch;white-space:nowrap;"></div>
+      <div id="sl4" style="color:#e2e8f0;min-width:11ch;white-space:nowrap;"></div>
+    </div>
+
+  </div>
+    <div class="footer" style="margin-top:auto;">Arrow keys or click numbers below to navigate</div>
+  </div>
+</section>
+
+<script>
+// ─── Slide 10 typewriter + fade animation ────────────────────────────────
+(function() {
+  var els = [
+    document.getElementById('sl1'),
+    document.getElementById('sl2'),
+    document.getElementById('sl3'),
+    document.getElementById('sl4')
+  ];
+
+  var suffixes = [
+    { orig: 'ecure',          alt: 'oftware' },
+    { orig: 'erification &',   alt: 'entures' },
+    { orig: 'dentification of',   alt: 'nternational' }
+  ];
+
+  var sub = document.getElementById('s10-sub');
+
+  function sleep(ms) {
+    return new Promise(function(resolve) { setTimeout(resolve, ms); });
+  }
+
+  async function fadeIn(el, dur) {
+    el.style.transition = 'opacity ' + dur + 'ms';
+    el.style.opacity = '1';
+    await sleep(dur);
+  }
+
+  async function fadeOut(el, dur) {
+    el.style.transition = 'opacity ' + dur + 'ms';
+    el.style.opacity = '0';
+    await sleep(dur);
+  }
+
+  async function fadeReplace(el, newText, dur) {
+    el.style.transition = 'opacity ' + dur + 'ms';
+    el.style.opacity = '0';
+    await sleep(dur);
+    el.textContent = newText;
+    el.style.opacity = '1';
+    await sleep(dur);
+  }
+
+  async function typeText(el, text, speed) {
+    el.textContent = '';
+    for (var i = 0; i < text.length; i++) {
+      el.textContent += text[i];
+      await sleep(speed);
+    }
+  }
+
+  async function appendText(el, suffix, speed) {
+    for (var i = 0; i < suffix.length; i++) {
+      el.textContent += suffix[i];
+      await sleep(speed);
+    }
+  }
+
+  async function backspace(el, keepLen, speed) {
+    while (el.textContent.length > keepLen) {
+      el.textContent = el.textContent.substring(0, el.textContent.length - 1);
+      await sleep(speed);
+    }
+  }
+
+  async function fullCycle(firstRun) {
+    if (firstRun) {
+      sub.textContent = 'presenting';
+      await fadeIn(sub, 600);
+      await sleep(300);
+      await typeText(els[0], 'S', 60);
+      await sleep(100);
+      await typeText(els[1], 'V', 60);
+      await sleep(100);
+      await typeText(els[2], 'I', 60);
+      await sleep(100);
+      await typeText(els[3], 'Biometrics', 45);
+      await sleep(600);
+    }
+
+    for (var i = 0; i < 3; i++) {
+      await appendText(els[i], suffixes[i].orig, 40);
+      await sleep(200);
+    }
+    await sleep(2000);
+
+    for (var i = 0; i < 3; i++) {
+      await backspace(els[i], 1, 25);
+      await sleep(80);
+    }
+    await sleep(400);
+
+    await fadeOut(sub, 400);
+    sub.textContent = 'by';
+    await fadeIn(sub, 400);
+    await sleep(300);
+
+    for (var i = 0; i < 3; i++) {
+      await appendText(els[i], suffixes[i].alt, 40);
+      await sleep(200);
+    }
+    // Replace Biometrics → Corporation (fade)
+    await fadeReplace(els[3], 'Corporation', 300);
+
+    if (firstRun) {
+      var footer = document.getElementById('s10-footer');
+      if (footer) {
+        footer.style.display = 'block';
+        footer.style.opacity = '0';
+        setTimeout(function() {
+          footer.style.transition = 'opacity 0.8s';
+          footer.style.opacity = '1';
+        }, 50);
+      }
+    }
+
+    await sleep(2500);
+
+    for (var i = 0; i < 3; i++) {
+      await backspace(els[i], 1, 25);
+      await sleep(80);
+    }
+    await fadeReplace(els[3], 'Biometrics', 300);
+    await sleep(400);
+
+    await fadeOut(sub, 400);
+    sub.textContent = 'presenting';
+    await fadeIn(sub, 400);
+    await sleep(300);
+  }
+
+  var started = false;
+  function checkSlide() {
+    if (started) return;
+    var rect = document.getElementById('s10').getBoundingClientRect();
+    if (rect.top < window.innerHeight && rect.bottom > 0) {
+      started = true;
+      (async function() {
+        await fullCycle(true);
+        while (true) { await fullCycle(false); }
+      })();
+    }
+  }
+  window.addEventListener('scroll', checkSlide);
+  checkSlide();
+})();
+</script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'dark',
+  themeVariables: {
+    primaryColor: '#1e3a5f',
+    primaryBorderColor: '#3b82f6',
+    primaryTextColor: '#e2e8f0',
+    lineColor: '#3b82f6',
+    secondaryColor: '#1e293b',
+    tertiaryColor: '#0f172a',
+    fontSize: '14px',
+  },
+  flowchart: { useMaxWidth: true, htmlLabels: true, padding: 12 },
+});
+
+// slide number + nav highlight
+var slideNum = document.getElementById('slideNum');
+var navLinks = document.querySelectorAll('.nav a');
+function updateSlideNum() {
+  var slides = document.querySelectorAll('.slide');
+  for (var i = 0; i < slides.length; i++) {
+    var rect = slides[i].getBoundingClientRect();
+    if (rect.top <= 100 && rect.bottom > 100) {
+      slideNum.textContent = (i + 1) + ' / ' + slides.length;
+      navLinks.forEach(function(l) { l.classList.remove('active'); });
+      if (navLinks[i]) navLinks[i].classList.add('active');
+      break;
+    }
+  }
+}
+window.addEventListener('scroll', updateSlideNum);
+updateSlideNum();
+
+// keyboard nav
+document.addEventListener('keydown', function(e) {
+  var slides = document.querySelectorAll('.slide');
+  var current = -1;
+  for (var i = 0; i < slides.length; i++) {
+    var rect = slides[i].getBoundingClientRect();
+    if (rect.top <= 100 && rect.bottom > 100) { current = i; break; }
+  }
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+    if (current < slides.length - 1) slides[current + 1].scrollIntoView({ behavior: 'smooth' });
+    e.preventDefault();
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    if (current > 0) slides[current - 1].scrollIntoView({ behavior: 'smooth' });
+    e.preventDefault();
+  }
+});
+</script>
+</body>
+</html>
