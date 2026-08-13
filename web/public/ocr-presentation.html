@@ -122,8 +122,8 @@ pre{font-size:11px}
     <div>
       <div class="mermaid">
 flowchart TD
-    subgraph App["Consuming App<br/>(OWA, Passenger<br/>Manifest, ...)"]
-        I["&nbsp;<br/>1+ ID images +<br/>id_type_code<br/>&nbsp;"]
+    subgraph App["Consuming App<br/>(OWA, Passenger<br/>Manifest, ...)<br/><br/>"]
+        I["&nbsp;1+ ID images +<br/>id_type_code<br/>&nbsp;"]
     end
     I -->|base64| S[Front-End SDK<br/>TypeScript headless]
     S -->|POST /id-ocr/ocr/extract| B[Backend Wrapper<br/>FastAPI]
