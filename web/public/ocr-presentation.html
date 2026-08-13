@@ -123,7 +123,7 @@ pre{font-size:11px}
       <div class="mermaid">
 flowchart TD
     subgraph App["Consuming App<br/>(OWA, Passenger<br/>Manifest, ...)"]
-        I["<br/>1+ ID images +<br/>id_type_code<br/>"]
+        I["&nbsp;<br/>1+ ID images +<br/>id_type_code<br/>&nbsp;"]
     end
     I -->|base64| S[Front-End SDK<br/>TypeScript headless]
     S -->|POST /id-ocr/ocr/extract| B[Backend Wrapper<br/>FastAPI]
@@ -505,7 +505,7 @@ mermaid.initialize({
     tertiaryColor: '#0f172a',
     fontSize: '14px',
   },
-  flowchart: { useMaxWidth: true, htmlLabels: true, padding: 12 },
+  flowchart: { useMaxWidth: true, htmlLabels: true, padding: 16, nodeSpacing: 20, rankSpacing: 30 },
   securityLevel: 'loose',
 });
 
