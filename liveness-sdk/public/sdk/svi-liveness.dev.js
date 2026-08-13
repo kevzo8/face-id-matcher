@@ -80,6 +80,104 @@ var SviLiveness = (function (exports) {
             ear,
         };
     }
+    /** Blink depth beyond the threshold: 0 = not blinking, larger = eyes more shut.
+     *  Rewards a real, sustained blink over a half-closed / twitching lid. */
+    function estimateBlinkDepth(landmarks, threshold = 0.25) {
+        const ear = calculateEAR(landmarks);
+        if (ear >= threshold)
+            return 0;
+        return Math.min(1, (threshold - ear) / threshold);
+    }
+    /**
+     * Gaze direction from MediaPipe's 478-point model. Points 468 (left) and
+     * 473 (right) are iris centres; we measure how far each iris sits between the
+     * eye corners. Returns ~[-1,1] horizontal and vertical gaze.
+     */
+    function calculateGaze(landmarks) {
+        const p = (i) => landmarks[i];
+        const lerp = (a, b, t) => ({
+            x: a.x + (b.x - a.x) * t,
+            y: a.y + (b.y - a.y) * t,
+        });
+        // Left eye: corners 33 (outer) -> 133 (inner); right eye: 362 (inner) -> 263 (outer)
+        const leftOuter = p(33), leftInner = p(133);
+        const rightInner = p(362), rightOuter = p(263);
+        const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+        const leftGazeX = clamp((leftOuter.x - p(468).x) / (dist(leftOuter, leftInner) + 1e-6), -1, 1);
+        const rightGazeX = clamp((rightOuter.x - p(473).x) / (dist(rightOuter, rightInner) + 1e-6), -1, 1);
+        // Vertical: iris between a point above/below the eye. Approximate with outer
+        // corner -> inner corner midpoint and the iris. Keep small; gaze Y is noisy.
+        const lMid = lerp(leftOuter, leftInner, 0.5);
+        const lIrisToMidY = p(468).y - lMid.y;
+        const gazeY = clamp(-lIrisToMidY * 6, -1, 1);
+        return { x: clamp((leftGazeX + rightGazeX) / 2, -1, 1), y: gazeY };
+    }
+    /**
+     * Downsample the video to grayscale pixels for frame-level analysis
+     * (micro-motion between frames, texture flatness for print detection).
+     */
+    function sampleFramePixels(video, w = 160, h = 120) {
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(video, 0, 0, w, h);
+            const data = ctx.getImageData(0, 0, w, h).data;
+            const gray = new Uint8ClampedArray(w * h);
+            for (let i = 0, j = 0; i < data.length; i += 4, j++) {
+                gray[j] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+            }
+            return gray;
+        }
+        catch {
+            return null;
+        }
+    }
+    /** Normalized per-pixel absolute difference between two grayscale frames [0..1]. */
+    function computeFrameDiff(a, b) {
+        if (!a || !b || a.length !== b.length)
+            return 0;
+        let sum = 0;
+        for (let i = 0; i < a.length; i++)
+            sum += Math.abs(a[i] - b[i]);
+        return sum / (a.length * 255);
+    }
+    /** Texture flatness of a grayscale frame [0..1]. Real skin has local variance;
+     *  a printed photo / screen is unnaturally flat in small patches. */
+    function computeFrameFlatness(pixels) {
+        if (!pixels || pixels.length < 4)
+            return 0;
+        const g = (i) => pixels[i];
+        let blockVar = 0;
+        const block = 8;
+        const w = 160, h = 120;
+        let blocks = 0;
+        for (let by = 0; by < h; by += block) {
+            for (let bx = 0; bx < w; bx += block) {
+                let sum = 0, sum2 = 0, n = 0;
+                for (let y = by; y < Math.min(by + block, h); y += 2) {
+                    for (let x = bx; x < Math.min(bx + block, w); x += 2) {
+                        const v = g(y * w + x);
+                        sum += v;
+                        sum2 += v * v;
+                        n++;
+                    }
+                }
+                if (n > 1) {
+                    const mean = sum / n;
+                    blockVar += (sum2 / n - mean * mean);
+                    blocks++;
+                }
+            }
+        }
+        const avgVar = blocks ? blockVar / blocks : 0;
+        // Flat frames -> low variance. Return flatness scaled so ~0 var => 1 (flat).
+        return clamp(1 - avgVar / 1200, 0, 1);
+    }
+    function clamp(v, lo, hi) {
+        return Math.max(lo, Math.min(hi, v));
+    }
     function calculateHeadPose(landmarks) {
         const nose = landmarks[1];
         const leftCheek = landmarks[234];
@@ -465,62 +563,126 @@ var SviLiveness = (function (exports) {
                 this.landmarkerInitialized = true;
             }
             const video = this.getVideo();
-            const detection = detectFace(video);
+            // Multi-frame capture: ~3.5s of sampling at ~90ms to gather life cues
+            // (natural blinks, micro-movement) as well as static quality signals.
+            const SAMPLE_MS = 90;
+            const SAMPLES = 38;
+            const landmarks = [];
+            const pixels = [];
+            for (let i = 0; i < SAMPLES; i++) {
+                const d = detectFace(video);
+                if (d.detected && d.landmarks)
+                    landmarks.push(d.landmarks);
+                const px = sampleFramePixels(video);
+                if (px)
+                    pixels.push(px);
+                await this.sleep(SAMPLE_MS);
+            }
             const base64 = this.captureFrame();
             const quality = this.analyzeImageQuality(video);
             this.stopCamera();
             renderUI(container, this.config.theme || { }, false, [], '', () => { }, () => { }, 'Analyzing...', 'processing');
             this.setStatus('Analyzing...');
-            let score = 0;
-            let breakdown = [];
-            if (detection.detected && detection.landmarks) {
-                const lm = detection.landmarks;
-                // 1. Face Size (0-15): face should fill a good portion of the frame
+            const breakdown = [];
+            const info = [];
+            // Face presence / coverage
+            const coverage = landmarks.length / SAMPLES;
+            breakdown.push({ label: 'Face Present', pts: Math.round(Math.min(10, coverage * 10)) });
+            let spoofFrozen = false;
+            if (pixels.length > 1) {
+                // Flatness: printed/screen surfaces are unnaturally smooth
+                let flatSum = 0;
+                for (const px of pixels)
+                    flatSum += computeFrameFlatness(px);
+                const flatness = flatSum / pixels.length;
+                // Inter-frame motion: a real face never sits perfectly still
+                let diffSum = 0;
+                for (let i = 1; i < pixels.length; i++)
+                    diffSum += computeFrameDiff(pixels[i - 1], pixels[i]);
+                const avgDiff = diffSum / (pixels.length - 1);
+                if (flatness > 0.8) {
+                    info.push({ label: 'print/replay', value: `flatness ${(flatness * 100).toFixed(0)}%` });
+                }
+                if (avgDiff < 0.004)
+                    spoofFrozen = true;
+            }
+            if (landmarks.length >= 2) {
+                // Life cue 1 — natural blink rate & depth
+                let blinkCount = 0;
+                let wasBlinking = false;
+                let depthSum = 0;
+                for (const lm of landmarks) {
+                    const { isBlinking } = detectBlink(lm, 0.32);
+                    depthSum += estimateBlinkDepth(lm, 0.32);
+                    if (isBlinking && !wasBlinking)
+                        blinkCount++;
+                    wasBlinking = isBlinking;
+                }
+                depthSum / landmarks.length;
+                breakdown.push({ label: 'Blink (life)', pts: Math.round(Math.min(15, blinkCount * 7.5)) });
+                let prev = null;
+                let microMoves = 0;
+                for (const lm of landmarks) {
+                    const pose = calculateHeadPose(lm);
+                    if (prev) {
+                        const d = calculateHeadPose(prev);
+                        const dYaw = Math.abs(pose.yaw - d.yaw);
+                        const dPitch = Math.abs(pose.pitch - d.pitch);
+                        if (dYaw > 0.02 || dPitch > 0.02)
+                            microMoves++;
+                    }
+                    prev = lm;
+                }
+                const microRatio = microMoves / (landmarks.length - 1);
+                breakdown.push({ label: 'Micro-motion (life)', pts: Math.round(Math.min(10, microRatio * 10)) });
+                // Life cue 3 — static quality on the last reliable frame
+                const lm = landmarks[landmarks.length - 1];
                 const faceWidth = this.getFaceWidth(lm);
                 const faceScore = Math.max(0, Math.min(15, faceWidth * 100));
                 breakdown.push({ label: 'Face Size', pts: Math.round(faceScore) });
-                // 2. Face Centering (0-10): nose should be centered horizontally between ears
-                const nose = lm[1];
-                const leftEar = lm[234];
-                const rightEar = lm[454];
+                const nose = lm[1], leftEar = lm[234], rightEar = lm[454];
                 const earDist = Math.sqrt((rightEar.x - leftEar.x) ** 2 + (rightEar.y - leftEar.y) ** 2);
                 const faceCenterX = (leftEar.x + rightEar.x) / 2;
                 const noseOffset = earDist > 0 ? Math.abs(nose.x - faceCenterX) / earDist : 0;
                 const centeringScore = Math.max(0, Math.min(10, (1 - noseOffset * 3) * 10));
                 breakdown.push({ label: 'Centering', pts: Math.round(centeringScore) });
-                // 3. Head Roll (0-10): head should not be tilted
-                const leftEye = lm[33];
-                const rightEye = lm[263];
-                const eyeDx = rightEye.x - leftEye.x;
-                const eyeDy = rightEye.y - leftEye.y;
+                const leftEye = lm[33], rightEye = lm[263];
+                const eyeDx = rightEye.x - leftEye.x, eyeDy = rightEye.y - leftEye.y;
                 const rollDeg = Math.abs(Math.atan2(eyeDy, eyeDx) * 180 / Math.PI);
                 const rollScore = Math.max(0, Math.min(10, 10 - Math.max(0, rollDeg - 3) * 0.8));
                 breakdown.push({ label: 'Head Tilt', pts: Math.round(rollScore) });
-                // 4. Sharpness (0-10): blur detection via pixel variance
-                const sharpnessScore = Math.max(0, Math.min(10, Math.round(quality.sharpness)));
-                breakdown.push({ label: 'Sharpness', pts: sharpnessScore });
-                // 5. Brightness (0-5): properly exposed
-                const brightnessScore = Math.max(0, Math.min(5, Math.round(quality.brightness)));
-                breakdown.push({ label: 'Brightness', pts: brightnessScore });
-                score = breakdown.reduce((a, b) => a + b.pts, 0);
+                // Life cue 4 — gaze variability (a real person's gaze drifts slightly)
+                if (typeof calculateGaze === 'function') {
+                    const g = calculateGaze(lm);
+                    info.push({ label: 'gaze', value: `x ${g.x.toFixed(2)} y ${g.y.toFixed(2)}` });
+                }
             }
-            const passed = score >= 35; // 70% of 50
+            const sharpnessScore = Math.max(0, Math.min(10, Math.round(quality.sharpness)));
+            breakdown.push({ label: 'Sharpness', pts: sharpnessScore });
+            const brightnessScore = Math.max(0, Math.min(5, Math.round(quality.brightness)));
+            breakdown.push({ label: 'Brightness', pts: brightnessScore });
+            const score = breakdown.reduce((a, b) => a + b.pts, 0);
+            // Spoof override: a frozen frame can never pass a "life" check.
+            const passed = !spoofFrozen && score >= 45;
             const result = {
                 passed,
-                confidence: Math.min(1, score / 50),
+                confidence: Math.min(1, score / 100),
                 txnId: '',
                 capturedFaceBase64: base64,
                 provider: 'svi_passive_mediapipe',
                 usedFallback: false,
-                score: Math.round(score / 50 * 100),
+                score: Math.round(score / 100 * 100),
                 breakdown,
-                info: [],
+                info,
             };
             renderResult(container, result);
             const btn = container.querySelector('#svi-retry-btn');
             if (btn)
                 btn.addEventListener('click', () => this.start());
             this.config.onComplete(result);
+        }
+        async sleep(ms) {
+            return new Promise(r => setTimeout(r, ms));
         }
         analyzeImageQuality(video) {
             try {
@@ -568,9 +730,6 @@ var SviLiveness = (function (exports) {
             if (el)
                 el.textContent = text;
         }
-        sleep(ms) {
-            return new Promise(r => setTimeout(r, ms));
-        }
         destroy() {
             this.stopCamera();
             destroy();
@@ -581,12 +740,12 @@ var SviLiveness = (function (exports) {
     }
 
     const CHALLENGES = [
-        { id: 'look_straight', label: 'Look straight at the camera', duration: 2000 },
-        { id: 'blink', label: 'Blink your eyes slowly', duration: 3000 },
-        { id: 'turn_left', label: 'Turn your head slightly left', duration: 2000 },
-        { id: 'turn_right', label: 'Turn your head slightly right', duration: 2000 },
-        { id: 'look_up', label: 'Look up slightly', duration: 2000 },
-        { id: 'look_down', label: 'Look down slightly', duration: 2000 },
+        { id: 'look_straight', label: 'Look straight at the camera', duration: 2000, axis: null, targetSign: 0 },
+        { id: 'blink', label: 'Blink your eyes slowly', duration: 3000, axis: null, targetSign: 0 },
+        { id: 'turn_left', label: 'Turn your head slightly left', duration: 2000, axis: 'yaw', targetSign: -1 },
+        { id: 'turn_right', label: 'Turn your head slightly right', duration: 2000, axis: 'yaw', targetSign: 1 },
+        { id: 'look_up', label: 'Look up slightly', duration: 2000, axis: 'pitch', targetSign: 1 },
+        { id: 'look_down', label: 'Look down slightly', duration: 2000, axis: 'pitch', targetSign: -1 },
     ];
     class SviActiveLiveness extends SviLivenessCore {
         constructor(config) {
@@ -665,8 +824,10 @@ var SviLiveness = (function (exports) {
         async runChallenges() {
             const container = this.getContainer();
             const scores = [];
+            const challengePassed = [];
             const challengeResults = [];
             let capturedFaceBase64 = '';
+            let spoofInfo = [];
             // Initialize MediaPipe
             if (!this.landmarkerInitialized) {
                 await initFaceLandmarker();
@@ -680,14 +841,19 @@ var SviLiveness = (function (exports) {
                 overlay.style.cssText = `position:absolute;bottom:0;left:0;right:0;padding:16px;text-align:center;background:linear-gradient(transparent,rgba(0,0,0,0.8));color:#e2e8f0;font-size:15px;font-weight:600;pointer-events:none;z-index:10;`;
                 overlay.textContent = challenge.label;
                 area.appendChild(overlay);
-                // Capture frames during challenge
+                // Capture frames during challenge (landmarks + live pixel sample so the
+                // anti-spoof motion check reflects actual motion, not the frozen frame)
                 const frames = [];
+                const pixelSamples = [];
                 const interval = setInterval(() => {
                     try {
                         const detection = detectFace(this.getVideo());
                         if (detection.detected && detection.landmarks) {
                             frames.push(detection.landmarks);
                         }
+                        const px = sampleFramePixels(this.getVideo());
+                        if (px)
+                            pixelSamples.push(px);
                     }
                     catch { }
                 }, 100);
@@ -716,61 +882,127 @@ var SviLiveness = (function (exports) {
                 // Process frames for this challenge
                 if (frames.length === 0) {
                     scores.push(0);
+                    challengePassed.push(false);
                     challengeResults.push({ label: challenge.label, pts: 0 });
                     continue;
                 }
+                // Anti-spoof: average frame flatness + inter-frame stillness over the
+                // challenge. A held photo / replay looks flat and frozen.
+                let flatness = 0;
+                let frameDiff = 0;
+                let pxCompare = 0;
+                {
+                    let flatSum = 0;
+                    for (const px of pixelSamples)
+                        flatSum += computeFrameFlatness(px);
+                    flatness = pixelSamples.length ? flatSum / pixelSamples.length : 0;
+                    for (let i = 0; i < pixelSamples.length - 1; i++) {
+                        frameDiff += computeFrameDiff(pixelSamples[i], pixelSamples[i + 1]);
+                        pxCompare++;
+                    }
+                    frameDiff = pxCompare ? frameDiff / pxCompare : 0;
+                }
                 let score = 0;
+                let passed = false;
+                challenge.axis === null ? 0.1 : 0.04;
                 switch (challenge.id) {
                     case 'look_straight':
                         let stillCount = 0;
                         let prevStill = null;
+                        // Baseline head pose to also check the face is near-frontal
+                        let neutralDist = 0;
+                        let neutralN = 0;
                         for (const landmarks of frames) {
                             if (prevStill) {
-                                // Tolerant threshold: ignore natural tremor / jitter, only flag
-                                // obvious head movement as "moved". Unlike the turn challenges,
-                                // stillness should be easy to earn.
                                 const result = detectHeadMovement(landmarks, prevStill, 0.1);
                                 if (!result.moved)
                                     stillCount++;
                             }
                             prevStill = landmarks;
+                            // Frontal check: yaw/pitch magnitude should stay small while straight
+                            const pose = calculateHeadPose(landmarks);
+                            neutralDist += Math.abs(pose.yaw) + Math.abs(pose.pitch);
+                            neutralN++;
                         }
                         const stillRatio = frames.length > 1 ? stillCount / (frames.length - 1) : 0;
+                        const avgNeutralDev = neutralN ? neutralDist / neutralN : 0;
                         score = Math.min(15, Math.max(0, stillRatio * 15));
+                        if (score > 13 && avgNeutralDev < 0.35) {
+                            passed = true;
+                            score = 15;
+                        }
+                        else
+                            score = Math.round(score);
+                        // Reinforce risk: frozen sub-frame = replay/photo
+                        if (frameDiff < 0.015 && flatness > 0.7)
+                            spoofInfo.push({ label: 'flat/replay', value: 'frozen' });
                         break;
                     case 'blink':
                         let blinkCount = 0;
+                        let depthSum = 0;
                         let wasBlinking = false;
                         for (const landmarks of frames) {
-                            const { isBlinking } = detectBlink(landmarks, 0.32);
+                            const { isBlinking} = detectBlink(landmarks, 0.32);
+                            const depth = estimateBlinkDepth(landmarks, 0.32);
+                            depthSum += depth;
                             if (isBlinking && !wasBlinking)
                                 blinkCount++;
                             wasBlinking = isBlinking;
                         }
-                        // Blinking EAR is very fast (~150ms). Reward even a single detected
-                        // blink near-full marks instead of requiring many blinks per second.
+                        const avgDepth = frames.length ? depthSum / frames.length : 0;
                         score = Math.min(15, Math.max(0, blinkCount * 7.5));
+                        // A single deep, clean blink earns pass
+                        if (blinkCount >= 1 && avgDepth > 0.25) {
+                            passed = true;
+                            score = 15;
+                        }
+                        else
+                            score = Math.round(score);
                         break;
                     case 'turn_left':
                     case 'turn_right':
                     case 'look_up':
                     case 'look_down':
-                        let movementCount = 0;
-                        let prevLandmarks = null;
-                        for (const landmarks of frames) {
-                            const result = detectHeadMovement(landmarks, prevLandmarks);
-                            if (result.moved)
-                                movementCount++;
-                            prevLandmarks = landmarks;
+                        // Direction-aware: compute signed displacement from the first frame
+                        // on the challenge axis, require it to cross toward the expected sign,
+                        // then return toward neutral.
+                        const first = calculateHeadPose(frames[0]);
+                        let correctFrames = 0;
+                        let wrongFrames = 0;
+                        let returnFrames = 0;
+                        let hitTarget = false;
+                        const assessable = frames.length - 1;
+                        for (let i = 1; i < frames.length; i++) {
+                            const curr = calculateHeadPose(frames[i]);
+                            const yawDis = curr.yaw - first.yaw;
+                            const pitchDis = curr.pitch - first.pitch;
+                            const axisVal = challenge.axis === 'yaw' ? yawDis : pitchDis;
+                            const sign = Math.sign(axisVal) || 0;
+                            if (sign === challenge.targetSign) {
+                                correctFrames++;
+                                if (Math.abs(axisVal) > 0.06)
+                                    hitTarget = true;
+                            }
+                            else if (sign !== 0) {
+                                wrongFrames++;
+                            }
+                            // Return-to-center in the final 1/3 of the window
+                            if (i >= assessable * 2 / 3 && Math.abs(axisVal) < 0.03)
+                                returnFrames++;
                         }
-                        // Movement per frame (~20 frames at 100ms over 2s). Reward sustained
-                        // movement; even a modest turn now crosses the looser threshold.
-                        score = Math.min(15, Math.max(0, movementCount * 1.5));
+                        const correctRatio = assessable ? correctFrames / assessable : 0;
+                        score = Math.round(Math.min(15, Math.max(0, correctRatio * 12 + (hitTarget ? 4 : 0) - wrongFrames * 0.5)));
+                        passed = hitTarget && correctRatio > 0.4 && (returnFrames / (assessable / 3 + 1)) > 0.1;
                         break;
                     default:
                         score = 0;
                 }
+                // Frames that look frozen overall (replay/photo) cannot pass a living challenge
+                if (challenge.id !== 'blink' && frameDiff < 0.002 && flatness > 0.75 && passed) {
+                    passed = false;
+                }
                 scores.push(score);
+                challengePassed.push(passed);
                 challengeResults.push({ label: challenge.label, pts: score });
             }
             this.stopCamera();
@@ -778,7 +1010,13 @@ var SviLiveness = (function (exports) {
             const totalScore = scores.reduce((a, b) => a + b, 0);
             const maxScore = CHALLENGES.length * 15; // 6 challenges × 15 = 90
             const finalScore = Math.min(totalScore, maxScore);
-            const passed = finalScore >= maxScore * 0.70; // 70% threshold
+            const passedCount = challengePassed.filter(Boolean).length;
+            // Gate: must clear a majority of challenges AND the frontal/living core
+            const coreChallenged = ['look_straight', 'blink'].every((id, i) => {
+                const idx = CHALLENGES.findIndex(c => c.id === id);
+                return idx >= 0 && challengePassed[idx];
+            });
+            const passed = passedCount >= 4 && coreChallenged;
             // Prepare result
             const result = {
                 passed,
@@ -792,7 +1030,7 @@ var SviLiveness = (function (exports) {
                     label: c.label,
                     pts: c.pts,
                 })),
-                info: [],
+                info: spoofInfo,
             };
             renderResult(container, result);
             const btn = container.querySelector('#svi-retry-btn');

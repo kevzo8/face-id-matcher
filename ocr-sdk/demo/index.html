@@ -43,7 +43,7 @@
     <pre id="log">Awaiting input…</pre>
   </div>
 
-  <svi-id-ocr id="ocrComp" endpoint="/ocr/extract" style="display:none"></svi-id-ocr>
+  <svi-id-ocr id="ocrComp" endpoint="/id-ocr/ocr/extract" style="display:none"></svi-id-ocr>
 
   <script type="module">
     import { extractDocument } from '../frontend/src/index.ts';
@@ -101,7 +101,7 @@
       if (!images) return;
       setLoading(true, 'Extracting via library API…');
       try {
-        const result = await extractDocument(images, { endpoint: '/ocr/extract' });
+        const result = await extractDocument(images, { endpoint: '/id-ocr/ocr/extract' });
         log.textContent = JSON.stringify(result, null, 2);
       } catch (err) {
         log.textContent = 'ERROR: ' + (err instanceof Error ? err.message : String(err));

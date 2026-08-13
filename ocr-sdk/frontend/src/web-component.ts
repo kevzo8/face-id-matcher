@@ -2,10 +2,10 @@
  * Optional framework-agnostic custom element wrapper around the headless SDK.
  *
  * Usage:
- *   <svi-id-ocr endpoint="/ocr/extract" document-type="BATAENO_PASS_ID"></svi-id-ocr>
+ *   <svi-id-ocr endpoint="/id-ocr/ocr/extract" document-type="BATAENO_PASS_ID"></svi-id-ocr>
  *
  * Attributes:
- *   - endpoint (optional): backend wrapper URL. Default '/ocr/extract'.
+ *   - endpoint (optional): backend wrapper URL. Default '/id-ocr/ocr/extract'.
  *   - id-type-code (optional): identity type code from the registry (e.g. 14).
  *   - document-type (optional): app-supplied document type hint (legacy).
  *

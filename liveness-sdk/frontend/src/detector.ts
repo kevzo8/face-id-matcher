@@ -97,6 +97,108 @@ export function detectBlink(landmarks: any, threshold = 0.25): { isBlinking: boo
   };
 }
 
+/** Blink depth beyond the threshold: 0 = not blinking, larger = eyes more shut.
+ *  Rewards a real, sustained blink over a half-closed / twitching lid. */
+export function estimateBlinkDepth(landmarks: any, threshold = 0.25): number {
+  const ear = calculateEAR(landmarks);
+  if (ear >= threshold) return 0;
+  return Math.min(1, (threshold - ear) / threshold);
+}
+
+/**
+ * Gaze direction from MediaPipe's 478-point model. Points 468 (left) and
+ * 473 (right) are iris centres; we measure how far each iris sits between the
+ * eye corners. Returns ~[-1,1] horizontal and vertical gaze.
+ */
+export function calculateGaze(landmarks: any): { x: number; y: number } {
+  const p = (i: number) => landmarks[i];
+  const lerp = (a: any, b: any, t: number) => ({
+    x: a.x + (b.x - a.x) * t,
+    y: a.y + (b.y - a.y) * t,
+  });
+
+  // Left eye: corners 33 (outer) -> 133 (inner); right eye: 362 (inner) -> 263 (outer)
+  const leftOuter = p(33), leftInner = p(133);
+  const rightInner = p(362), rightOuter = p(263);
+
+  const dist = (a: any, b: any) => Math.hypot(a.x - b.x, a.y - b.y);
+
+  const leftGazeX = clamp((leftOuter.x - p(468).x) / (dist(leftOuter, leftInner) + 1e-6), -1, 1);
+  const rightGazeX = clamp((rightOuter.x - p(473).x) / (dist(rightOuter, rightInner) + 1e-6), -1, 1);
+
+  // Vertical: iris between a point above/below the eye. Approximate with outer
+  // corner -> inner corner midpoint and the iris. Keep small; gaze Y is noisy.
+  const lMid = lerp(leftOuter, leftInner, 0.5);
+  const lIrisToMidY = p(468).y - lMid.y;
+  const gazeY = clamp(-lIrisToMidY * 6, -1, 1);
+
+  return { x: clamp((leftGazeX + rightGazeX) / 2, -1, 1), y: gazeY };
+}
+
+/**
+ * Downsample the video to grayscale pixels for frame-level analysis
+ * (micro-motion between frames, texture flatness for print detection).
+ */
+export function sampleFramePixels(video: HTMLVideoElement, w = 160, h = 120): Uint8ClampedArray | null {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+    ctx.drawImage(video, 0, 0, w, h);
+    const data = ctx.getImageData(0, 0, w, h).data;
+    const gray = new Uint8ClampedArray(w * h);
+    for (let i = 0, j = 0; i < data.length; i += 4, j++) {
+      gray[j] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    }
+    return gray;
+  } catch {
+    return null;
+  }
+}
+
+/** Normalized per-pixel absolute difference between two grayscale frames [0..1]. */
+export function computeFrameDiff(a: Uint8ClampedArray, b: Uint8ClampedArray): number {
+  if (!a || !b || a.length !== b.length) return 0;
+  let sum = 0;
+  for (let i = 0; i < a.length; i++) sum += Math.abs(a[i] - b[i]);
+  return sum / (a.length * 255);
+}
+
+/** Texture flatness of a grayscale frame [0..1]. Real skin has local variance;
+ *  a printed photo / screen is unnaturally flat in small patches. */
+export function computeFrameFlatness(pixels: Uint8ClampedArray): number {
+  if (!pixels || pixels.length < 4) return 0;
+  const g = (i: number) => pixels[i];
+  let blockVar = 0;
+  const block = 8;
+  const w = 160, h = 120;
+  let blocks = 0;
+  for (let by = 0; by < h; by += block) {
+    for (let bx = 0; bx < w; bx += block) {
+      let sum = 0, sum2 = 0, n = 0;
+      for (let y = by; y < Math.min(by + block, h); y += 2) {
+        for (let x = bx; x < Math.min(bx + block, w); x += 2) {
+          const v = g(y * w + x);
+          sum += v; sum2 += v * v; n++;
+        }
+      }
+      if (n > 1) {
+        const mean = sum / n;
+        blockVar += (sum2 / n - mean * mean);
+        blocks++;
+      }
+    }
+  }
+  const avgVar = blocks ? blockVar / blocks : 0;
+  // Flat frames -> low variance. Return flatness scaled so ~0 var => 1 (flat).
+  return clamp(1 - avgVar / 1200, 0, 1);
+}
+
+function clamp(v: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, v));
+}
+
 export function calculateHeadPose(landmarks: any): { yaw: number; pitch: number; roll: number } {
   const nose = landmarks[1];
   const leftCheek = landmarks[234];

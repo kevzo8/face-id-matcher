@@ -25,7 +25,7 @@ export async function extractDocument(
   images: IdImage[],
   options: { endpoint?: string; idTypeCode?: number; documentType?: string; fetchInit?: RequestInit } = {},
 ): Promise<ExtractResult> {
-  const endpoint = options.endpoint ?? '/ocr/extract';
+  const endpoint = options.endpoint ?? '/id-ocr/ocr/extract';
 
   const payload: RequestPayload = {
     images: images.map((img) => ({
@@ -77,7 +77,7 @@ export async function extractDocument(
 
 /** Fetch the active identity configuration registry from the backend. */
 export async function listIdentityTypes(
-  endpoint = '/identity/types',
+  endpoint = '/id-ocr/identity/types',
 ): Promise<ListTypesResult> {
   try {
     const response = await fetch(endpoint, { method: 'GET' });

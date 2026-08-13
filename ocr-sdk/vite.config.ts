@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/ocr/extract': {
+      '/id-ocr': {
         target: 'http://localhost:8000',
         changeOrigin: true,
       },

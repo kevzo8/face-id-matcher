@@ -14,7 +14,7 @@ Consuming application (OWA, Passenger Manifest, ...)
         v
    Front-End SDK (frontend/)   <-- framework-agnostic TypeScript, no rendering
         |
-        |  POST /ocr/extract
+        |  POST /id-ocr/ocr/extract
         v
    Backend wrapper (backend/)  <-- Python FastAPI (server-side only)
         |-- AWS Rekognition DetectText  -> raw text lines (multi-image)
@@ -64,7 +64,7 @@ and can be added/updated/disabled without code changes. Each entry:
 | 13 | Driver's License | DRIVERS_LICENSE |
 | 14 | Bataeno Pass | BATAENO_PASS_ID |
 
-Edit `id_config.json` then call `POST /identity/types` (or restart) — no code
+Edit `id_config.json` then call `POST /id-ocr/identity/types` (or restart) — no code
 changes needed. A request with any unknown or inactive `id_type_code` is rejected
 with `INVALID_ID_TYPE`.
 
@@ -182,7 +182,7 @@ uvicorn app.main:app --reload --port 8000
 
 No manual `$env:` exports needed — the `.env` file is loaded for you.
 
-`GET /health` and `POST /ocr/extract`.
+`GET /id-ocr/health` and `POST /id-ocr/ocr/extract`.
 
 Request body:
 
@@ -241,7 +241,7 @@ const result = await extractDocument(
     { image: base64Front, label: 'front' },
     { image: base64Back, label: 'back' },
   ],
-  { endpoint: '/ocr/extract', idTypeCode: 14 },
+  { endpoint: '/id-ocr/ocr/extract', idTypeCode: 14 },
 );
 
 if (result.ok) {
@@ -255,7 +255,7 @@ if (result.ok) {
 Optional web component (framework-agnostic):
 
 ```html
-<svi-id-ocr endpoint="/ocr/extract" id-type-code="14"></svi-id-ocr>
+<svi-id-ocr endpoint="/id-ocr/ocr/extract" id-type-code="14"></svi-id-ocr>
 <script>
   const el = document.querySelector('svi-id-ocr');
   el.addEventListener('svi-ocr-success', (e) => console.log(e.detail));
@@ -266,4 +266,4 @@ Optional web component (framework-agnostic):
 ## Demo
 
 Open `demo/index.html` in a browser with the backend running and proxy
-`/ocr/extract` to `http://localhost:8000/ocr/extract`.
+`/ocr/extract` to `http://localhost:8000/id-ocr/ocr/extract`.

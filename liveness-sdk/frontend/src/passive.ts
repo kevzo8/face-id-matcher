@@ -1,4 +1,4 @@
-import { initFaceLandmarker, detectFace, calculateHeadPose, destroy } from './detector';
+import { initFaceLandmarker, detectFace, detectBlink, estimateBlinkDepth, calculateHeadPose, calculateGaze, sampleFramePixels, computeFrameDiff, computeFrameFlatness, destroy } from './detector';
 import { renderUI, renderResult, renderError } from './ui';
 import { SviLivenessCore } from './core';
 import type { SviLivenessConfig, LivenessResult } from './types';
@@ -104,7 +104,21 @@ export class SviPassiveLiveness extends SviLivenessCore {
     }
 
     const video = this.getVideo()!;
-    const detection = detectFace(video);
+
+    // Multi-frame capture: ~3.5s of sampling at ~90ms to gather life cues
+    // (natural blinks, micro-movement) as well as static quality signals.
+    const SAMPLE_MS = 90;
+    const SAMPLES = 38;
+    const landmarks: any[] = [];
+    const pixels: Uint8ClampedArray[] = [];
+    for (let i = 0; i < SAMPLES; i++) {
+      const d = detectFace(video);
+      if (d.detected && d.landmarks) landmarks.push(d.landmarks);
+      const px = sampleFramePixels(video);
+      if (px) pixels.push(px);
+      await this.sleep(SAMPLE_MS);
+    }
+
     const base64 = this.captureFrame();
     const quality = this.analyzeImageQuality(video);
     this.stopCamera();
@@ -112,67 +126,116 @@ export class SviPassiveLiveness extends SviLivenessCore {
     renderUI(container, this.config.theme || { primaryColor: '#3b82f6' }, false, [], '', () => {}, () => {}, 'Analyzing...', 'processing');
     this.setStatus('Analyzing...');
 
-    let score = 0;
-    let breakdown: { label: string; pts: number }[] = [];
+    const breakdown: { label: string; pts: number }[] = [];
+    const info: { label: string; value: string }[] = [];
 
-    if (detection.detected && detection.landmarks) {
-      const lm = detection.landmarks;
+    // Face presence / coverage
+    const coverage = landmarks.length / SAMPLES;
+    breakdown.push({ label: 'Face Present', pts: Math.round(Math.min(10, coverage * 10)) });
 
-      // 1. Face Size (0-15): face should fill a good portion of the frame
+    let spoofFrozen = false;
+    if (pixels.length > 1) {
+      // Flatness: printed/screen surfaces are unnaturally smooth
+      let flatSum = 0;
+      for (const px of pixels) flatSum += computeFrameFlatness(px);
+      const flatness = flatSum / pixels.length;
+      // Inter-frame motion: a real face never sits perfectly still
+      let diffSum = 0;
+      for (let i = 1; i < pixels.length; i++) diffSum += computeFrameDiff(pixels[i - 1], pixels[i]);
+      const avgDiff = diffSum / (pixels.length - 1);
+
+      if (flatness > 0.8) { info.push({ label: 'print/replay', value: `flatness ${(flatness * 100).toFixed(0)}%` }); }
+      if (avgDiff < 0.004) spoofFrozen = true;
+    }
+
+    if (landmarks.length >= 2) {
+      // Life cue 1 — natural blink rate & depth
+      let blinkCount = 0;
+      let wasBlinking = false;
+      let depthSum = 0;
+      for (const lm of landmarks) {
+        const { isBlinking } = detectBlink(lm, 0.32);
+        depthSum += estimateBlinkDepth(lm, 0.32);
+        if (isBlinking && !wasBlinking) blinkCount++;
+        wasBlinking = isBlinking;
+      }
+      const avgDepth = depthSum / landmarks.length;
+      breakdown.push({ label: 'Blink (life)', pts: Math.round(Math.min(15, blinkCount * 7.5)) });
+
+      // Life cue 2 — micro-motion (head yaw/pitch variance over the window)
+      let yawSum = 0, pitchSum = 0, n = 0;
+      let prev: any = null;
+      let microMoves = 0;
+      for (const lm of landmarks) {
+        const pose = calculateHeadPose(lm);
+        yawSum += pose.yaw; pitchSum += pose.pitch; n++;
+        if (prev) {
+          const d = calculateHeadPose(prev);
+          const dYaw = Math.abs(pose.yaw - d.yaw);
+          const dPitch = Math.abs(pose.pitch - d.pitch);
+          if (dYaw > 0.02 || dPitch > 0.02) microMoves++;
+        }
+        prev = lm;
+      }
+      const microRatio = microMoves / (landmarks.length - 1);
+      breakdown.push({ label: 'Micro-motion (life)', pts: Math.round(Math.min(10, microRatio * 10)) });
+
+      // Life cue 3 — static quality on the last reliable frame
+      const lm = landmarks[landmarks.length - 1];
       const faceWidth = this.getFaceWidth(lm);
       const faceScore = Math.max(0, Math.min(15, faceWidth * 100));
       breakdown.push({ label: 'Face Size', pts: Math.round(faceScore) });
 
-      // 2. Face Centering (0-10): nose should be centered horizontally between ears
-      const nose = lm[1];
-      const leftEar = lm[234];
-      const rightEar = lm[454];
-      const earDist = Math.sqrt(
-        (rightEar.x - leftEar.x) ** 2 + (rightEar.y - leftEar.y) ** 2
-      );
+      const nose = lm[1], leftEar = lm[234], rightEar = lm[454];
+      const earDist = Math.sqrt((rightEar.x - leftEar.x) ** 2 + (rightEar.y - leftEar.y) ** 2);
       const faceCenterX = (leftEar.x + rightEar.x) / 2;
       const noseOffset = earDist > 0 ? Math.abs(nose.x - faceCenterX) / earDist : 0;
       const centeringScore = Math.max(0, Math.min(10, (1 - noseOffset * 3) * 10));
       breakdown.push({ label: 'Centering', pts: Math.round(centeringScore) });
 
-      // 3. Head Roll (0-10): head should not be tilted
-      const leftEye = lm[33];
-      const rightEye = lm[263];
-      const eyeDx = rightEye.x - leftEye.x;
-      const eyeDy = rightEye.y - leftEye.y;
+      const leftEye = lm[33], rightEye = lm[263];
+      const eyeDx = rightEye.x - leftEye.x, eyeDy = rightEye.y - leftEye.y;
       const rollDeg = Math.abs(Math.atan2(eyeDy, eyeDx) * 180 / Math.PI);
       const rollScore = Math.max(0, Math.min(10, 10 - Math.max(0, rollDeg - 3) * 0.8));
       breakdown.push({ label: 'Head Tilt', pts: Math.round(rollScore) });
 
-      // 4. Sharpness (0-10): blur detection via pixel variance
-      const sharpnessScore = Math.max(0, Math.min(10, Math.round(quality.sharpness)));
-      breakdown.push({ label: 'Sharpness', pts: sharpnessScore });
-
-      // 5. Brightness (0-5): properly exposed
-      const brightnessScore = Math.max(0, Math.min(5, Math.round(quality.brightness)));
-      breakdown.push({ label: 'Brightness', pts: brightnessScore });
-
-      score = breakdown.reduce((a, b) => a + b.pts, 0);
+      // Life cue 4 — gaze variability (a real person's gaze drifts slightly)
+      if (typeof calculateGaze === 'function') {
+        const g = calculateGaze(lm);
+        info.push({ label: 'gaze', value: `x ${g.x.toFixed(2)} y ${g.y.toFixed(2)}` });
+      }
     }
 
-    const passed = score >= 35; // 70% of 50
+    const sharpnessScore = Math.max(0, Math.min(10, Math.round(quality.sharpness)));
+    breakdown.push({ label: 'Sharpness', pts: sharpnessScore });
+    const brightnessScore = Math.max(0, Math.min(5, Math.round(quality.brightness)));
+    breakdown.push({ label: 'Brightness', pts: brightnessScore });
+
+    const score = breakdown.reduce((a, b) => a + b.pts, 0);
+
+    // Spoof override: a frozen frame can never pass a "life" check.
+    const passed = !spoofFrozen && score >= 45;
 
     const result: LivenessResult = {
       passed,
-      confidence: Math.min(1, score / 50),
+      confidence: Math.min(1, score / 100),
       txnId: '',
       capturedFaceBase64: base64,
       provider: 'svi_passive_mediapipe',
       usedFallback: false,
-      score: Math.round(score / 50 * 100),
+      score: Math.round(score / 100 * 100),
       breakdown,
-      info: [],
+      info,
     };
 
     renderResult(container, result);
     const btn = container.querySelector('#svi-retry-btn');
     if (btn) btn.addEventListener('click', () => this.start());
     this.config.onComplete(result);
+  }
+
+  private async sleep(ms: number): Promise<void> {
+    return new Promise(r => setTimeout(r, ms));
   }
 
   private analyzeImageQuality(video: HTMLVideoElement): { sharpness: number; brightness: number } {
@@ -224,10 +287,6 @@ export class SviPassiveLiveness extends SviLivenessCore {
   setStatus(text: string): void {
     const el = this.getContainer()?.querySelector('.svi-status');
     if (el) el.textContent = text;
-  }
-
-  private sleep(ms: number): Promise<void> {
-    return new Promise(r => setTimeout(r, ms));
   }
 
   destroy(): void {

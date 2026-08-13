@@ -112,7 +112,7 @@ export interface ExtractOptions {
   idTypeCode?: number;
   /** Optional app-supplied document type hint (legacy; ignored when idTypeCode set). */
   documentType?: DocumentType | string;
-  /** Backend endpoint. Defaults to '/ocr/extract'. */
+  /** Backend endpoint. Defaults to '/id-ocr/ocr/extract'. */
   endpoint?: string;
   /** Fetch init overrides. */
   fetchInit?: RequestInit;

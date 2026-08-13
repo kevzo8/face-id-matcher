@@ -43,6 +43,8 @@ from .schemas import ExtractedData, IdInformation, OcrExtractError, OcrExtractRe
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+CONTEXT_ROOT = "/id-ocr"
+
 app = FastAPI(
     title="SVI ID OCR SDK API",
     version="1.0.0",
@@ -65,7 +67,7 @@ class ImageInput(BaseModel):
 
 
 class OcrExtractRequest(BaseModel):
-    """Request payload for /ocr/extract."""
+    """Request payload for /id-ocr/ocr/extract."""
 
     images: list[ImageInput] = Field(..., min_length=1, description="One or more ID images.")
     id_type_code: Optional[int] = Field(
@@ -84,7 +86,7 @@ class OcrExtractRequest(BaseModel):
         return images
 
 
-@app.get("/identity/types")
+@app.get(f"{CONTEXT_ROOT}/identity/types")
 async def identity_types() -> dict[str, object]:
     """Return the active identity configuration registry (safe enumeration)."""
     active_types = list_types()
@@ -94,7 +96,7 @@ async def identity_types() -> dict[str, object]:
     }
 
 
-@app.post("/ocr/extract", response_model=OcrExtractResponse, responses={400: {"model": OcrExtractError}, 502: {"model": OcrExtractError}})
+@app.post(f"{CONTEXT_ROOT}/ocr/extract", response_model=OcrExtractResponse, responses={400: {"model": OcrExtractError}, 502: {"model": OcrExtractError}})
 async def ocr_extract(request: Request, payload: OcrExtractRequest) -> OcrExtractResponse:
     """Extract and normalize identity data from one or more ID images."""
     # Validate id_type_code against the registry if provided. Any value other
@@ -164,7 +166,7 @@ async def ocr_extract(request: Request, payload: OcrExtractRequest) -> OcrExtrac
     )
 
 
-@app.get("/health")
+@app.get(f"{CONTEXT_ROOT}/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
 
