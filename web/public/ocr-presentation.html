@@ -122,16 +122,15 @@ pre{font-size:11px}
     <div>
       <div class="mermaid">
 flowchart TD
-    classDef wide fill:#1e293b,stroke:#334155,color:#e2e8f0,min-width:260px;
-    subgraph App["Consuming App<br/>(OWA, Passenger<br/>Manifest, ...)<br/><br/>"]
-        I["&nbsp;1+ ID images +<br/>id_type_code<br/>&nbsp;"]:::wide
-    end
+    A["Consuming App<br/>(OWA, Passenger Manifest, ...)"]
+    I["1+ ID images<br/>(one or more) + id_type_code"]
+    A --> I
     I -->|base64| S[Front-End SDK<br/>TypeScript headless]
     S -->|POST /id-ocr/ocr/extract| B[Backend Wrapper<br/>FastAPI]
     B --> A1[AWS Rekognition<br/>DetectText]
     B --> A2[GROQ<br/>normalize to schema]
     B -->|standardized JSON| S
-    S -->|result| App
+    S -->|result| A
       </div>
     </div>
   </div>
