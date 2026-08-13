@@ -122,8 +122,9 @@ pre{font-size:11px}
     <div>
       <div class="mermaid">
 flowchart TD
+    classDef wide fill:#1e293b,stroke:#334155,color:#e2e8f0,min-width:260px;
     subgraph App["Consuming App<br/>(OWA, Passenger<br/>Manifest, ...)<br/><br/>"]
-        I["&nbsp;1+ ID images +<br/>id_type_code<br/>&nbsp;"]
+        I["&nbsp;1+ ID images +<br/>id_type_code<br/>&nbsp;"]:::wide
     end
     I -->|base64| S[Front-End SDK<br/>TypeScript headless]
     S -->|POST /id-ocr/ocr/extract| B[Backend Wrapper<br/>FastAPI]
