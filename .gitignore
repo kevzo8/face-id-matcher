@@ -57,6 +57,10 @@ batch/lib/
 # ─── Sample images (may contain PII) ──────────────────────────────────────
 samples/dirty-pairs/41_*.jpg
 
+# ─── BPI KYC dataset (contains PII — never commit) ────────────────────────
+BPI_KYC_IMAGES_*/
+BPI_KYC_ELEMENTS_*/
+
 # ─── Generated results ─────────────────────────────────────────────────────
 results_*.csv
 batch/results_*.csv
