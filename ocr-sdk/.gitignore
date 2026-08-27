@@ -10,3 +10,17 @@ venv/
 # Node / frontend build
 frontend/node_modules/
 frontend/dist/
+
+# Temporary test scripts (prefixed with _)
+_*.py
+
+# Bedrock experiment result CSVs
+bedrock_*.csv
+haiku_*.csv
+nova_pro_*.csv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
