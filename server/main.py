@@ -758,6 +758,225 @@ async def openbiometrics_liveness(request: Request):
         return OpenBiometricsResponse(is_live=False, confidence=0, score=0, error=str(e))
 
 
+class DocumentQualityResponse(BaseModel):
+    is_usable: bool
+    verdict: str  # "PASS" | "RETAKE"
+    score: int  # 0-100
+    sharpness: float  # Laplacian variance
+    sharpness_label: str  # "sharp" | "marginal" | "blurry"
+    brightness: float  # mean gray 0-255
+    contrast: float  # std gray
+    resolution_mp: float
+    glare_detected: bool
+    text_lines: int = 0
+    text_words: int = 0
+    avg_confidence: float = 0
+    low_conf_ratio: float = 0
+    text_sample: list[str] = []
+    reasons: list[str] = []
+    breakdown: list[dict] = []
+    aws_checked: bool = False
+    error: str | None = None
+
+
+def _analyze_document_local(image_bytes: bytes) -> dict:
+    """Local (free, offline) document quality signals with numpy+PIL.
+
+    Same Laplacian-variance technique already proven in
+    server/providers/liveness_passive.py, retuned for documents
+    (text edges need higher sharpness than faces).
+    """
+    import io as _io
+    import numpy as _np
+    from PIL import Image as _Image
+
+    pil = _Image.open(_io.BytesIO(image_bytes)).convert("RGB")
+    w, h = pil.size
+    arr = _np.array(pil, dtype=_np.uint8)
+    gray = arr.mean(axis=2).astype(_np.float64)
+
+    # Sharpness: Laplacian variance
+    lap = (
+        -gray[1:-1, 1:-1] * 4
+        + gray[:-2, 1:-1]
+        + gray[2:, 1:-1]
+        + gray[1:-1, :-2]
+        + gray[1:-1, 2:]
+    )
+    lap_var = float(_np.var(lap))
+
+    # Edge strength (mean gradient)
+    eh = _np.abs(_np.diff(gray, axis=1))
+    ev = _np.abs(_np.diff(gray, axis=0))
+    edge = float((eh.mean() + ev.mean()) / 2)
+
+    brightness = float(gray.mean())
+    contrast = float(gray.std())
+    mp = round((w * h) / 1_000_000, 2)
+
+    # Glare: saturated near-white pixels with low color spread (screen/paper reflection)
+    max_rgb = _np.max(arr, axis=2)
+    mean_rgb = _np.mean(arr, axis=2)
+    glare_mask = (max_rgb > 240) & ((max_rgb - mean_rgb) > 30)
+    glare_ratio = float(_np.sum(glare_mask)) / (h * w)
+
+    if lap_var < 25:
+        sharp_label = "blurry"
+    elif lap_var < 80:
+        sharp_label = "marginal"
+    else:
+        sharp_label = "sharp"
+
+    return {
+        "width": w, "height": h,
+        "lap_var": lap_var, "edge": edge,
+        "brightness": brightness, "contrast": contrast,
+        "resolution_mp": mp, "glare_ratio": glare_ratio,
+        "glare": glare_ratio > 0.02,
+        "sharp_label": sharp_label,
+    }
+
+
+@app.post("/document/quality", response_model=DocumentQualityResponse)
+async def document_quality(request: Request):
+    """KYCB-787 POC: detect blurry documents + unreadable text.
+
+    Combines free local blur analysis (Laplacian variance, brightness,
+    contrast, resolution, glare) with AWS Rekognition DetectText
+    confidence (readability signal). Works without AWS creds —
+    returns local-only verdict with aws_checked=false.
+    """
+    body = await request.json()
+    image_b64 = body.get("image")
+    check_text = body.get("check_text", True)
+    if not image_b64:
+        raise HTTPException(status_code=400, detail="No image provided")
+
+    try:
+        image_bytes = base64.b64decode(image_b64)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid base64 image")
+
+    try:
+        local = _analyze_document_local(image_bytes)
+    except Exception as e:
+        return DocumentQualityResponse(
+            is_usable=False, verdict="RETAKE", score=0,
+            sharpness=0, sharpness_label="blurry",
+            brightness=0, contrast=0, resolution_mp=0,
+            glare_detected=False, reasons=[f"Could not decode image: {e}"],
+        )
+
+    lap_var = local["lap_var"]
+    brightness = local["brightness"]
+    contrast = local["contrast"]
+    mp = local["resolution_mp"]
+    glare = local["glare"]
+    sharp_label = local["sharp_label"]
+
+    def clamp(v, lo, hi):
+        return max(0.0, min(1.0, (v - lo) / (hi - lo)))
+
+    # Local sub-scores (max 55 when AWS is skipped, 55 + 45 text = 100)
+    s_sharp = clamp(lap_var, 10, 150)          # 0-1 -> 30 pts
+    s_bright = 1.0 - clamp(abs(brightness - 130), 0, 110)  # ideal ~130 -> 10 pts
+    if brightness < 40 or brightness > 220:
+        s_bright *= 0.4  # severely under/over-exposed
+    s_contrast = clamp(contrast, 15, 60)       # 0-1 -> 10 pts
+    s_res = clamp(mp, 0.2, 2.0)                # 0-1 -> 5 pts
+
+    reasons: list[str] = []
+    if sharp_label == "blurry":
+        reasons.append(f"Blurry (sharpness {lap_var:.1f} < 25) — hold steady, tap to focus, clean lens")
+    elif sharp_label == "marginal":
+        reasons.append(f"Slightly soft (sharpness {lap_var:.1f}) — hold steadier / move closer")
+    if brightness < 60:
+        reasons.append(f"Too dark (brightness {brightness:.0f}) — add light, avoid shadows")
+    elif brightness > 200:
+        reasons.append(f"Overexposed (brightness {brightness:.0f}) — reduce glare / move out of direct light")
+    if contrast < 25:
+        reasons.append(f"Low contrast ({contrast:.0f}) — improve lighting, flatten document")
+    if mp < 0.3:
+        reasons.append(f"Low resolution ({mp} MP) — move closer, use higher quality capture")
+    if glare:
+        reasons.append("Glare detected — tilt document away from light source")
+
+    # AWS readability check (DetectText)
+    text_lines, text_words = 0, 0
+    avg_conf, low_conf_ratio = 0.0, 0.0
+    text_sample: list[str] = []
+    aws_checked = False
+    aws_error: str | None = None
+    if check_text:
+        try:
+            import boto3
+            rekognition = boto3.client("rekognition", region_name=os.environ.get("AWS_DEFAULT_REGION", "ap-southeast-1"))
+            resp = rekognition.detect_text(Image={"Bytes": image_bytes})
+            lines = [d for d in resp.get("TextDetections", []) if d.get("Type") == "LINE"]
+            words = [d for d in resp.get("TextDetections", []) if d.get("Type") == "WORD"]
+            text_lines = len(lines)
+            text_words = len(words)
+            aws_checked = True
+            if words:
+                confs = [w.get("Confidence", 0) for w in words]
+                avg_conf = round(sum(confs) / len(confs), 1)
+                low = sum(1 for c in confs if c < 80)
+                low_conf_ratio = round(low / len(confs), 2)
+                text_sample = [str(d.get("DetectedText", "")) for d in lines[:5]]
+        except Exception as e:
+            aws_error = str(e)
+
+    # Text sub-score (45 pts when AWS available)
+    if aws_checked:
+        if text_lines == 0:
+            s_text = 0.0
+            reasons.append("No readable text detected — fill frame with document, focus, add light")
+        else:
+            s_text = clamp(avg_conf, 50, 95)  # 0-1
+            if text_lines < 3:
+                s_text *= 0.6
+                reasons.append(f"Only {text_lines} text line(s) found — capture full document, not cropped")
+            if avg_conf < 70:
+                reasons.append(f"Text unclear (avg confidence {avg_conf}%) — retake sharper / better lit")
+            elif low_conf_ratio > 0.4:
+                reasons.append(f"{int(low_conf_ratio * 100)}% of words low-confidence — retake sharper")
+        score = int(round(s_sharp * 30 + s_bright * 10 + s_contrast * 10 + s_res * 5 + s_text * 45))
+    else:
+        s_text = 0.0
+        reasons.append(f"Text check skipped ({aws_error or 'AWS unavailable'}) — verdict from sharpness/lighting only")
+        score = int(round((s_sharp * 30 + s_bright * 10 + s_contrast * 10 + s_res * 5) / 55 * 100))
+
+    score = max(0, min(100, score))
+
+    # Verdict: PASS needs score>=70 AND not blurry AND (text ok or AWS skipped+sharp)
+    if aws_checked:
+        text_ok = text_lines >= 3 and avg_conf >= 70 and low_conf_ratio <= 0.4
+        is_usable = score >= 70 and sharp_label != "blurry" and text_ok
+    else:
+        is_usable = score >= 70 and sharp_label == "sharp"
+    verdict = "PASS" if is_usable else "RETAKE"
+
+    breakdown = [
+        {"label": "Sharpness", "pts": round(s_sharp * 30, 1), "max": 30},
+        {"label": "Lighting", "pts": round(s_bright * 10, 1), "max": 10},
+        {"label": "Contrast", "pts": round(s_contrast * 10, 1), "max": 10},
+        {"label": "Resolution", "pts": round(s_res * 5, 1), "max": 5},
+        {"label": "Text readability", "pts": round(s_text * 45, 1) if aws_checked else 0, "max": 45},
+    ]
+
+    return DocumentQualityResponse(
+        is_usable=is_usable, verdict=verdict, score=score,
+        sharpness=round(lap_var, 1), sharpness_label=sharp_label,
+        brightness=round(brightness, 1), contrast=round(contrast, 1),
+        resolution_mp=mp, glare_detected=glare,
+        text_lines=text_lines, text_words=text_words,
+        avg_confidence=avg_conf, low_conf_ratio=low_conf_ratio,
+        text_sample=text_sample, reasons=reasons,
+        breakdown=breakdown, aws_checked=aws_checked,
+        error=aws_error,
+    )
+
+
 @app.get("/health")
 async def health():
     return {

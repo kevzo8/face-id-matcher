@@ -7,6 +7,7 @@ import { CsvViewer } from './components/CsvViewer';
 import Presentation from './components/Presentation';
 import LivenessCheck from './components/LivenessCheck';
 import PassiveLivenessCheck from './components/PassiveLivenessCheck';
+import DocQualityCheck from './components/DocQualityCheck';
 
 type DetectionModel = 'fast' | 'accurate';
 type IdToFaceProvider = 'local' | 'rekognition' | 'megamatcher' | 'insightface' | 'faceplusplus';
@@ -63,7 +64,8 @@ export default function App() {
   const [obServerUrl, setObServerUrl] = useState('https://openbiometrics.onrender.com');
   const [faceplusServerUrl, setFaceplusServerUrl] = useState('https://face-id-matcher.onrender.com');
   const [awsServerUrl, setAwsServerUrl] = useState('https://face-id-matcher.onrender.com');
-  const [feature, setFeature] = useState<'id_to_face' | 'liveness' | 'ocr' | 'biometric'>('id_to_face');
+  const [feature, setFeature] = useState<'id_to_face' | 'liveness' | 'ocr' | 'doc_quality' | 'biometric'>('id_to_face');
+  const [docQualityServerUrl, setDocQualityServerUrl] = useState('http://localhost:5190');
   const [mode, setMode] = useState<'single' | 'batch' | 'csv'>('single');
   const [showInfo, setShowInfo] = useState(false);
   const [showTips, setShowTips] = useState(true);
@@ -103,10 +105,11 @@ export default function App() {
         return;
       }
       setShowPresentation(false);
-      const routeMap: Record<string, 'id_to_face' | 'liveness' | 'ocr' | 'biometric'> = {
+      const routeMap: Record<string, 'id_to_face' | 'liveness' | 'ocr' | 'doc_quality' | 'biometric'> = {
         '/face-id': 'id_to_face',
         '/liveness': 'liveness',
         '/ocr': 'ocr',
+        '/doc-quality': 'doc_quality',
       };
       const feat = routeMap[window.location.pathname];
       if (feat) setFeature(feat);
@@ -439,7 +442,7 @@ export default function App() {
   }
 
   if (showPresentation) {
-    return <Presentation feature={feature} initialSlide={initialSlide} onClose={() => { setShowPresentation(false); window.history.pushState(null, '', '/' + ({ id_to_face: 'face-id', liveness: 'liveness', ocr: 'ocr', biometric: 'biometric' })[feature]); }} />;
+    return <Presentation feature={feature} initialSlide={initialSlide} onClose={() => { setShowPresentation(false); window.history.pushState(null, '', '/' + ({ id_to_face: 'face-id', liveness: 'liveness', ocr: 'ocr', doc_quality: 'doc-quality', biometric: 'biometric' } as Record<string, string>)[feature]); }} />;
   }
 
   return (
@@ -468,10 +471,11 @@ export default function App() {
             { key: 'id_to_face' as const, label: 'ID to Face', color: '#a855f7', icon: '\u2696' },
             { key: 'liveness' as const, label: 'Liveness Test', color: '#f97316', icon: '\u25C9' },
             { key: 'ocr' as const, label: 'OCR & ID Type', color: '#22c55e', icon: '\u2630' },
+            { key: 'doc_quality' as const, label: 'Doc Quality', color: '#38bdf8', icon: '\u25A3' },
           ]).map((f) => (
             <button
               key={f.key}
-              onClick={() => { setShowPresentation(false); setShowPrototype(false); setFeature(f.key); window.history.pushState(null, '', '/' + ({ id_to_face: 'face-id', liveness: 'liveness', ocr: 'ocr', biometric: 'biometric' })[f.key]); }}
+              onClick={() => { setShowPresentation(false); setShowPrototype(false); setFeature(f.key); window.history.pushState(null, '', '/' + ({ id_to_face: 'face-id', liveness: 'liveness', ocr: 'ocr', doc_quality: 'doc-quality', biometric: 'biometric' })[f.key]); }}
               style={{
                 width: '100%', textAlign: 'left', padding: '10px 10px', fontSize: 12, fontWeight: 600,
                 border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
@@ -1021,6 +1025,11 @@ export default function App() {
         })()}
           </div>
 
+          {/* ==================== DOC QUALITY (KYCB-787) ==================== */}
+          <div style={{ display: feature === 'doc_quality' && !showPrototype ? 'block' : 'none' }}>
+            <DocQualityCheck serverUrl={docQualityServerUrl} />
+          </div>
+
           {/* ==================== BIOMETRIC ==================== */}
           <div style={{ display: feature === 'biometric' && !showPrototype ? 'block' : 'none' }}>
             <div style={{ maxWidth: 680, margin: '0 auto', textAlign: 'center', paddingTop: 20 }}>
@@ -1443,6 +1452,31 @@ export default function App() {
                   <option value="openai">OpenAI</option>
                 </select>
                 <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Set <strong>{aiParserProvider.toUpperCase()}_API_KEY</strong> env var on server.</div>
+              </div>
+            </div>
+          )}
+
+          {feature === 'doc_quality' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8' }}>DOC QUALITY SERVER</div>
+              <select value={docQualityServerUrl} onChange={(e) => setDocQualityServerUrl(e.target.value)}
+                style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box' }}>
+                <option value="http://localhost:5190">Localhost (http://localhost:5190)</option>
+                <option value="https://face-id-matcher.onrender.com">Render (https://face-id-matcher.onrender.com)</option>
+              </select>
+              <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.6 }}>
+                <strong style={{ color: '#94a3b8' }}>KYCB-787 POC</strong> — local blur check (Laplacian variance, $0, instant) + AWS Rekognition DetectText readability (~$0.0015/check).<br /><br />
+                <strong style={{ color: '#94a3b8' }}>PASS needs:</strong> score ≥ 70, sharpness ≠ blurry, ≥3 text lines, avg confidence ≥ 70%.<br /><br />
+                <strong style={{ color: '#94a3b8' }}>Sharpness:</strong> blurry &lt; 25 · marginal 25–80 · sharp &gt; 80.<br />
+                Works without AWS creds — returns local-only verdict (lighting/sharpness) with a note.
+              </div>
+              <div style={{ borderTop: '1px solid #334155', paddingTop: 8, fontSize: 11, color: '#64748b', lineHeight: 1.7 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8', marginBottom: 4 }}>CAPTURE TIPS</div>
+                <div><span style={{ color: '#22c55e' }}>✓</span> Fill frame with the document</div>
+                <div><span style={{ color: '#22c55e' }}>✓</span> Hold steady / tap to focus</div>
+                <div><span style={{ color: '#22c55e' }}>✓</span> Even lighting, no shadows</div>
+                <div><span style={{ color: '#22c55e' }}>✓</span> Tilt away from glare</div>
+                <div><span style={{ color: '#22c55e' }}>✓</span> Flatten curled documents</div>
               </div>
             </div>
           )}
