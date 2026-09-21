@@ -2095,3 +2095,363 @@ export const ocrSlides: Slide[] = [
     ),
   },
 ];
+
+export const docQualitySlides: Slide[] = [
+  {
+    id: 'docquality-title',
+    title: 'Document Quality Check',
+    subtitle: 'Blur Detection and Readability Gate — KYCB-787',
+    section: 'Overview',
+    content: null,
+  },
+  {
+    id: 'docquality-problem',
+    title: 'The Problem',
+    subtitle: 'Blur and unreadable text break KYC flows',
+    section: 'Overview',
+    content: (
+      <div style={{ maxWidth: 780, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          KYC needs documents that are sharp and readable at capture time. Blurred photos or low-contrast text cause OCR failures, retakes, and user friction — a sharp problem for Philippine government IDs with holograms, variable print quality, and bilingual text.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+          {[
+            { icon: <Camera />, title: 'Blurred capture', desc: 'Camera shake, motion, or poor focus leaves text unreadable', color: '#ef4444' },
+            { icon: <Sparkles />, title: 'Low contrast', desc: 'Ink blends into the background, starving OCR of edges', color: '#f97316' },
+            { icon: <Lightbulb />, title: 'Poor lighting', desc: 'Shadows, glare, and uneven light hide text and security features', color: '#fbbf24' },
+            { icon: <Printer />, title: 'Too small in frame', desc: 'A document shot from far away has no pixel detail for OCR', color: '#3b82f6' },
+          ].map((item, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.08 }} style={{ background: `${item.color}08`, borderRadius: 12, padding: '14px 16px', border: `1px solid ${item.color}33`, borderTop: `3px solid ${item.color}` }}>
+              <div style={{ flexShrink: 0, color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, background: `${item.color}15`, borderRadius: 10, marginBottom: 8 }}>{item.icon}</div>
+              <div style={{ fontWeight: 700, color: '#e2e8f0', marginBottom: 2, fontSize: 15 }}>{item.title}</div>
+              <div style={{ color: '#94a3b8', fontSize: 14, lineHeight: 1.5 }}>{item.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'docquality-solution',
+    title: 'What We Built',
+    subtitle: 'Two gates before OCR: local blur plus AWS readability',
+    section: 'Overview',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          A quality checkpoint that runs before OCR. Free local blur detection plus an AWS Rekognition readability check produce one unified PASS or RETAKE verdict with actionable reasons.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+          {[
+            { title: 'Local blur check', desc: 'Laplacian variance on grayscale. Sharp above 80, blurry below 25. Instant, zero cost.', color: '#22c55e' },
+            { title: 'AWS readability', desc: 'DetectText returns confidences, boxes, and text. We derive coverage, real-word share, and fragment ratio.', color: '#8b5cf6' },
+            { title: 'Unified scoring', desc: 'A 0 to 100 score: sharpness 30, lighting 10, contrast 10, text detail 5, readability 45.', color: '#f59e0b' },
+            { title: 'Actionable reasons', desc: 'Plain guidance: move closer, cut the glare, hold steady, or switch camera and upload instead.', color: '#10b981' },
+          ].map((item, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} style={{ background: `${item.color}08`, borderRadius: 12, padding: '14px 16px', border: `1px solid ${item.color}33`, borderTop: `3px solid ${item.color}` }}>
+              <div style={{ fontWeight: 700, color: '#e2e8f0', marginBottom: 6, fontSize: 15 }}>{item.title}</div>
+              <div style={{ color: '#94a3b8', fontSize: 14, lineHeight: 1.5 }}>{item.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'docquality-blur',
+    title: 'Blur Detection, Local',
+    subtitle: 'Laplacian variance — zero cost, instant, offline',
+    section: 'Results',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          Sharpness is Laplacian variance of the grayscale image: an edge-energy filter that counts high-frequency detail. Real sharp documents read in the hundreds to thousands. Same technique already proven in passive liveness, retuned for text.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
+          {[
+            { label: 'Blurry', value: 'below 25', note: 'Retake mandatory', color: '#ef4444' },
+            { label: 'Marginal', value: '25 to 80', note: 'Warn, still usable', color: '#fbbf24' },
+            { label: 'Sharp', value: 'above 80', note: 'Full 30 points', color: '#22c55e' },
+          ].map((t, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} style={{ background: `${t.color}08`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${t.color}33`, textAlign: 'center' }}>
+              <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 15 }}>{t.label}</div>
+              <div style={{ fontWeight: 800, color: t.color, fontSize: 17 }}>{t.value}</div>
+              <div style={{ color: '#94a3b8', fontSize: 12 }}>{t.note}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.15), rgba(16,185,129,0.15))', borderRadius: 12, padding: '14px 18px', border: '1px solid rgba(34,197,94,0.3)' }}>
+          <div style={{ fontWeight: 700, color: '#a5b4fc', marginBottom: 4, fontSize: 15 }}>Why Laplacian variance</div>
+          <div style={{ color: '#cbd5e1', fontSize: 14, lineHeight: 1.7 }}>
+            Correlates with human-perceived sharpness, resists lighting changes, works on any content with no text required, and costs almost no CPU per frame.
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'docquality-readability',
+    title: 'Readability Check, AWS',
+    subtitle: 'DetectText confidence, coverage, and content gates',
+    section: 'Results',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          About $0.0015 per check. DetectText returns word and line boxes, text, and per-word confidence. From that we compute coverage, average confidence, low-confidence share, real-word share, and fragment ratio.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+          {[
+            { title: 'Text coverage', desc: 'Text-box area over frame area. Gate: at least 1 percent. Doubles as the too-far detector.', color: '#22c55e' },
+            { title: 'Average confidence', desc: 'Mean word confidence. Gate: at least 70 percent.', color: '#8b5cf6' },
+            { title: 'Low-conf words', desc: 'Share of words under 80 percent confidence. Gate: at most 40 percent.', color: '#f59e0b' },
+            { title: 'Real words', desc: 'Tokens with 3 or more letters or digits, as count and share. Gates: 5 words and 50 percent.', color: '#10b981' },
+            { title: 'Fragment lines', desc: 'Lines with fewer than 3 alphanumerics. Gate: at most 50 percent.', color: '#6366f1' },
+            { title: 'Filipino counts', desc: 'Script-based detection, so Republika, Pangalan, and PSN numbers count as real words.', color: '#38bdf8' },
+          ].map((item, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} style={{ background: `${item.color}08`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${item.color}33`, borderTop: `3px solid ${item.color}` }}>
+              <div style={{ fontWeight: 700, color: '#e2e8f0', marginBottom: 4, fontSize: 14 }}>{item.title}</div>
+              <div style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5 }}>{item.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'docquality-scoring',
+    title: 'Score and Gates',
+    subtitle: 'Points explain, gates decide',
+    section: 'Results',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          PASS needs score 70 or more, a non-blurry label, and every content gate. Gates override points: a 79 can still RETAKE, and every breakdown row prints its raw evidence next to its points.
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+          {[
+            { label: 'Sharpness, 30 pts', detail: 'Raw Laplacian, sharp at 80 and full marks at 150', gate: 'not blurry' },
+            { label: 'Lighting, 10 pts', detail: 'Mean gray, white paper near 175', gate: '80 to 235' },
+            { label: 'Contrast, 10 pts', detail: 'Gray spread, ink versus paper, good at 25', gate: 'sane spread' },
+            { label: 'Text detail, 5 pts', detail: 'Megapixels actually on text, full marks near 25KP', gate: 'coverage 1 pct' },
+            { label: 'Readability, 45 pts', detail: 'Confidence times content blend of share and fragments', gate: 'all AWS gates' },
+          ].map((item, i) => (
+            <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }} style={{ display: 'flex', gap: 12, alignItems: 'center', background: '#1e293b', borderRadius: 8, padding: '10px 14px', border: '1px solid #334155' }}>
+              <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 14, minWidth: 150 }}>{item.label}</span>
+              <span style={{ color: '#94a3b8', fontSize: 13, flex: 1 }}>{item.detail}</span>
+              <span style={{ color: '#fbbf24', fontSize: 12, fontWeight: 600 }}>Gate: {item.gate}</span>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+          <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>Camera-aware advice</div>
+          <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>
+            Move closer when the camera has headroom. When the sensor is maxed out and text still fails, the guidance switches to a different camera or an uploaded phone photo.
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'docquality-metrics-local',
+    title: 'Local Metrics, $0',
+    subtitle: 'Instant, offline — blur, light, and capture geometry',
+    section: 'Results',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          Everything on this slide costs nothing and runs before any network call. Same definitions as the app sidebar, verbatim.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+          {[
+            { title: 'Sharpness — 30 pts', desc: 'Laplacian variance, edge energy. Real sharp docs read in the hundreds to thousands. Blurry below 25, marginal 25 to 80, sharp above 80. Full marks at raw 150.', color: '#22c55e' },
+            { title: 'Lighting — 10 pts', desc: 'Mean gray 0 to 255. White paper meters near 175. Flags: dark below 80, overexposed above 235.', color: '#fbbf24' },
+            { title: 'Contrast — 10 pts', desc: 'Gray spread, ink versus paper. Good at 25 and up, full marks at 45. Documents are flatter than faces.', color: '#38bdf8' },
+            { title: 'Brightness / Contrast numbers', desc: 'The raw mean and spread behind the two point scores above. Read them when points disagree with your eyes.', color: '#94a3b8' },
+            { title: 'Capture', desc: 'Captured MP versus camera-reported max (Chromium only, uploads show no max). Tells too-far apart from camera tapped out.', color: '#a78bfa' },
+            { title: 'Text detail — 5 pts', desc: 'MP times coverage: megapixels actually on text. Full marks near 25KP. No sensor-MP floor exists anywhere.', color: '#10b981' },
+            { title: 'Glare', desc: 'Over 2 percent blown-out specular pixels. Advisory only — the fix is to tilt away from the light.', color: '#f97316' },
+          ].map((item, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} style={{ background: `${item.color}08`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${item.color}33`, borderTop: `3px solid ${item.color}` }}>
+              <div style={{ fontWeight: 700, color: '#e2e8f0', marginBottom: 4, fontSize: 14 }}>{item.title}</div>
+              <div style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5 }}>{item.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'docquality-metrics-aws',
+    title: 'AWS Metrics, $0.0015',
+    subtitle: 'DetectText readability — one call per check',
+    section: 'Results',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          One DetectText call returns lines, words, confidences, and boxes. Every derived metric below carries a hard gate.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+          {[
+            { title: 'Text lines / Words', desc: 'LINE and WORD detection counts. Gate: 3 lines or more.', color: '#22c55e' },
+            { title: 'Average confidence', desc: 'Mean WORD confidence. Gate: 70 percent or more.', color: '#8b5cf6' },
+            { title: 'Low-conf words', desc: 'Share of words under 80 percent confidence. Gate: 40 percent or less.', color: '#f59e0b' },
+            { title: 'Real words', desc: 'Tokens with 3+ letters/digits, count and share. Gates: 5 words AND 50 percent. Filipino counts; ng, M, and dashes do not.', color: '#10b981' },
+            { title: 'Fragment lines', desc: 'Lines with under 3 alphanumerics. Gate: 50 percent or less. Shown in the readability row detail.', color: '#6366f1' },
+            { title: 'Text coverage', desc: 'Text-box area over frame. Gate: 1 percent or more. Doubles as the too-far detector.', color: '#38bdf8' },
+            { title: 'Text readability — 45 pts', desc: 'Confidence times content blend of fragment share and real-word share.', color: '#a78bfa' },
+            { title: 'Full captured text', desc: 'Every LINE, scrollable. Header reads n of N — when n trails N, the backend is stale.', color: '#94a3b8' },
+          ].map((item, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} style={{ background: `${item.color}08`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${item.color}33`, borderTop: `3px solid ${item.color}` }}>
+              <div style={{ fontWeight: 700, color: '#e2e8f0', marginBottom: 4, fontSize: 14 }}>{item.title}</div>
+              <div style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5 }}>{item.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'docquality-gates',
+    title: 'Verdict Logic',
+    subtitle: 'Points explain, gates decide — plus graceful degradation',
+    section: 'Results',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          PASS is score 70+, a non-blurry label, and all eight checks green. Any single gate fails the capture no matter how high the score.
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+          {[
+            { label: 'Score 70+', detail: 'Weighted total of the five point rows', gate: 'hard floor' },
+            { label: 'Sharp, not blurry', detail: 'Marginal passes with a warning; blurry never does', gate: 'label gate' },
+            { label: 'Size sanity 0.15MP', detail: 'Thumbnails only — there is deliberately no real MP floor', gate: 'sanity' },
+            { label: 'Lines 3+, avg 70+, low-conf 40%-', detail: 'The readability triple: enough text, confident text', gate: 'AWS bars' },
+            { label: 'Real 5+ and 50%+, frag 50%-, cover 1%+', detail: 'The content triple: language, not fragments, filling frame', gate: 'AWS bars' },
+            { label: 'Camera-aware advice', detail: 'Headroom means move closer; maxed-out means switch camera or upload a phone photo', gate: 'guidance, not verdict' },
+            { label: 'No AWS creds', detail: 'Degrades to a local-only verdict from sharpness and lighting, with an explanatory note', gate: 'degraded mode' },
+          ].map((item, i) => (
+            <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }} style={{ display: 'flex', gap: 12, alignItems: 'center', background: '#1e293b', borderRadius: 8, padding: '10px 14px', border: '1px solid #334155' }}>
+              <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 14, minWidth: 190 }}>{item.label}</span>
+              <span style={{ color: '#94a3b8', fontSize: 13, flex: 1 }}>{item.detail}</span>
+              <span style={{ color: '#fbbf24', fontSize: 12, fontWeight: 600 }}>{item.gate}</span>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'docquality-calibration',
+    title: 'Calibration Story',
+    subtitle: 'Three rounds: each scale earned, none invented',
+    section: 'Conclusion',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          Every threshold below was set by a failing real capture, not by guessing. The battery that replays all three rounds lives at server/test_doc_quality_battery.py.
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+          {[
+            { round: 'Round 1 — the MP floor was wrong', story: 'A readable 0.31MP capture failed a 0.5MP sensor floor. Fix: judge text pixels (MP x coverage), never the spec sheet. Tiny-readable now passes.', color: '#38bdf8' },
+            { round: 'Round 2 — confidence is not content', story: 'Crisp garbage scored 91 percent confidence. Fix: real-word share and fragment ratio gates plus a blended content factor. Half-readable still passes at 74 percent share.', color: '#8b5cf6' },
+            { round: 'Round 3 — face-tuned scales', story: 'An excellent capture scored 0.7 on detail and 6.5 on lighting. Fix: document-tuned ideals (paper near 175, full detail near 25KP). Excellent now lands in the mid-80s.', color: '#22c55e' },
+          ].map((item, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} style={{ background: `${item.color}08`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${item.color}33`, borderLeft: `4px solid ${item.color}` }}>
+              <div style={{ fontWeight: 700, color: '#e2e8f0', marginBottom: 4, fontSize: 14 }}>{item.round}</div>
+              <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>{item.story}</div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'docquality-howto',
+    title: 'Run It Yourself',
+    subtitle: 'Backend, frontend, capture, verdict',
+    section: 'Conclusion',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          Local backend on port 5190, web dev server, then the Doc Quality tab. Selector defaults to Local; Render lags until push.
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+          {[
+            { step: '1. Backend', detail: 'python main.py --port 5190 in server/ — needs AWS creds for readability' },
+            { step: '2. Frontend', detail: 'npm run dev in web/ — open the Doc Quality tab' },
+            { step: '3. Capture', detail: 'Rear camera, fill the frame, hold steady — or Upload File' },
+            { step: '4. Check', detail: 'Press Check Quality: verdict, breakdown with evidence, full text, reasons' },
+            { step: '5. Tips', detail: 'Fill frame, hold steady, even light, tilt from glare, flatten curls' },
+          ].map((p, i) => (
+            <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.07 }} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', background: '#1e293b', borderRadius: 8, padding: '10px 14px', border: '1px solid #334155' }}>
+              <span style={{ fontWeight: 700, color: '#a5b4fc', fontSize: 14, minWidth: 90 }}>{p.step}</span>
+              <span style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.5 }}>{p.detail}</span>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'docquality-evidence',
+    title: 'Test Evidence',
+    subtitle: 'Real captures prove the system works',
+    section: 'Conclusion',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          Calibrated against real Philippine ID captures. Sharp-readable passes, sharp-unreadable fails, blurred fails, and tiny-but-readable passes when the text detail is genuinely there.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+          {[
+            { verdict: 'PASS 85', details: 'Sharp Filipino ID, 44 lines, 96 percent confidence, 73 percent real words', color: '#22c55e' },
+            { verdict: 'RETAKE 9', details: 'Blurred copy, softness near zero, 4 percent real words', color: '#ef4444' },
+            { verdict: 'PASS 76', details: 'Tiny 0.31MP frame-filler, same readable text, no sensor floor', color: '#10b981' },
+            { verdict: 'RETAKE 46', details: 'Tiny garbage at maxed camera, 38 percent real words, advised to switch or upload', color: '#ef4444' },
+            { verdict: 'RETAKE 43', details: 'Sharp garbage, crisp but only 33 percent real words', color: '#ef4444' },
+            { verdict: 'PASS 71', details: 'Half-garbage mix, 74 percent real-word share clears the 50 bar', color: '#10b981' },
+          ].map((item, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} style={{ background: `${item.color}08`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${item.color}33`, borderLeft: `4px solid ${item.color}` }}>
+              <div style={{ fontWeight: 700, color: '#e2e8f0', marginBottom: 4, fontSize: 15 }}>{item.verdict}</div>
+              <div style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5 }}>{item.details}</div>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+          <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>No megapixel floor</div>
+          <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>
+            A 0.31MP frame-filler beats a 12MP shot from across the room. Quality is judged on text detail, never on the spec sheet.
+          </div>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+          <div style={{ fontWeight: 700, color: '#38bdf8', marginBottom: 4, fontSize: 14 }}>Reference these files</div>
+          <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.7 }}>
+            Battery: server/test_doc_quality_battery.py — run it in server/, expect ALL GREEN.<br />
+            Endpoint: server/main.py — POST /document/quality.<br />
+            UI: web/src/components/DocQualityCheck.tsx, glossary in web/src/App.tsx, this deck in web/src/data/slides.tsx.<br />
+            Writeup: KYCB-787-spike-report.md.
+          </div>
+        </motion.div>
+      </div>
+    ),
+  },
+  {
+    id: 'docquality-thanks',
+    title: 'Thank You',
+    subtitle: 'KYCB-787 Document Quality Check spike complete',
+    section: 'Conclusion',
+    content: (
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, ease: 'easeOut' }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', textAlign: 'center' }}>
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.3 }} style={{ fontSize: 28, fontWeight: 800, background: 'linear-gradient(135deg, #38bdf8, #22c55e)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: 6, letterSpacing: -0.5 }}>Document Quality Check</motion.div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.45 }} style={{ fontSize: 14, color: '#94a3b8', marginBottom: 2 }}>Local blur plus AWS readability with camera-aware guidance</motion.div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.5 }} style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>KYCB-787 spike complete</motion.div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.55 }} style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>
+          <a href="https://svi-jira.atlassian.net/browse/KYCB-787" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Jira: KYCB-787</a>
+        </motion.div>
+        <motion.div initial={{ width: 0 }} animate={{ width: 60 }} transition={{ duration: 0.6, delay: 0.6 }} style={{ height: 2, background: 'linear-gradient(90deg, #38bdf8, #22c55e)', margin: '12px 0', borderRadius: 2 }} />
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.7 }} style={{ fontSize: 16, color: '#cbd5e1', marginBottom: 2, fontWeight: 700, letterSpacing: 2 }}>KGV</motion.div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.8 }} style={{ fontSize: 12, color: '#64748b' }}>RBAC Team</motion.div>
+      </motion.div>
+    ),
+  },
+];

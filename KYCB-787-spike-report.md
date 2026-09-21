@@ -50,13 +50,23 @@ Same Laplacian-variance technique already proven in `server/providers/liveness_p
 | Resolution | Megapixels | warn < 0.5 MP · fail < 0.3 MP |
 | Glare | Saturated near-white pixel ratio | flag > 2% |
 
-### 2.2 AWS readability metrics (~$0.0015)
+### 2.2 AWS readability + content metrics (~$0.0015)
 
-| Metric | PASS bar |
-|--------|----------|
-| Text lines (`LINE` detections) | ≥ 3 |
-| Avg word confidence | ≥ 70% |
-| Low-conf word ratio (words < 80%) | ≤ 40% |
+Confidence alone passes crisp garbage (card graphics read as `B`, `-`, `. -` fragments at 90%+ confidence), so the same `DetectText` response is also scored for language content:
+
+| Metric | PASS bar | Why |
+|--------|----------|-----|
+| Text lines (`LINE` detections) | ≥ 3 | Cropped/empty captures |
+| Avg word confidence | ≥ 70% | Blurry/glare-degraded text |
+| Low-conf word ratio (words < 80%) | ≤ 40% | Partially readable text |
+| Real words (tokens with 3+ alnum chars) | ≥ 5 | Fragment soup (`B`, `-`, `abeped -`) |
+| Real-word share (real ÷ total words) | ≥ 50% | Mixed captures — clear half + garbage half (`Dela Cruz X Q 7` passes line checks, fails here) |
+| Fragment line ratio (lines with <3 alnum chars) | ≤ 50% | Graphics misread as text |
+| Text frame coverage (summed LINE bbox area) | ≥ 1% | Document too far/small in frame |
+| Text detail (MP × coverage, camera-independent) | scores 0–5 pts | A 0.3MP frame-filling shot beats a 12MP shot from across the room |
+| Sensor MP | **no floor** (0.15MP sanity only) | Punishing hardware the user can't change is wrong — judge the text, not the spec sheet |
+
+"Real word" is script-based (`[A-Za-z0-9]{3,}`), **not an English dictionary** — Filipino/Tagalog (`Pilipinas`, `Pangalan`, `Apelyido`, `Kapanganakan`) counts identically. Short particles (`ng`, `sa`, `at`) and single-letter markers (`M`/`F`) don't count individually, which is fine against a ≥5 threshold on a full document.
 
 ### 2.3 Scoring (0–100)
 
@@ -68,7 +78,9 @@ Same Laplacian-variance technique already proven in `server/providers/liveness_p
 | Resolution | 5 |
 | Text readability (AWS) | 45 |
 
-`PASS` requires **score ≥ 70 AND sharpness ≠ blurry AND text readable** (≥3 lines, avg conf ≥ 70%, low-conf ≤ 40%). Without AWS creds the endpoint degrades gracefully: local-only score rescaled to 100, `aws_checked: false`, verdict from sharpness/lighting with an explanatory note.
+Text pts are multiplied by the blended content factor `((1 − fragment_ratio) + real_word_ratio) / 2`, and **gates override score**. `PASS` requires **score ≥ 70 AND sharp AND all content bars above** — with no sensor-MP floor. The frontend reports the camera's max MP (`track.getCapabilities()`, Chromium) as `camera_max_mp`, so advice splits into fixable-now vs hardware-limited: "move closer" when the camera has headroom, vs "camera maxed out at X MP — switch camera or use Upload File" when the sensor is the bottleneck (Upload File re-enters the same gates, so no quality escapes).
+
+> **Calibration status:** weights and the 70 bar are reasoned starting values (70 inherits the app's liveness convention), **not** fitted to data. A good phone capture scores ~85–92; the line placement needs a 50–100 real-capture batch (see §6.1).
 
 ---
 
@@ -83,6 +95,28 @@ Synthetic 800×600 document (white page + 12 black text bars) vs. blurred copy (
 
 AWS path on this machine: `aws_checked: true`, 0 lines on synthetic bars (correct — bars aren't glyphs), verdict `RETAKE 45` with "No readable text detected". Confirms the unreadable-text gate fires when Rekognition finds nothing, and that the existing AWS credentials work with the new endpoint. `npx tsc --noEmit` on `web/` passes clean.
 
+### Round 2 — content gates (2026-09-10, live endpoint, rendered-text images)
+
+| Case | Verdict | Key signals |
+|------|---------|-------------|
+| Sharp Filipino ID (1600×1200, 8 lines incl. `Republika ng Pilipinas`, `Araw ng Kapanganakan`) | **PASS 84** | real=20 words, frag=0.0, avg=98.9 — Filipino counts, proof |
+| Blurred copy | **RETAKE 9** | blurry, frag=0.88, real=1 |
+| Tiny copy (640×480 ≈ reporter's 0.31 MP case) | **RETAKE 79** | hard resolution floor fires despite score ≥ 70 |
+| Sharp garbage (`B`, `serving Par`, `-`, `. -`, `abeped -`) | **RETAKE 45** | frag=0.75, real=3/9 (33% share) — the crisp-garbage hole is closed |
+| Mixed (4 clean + 4 junk lines) | **PASS 71** | 14/19 real (74% share) — mostly-readable docs still pass; the 50% bar only bites half-unreadable ones |
+
+### Round 3 — detail-based scoring, no MP floor (2026-09-10)
+
+| Case | Verdict | Key signals |
+|------|---------|-------------|
+| Sharp Filipino 1.9MP | **PASS 81** | share 0.83, text detail 0.19MP |
+| Blurred copy | **RETAKE 8** | blurry, share 0.04 |
+| Tiny 0.31MP, good content | **PASS 76** | share 0.83 — same pixels that failed the old MP floor now pass on readable content |
+| Sharp garbage | **RETAKE 43** | share 0.33 |
+| Tiny garbage + `camera_max_mp: 0.31` | **RETAKE 46** | reasons end with "Camera maxed out at 0.31 MP and text still unreadable — switch camera or use Upload File" — the hardware-vs-distance split works |
+
+Note: the overexposed/brightness advisories on these rows are synthetic-image artifacts (pure-white margins average ~250); real captures don't hit that. Score-vs-gate behavior is intentional: gates decide, score advises.
+
 ---
 
 ## 4. What Was Built (this repo)
@@ -91,8 +125,11 @@ AWS path on this machine: `aws_checked: true`, 0 lines on synthetic bars (correc
 |------|--------|
 | `server/main.py` | New `POST /document/quality` + `DocumentQualityResponse` schema + `_analyze_document_local()` |
 | `server/requirements.txt` | Added `numpy`, `pillow` (already used by `liveness_passive.py`, now declared) |
-| `web/src/components/DocQualityCheck.tsx` | **New.** Camera capture → Check Quality → verdict badge, score breakdown, metric grid, reasons, AWS text sample |
-| `web/src/App.tsx` | New `doc_quality` feature: left-menu entry, `/doc-quality` route, center panel, right sidebar (server URL + thresholds + capture tips) |
+| `server/test_doc_quality_battery.py` | **New.** 5-case regression battery (sharp / blurred / tiny-readable / garbage / maxed-out). Run `python test_doc_quality_battery.py` in `server/` — expect `ALL GREEN` |
+| `web/src/components/DocQualityCheck.tsx` | **New.** Camera capture → Check Quality → verdict badge, score breakdown with raw evidence, metric grid, reasons, full scrollable AWS text (`full_text`, `n of N` header) |
+| `web/src/App.tsx` | New `doc_quality` feature: left-menu entry, `/doc-quality` route, center panel, right sidebar (server URL + thresholds + Sharpness note + METRIC DEFINITIONS glossary + capture tips) |
+| `web/src/data/slides.tsx` | New `docQualitySlides` (13 slides: problem → metrics → gates → calibration → how-to → evidence with file refs). Sidebar Presentations entry sits between OCR & ID Type and Biometric Auth |
+| `web/src/components/Presentation.tsx` | `docquality-title` landing cover (badges/links/gradients), Switch-Presentation entry, title/thanks parity with other decks |
 | `KYCB-787-spike-report.md` | This report |
 
 ### Run it
@@ -117,6 +154,14 @@ curl -X POST http://localhost:5190/document/quality \
   -H "Content-Type: application/json" \
   -d "{\"image\":\"$(base64 -w0 /path/to/doc.jpg)\",\"check_text\":true}"
 ```
+
+```bash
+# regression battery (needs backend on :5190 + AWS creds) — expect ALL GREEN
+cd server
+python test_doc_quality_battery.py
+```
+
+Slide deck: Presentations → Doc Quality in the left sidebar (also in the viewer Switch Presentation list), or direct at `/doc-quality/presentation/0`.
 
 ---
 

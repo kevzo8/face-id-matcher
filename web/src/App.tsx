@@ -15,6 +15,14 @@ type OcrProvider = 'aws_rekognition_ocr' | 'bedrock' | 'textract' | 'verihubs' |
 type LivenessProvider = 'aws_rekognition' | 'aws_detect_faces' | 'aws_detect_faces_objects' | 'faceplusplus' | 'azure_face' | 'hyperverge' | 'didit' | 'iproov' | 'open_face_liveness' | 'openbiometrics';
 type FaceBox = { x: number; y: number; width: number; height: number; score: number };
 
+const FEATURE_SUBTITLES: Record<'id_to_face' | 'liveness' | 'ocr' | 'doc_quality' | 'biometric', string> = {
+  id_to_face: 'CPS-221 — 1:1 face matching: selfie vs ID, selfie vs selfie, or ID vs ID',
+  liveness: 'CPS-222 — active challenges plus passive analysis to prove the face is live',
+  ocr: 'CPS-220 — OCR extraction plus ID-type detection across 14 Philippine IDs',
+  doc_quality: 'KYCB-787 POC — capture a document, detect blur + unreadable text before OCR',
+  biometric: 'CPS-289 — biometric transaction authentication prototype',
+};
+
 function checkOrientation(detection: faceapi.WithFaceLandmarks<{ detection: faceapi.FaceDetection }>): string | null {
   const landmarks = detection.landmarks;
   const leftEye = landmarks.getLeftEye();
@@ -75,6 +83,7 @@ export default function App() {
   const [showBioLiveness, setShowBioLiveness] = useState(false);
   const [showBioCost, setShowBioCost] = useState(false);
   const [showBioStack, setShowBioStack] = useState(false);
+  const [showDocMetrics, setShowDocMetrics] = useState(false);
   const [showPresentation, setShowPresentation] = useState(false);
   const [showPrototype, setShowPrototype] = useState(false);
   const [initialSlide, setInitialSlide] = useState(0);
@@ -96,9 +105,9 @@ export default function App() {
     function handleRoute() {
       setShowPrototype(window.location.pathname === '/biometric');
       if (window.location.pathname === '/biometric') return;
-      const presMatch = window.location.pathname.match(/^\/(face-id|liveness|ocr|biometric)\/presentation\/(\d+)$/);
+      const presMatch = window.location.pathname.match(/^\/(face-id|liveness|ocr|doc-quality|biometric)\/presentation\/(\d+)$/);
       if (presMatch) {
-        const feat = presMatch[1] === 'face-id' ? 'id_to_face' : presMatch[1] === 'liveness' ? 'liveness' : presMatch[1] === 'biometric' ? 'biometric' : 'ocr';
+        const feat = presMatch[1] === 'face-id' ? 'id_to_face' : presMatch[1] === 'liveness' ? 'liveness' : presMatch[1] === 'doc-quality' ? 'doc_quality' : presMatch[1] === 'biometric' ? 'biometric' : 'ocr';
         setFeature(feat);
         setShowPresentation(true);
         setInitialSlide(parseInt(presMatch[2], 10));
@@ -447,11 +456,11 @@ export default function App() {
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: 16 }}>
-      {/* Header */}
+      {/* Header — general suite title plus a subtitle that follows the selected app */}
       <header style={{ marginBottom: 12, textAlign: 'center' }}>
-        <div style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: 700, marginBottom: 2 }}>Face ID Matcher POC</div>
+        <div style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: 700, marginBottom: 2 }}>Secure Verification of Identity</div><div style={{ fontSize: 12, fontWeight: 500, color: '#64748b', marginBottom: 2 }}>POCs by Kevin G. Vega</div>
         <p style={{ color: '#94a3b8', fontSize: 13 }}>
-          Compare any two face photos — selfie vs ID, selfie vs selfie, or ID vs ID — with 1:1 face matching
+          {showPrototype ? FEATURE_SUBTITLES.biometric : FEATURE_SUBTITLES[feature]}
         </p>
       </header>
 
@@ -502,6 +511,7 @@ export default function App() {
             { key: 'id_to_face' as const, label: 'ID to Face', color: '#a855f7', icon: '\u2696', slide: 0, path: 'face-id' },
             { key: 'liveness' as const, label: 'Liveness Test', color: '#f97316', icon: '\u25C9', slide: 0, path: 'liveness' },
             { key: 'ocr' as const, label: 'OCR & ID Type', color: '#22c55e', icon: '\u2630', slide: 0, path: 'ocr' },
+            { key: 'doc_quality' as const, label: 'Doc Quality', color: '#38bdf8', icon: '\u25A3', slide: 0, path: 'doc-quality' },
             { key: 'biometric' as const, label: 'Biometric Auth', color: '#fbbf24', icon: '\u26A1', slide: 0, path: 'biometric' },
           ]).map((f) => (
             <button
@@ -888,6 +898,9 @@ export default function App() {
 
           {/* ==================== OCR ==================== */}
           <div style={{ display: feature === 'ocr' && !showPrototype ? 'block' : 'none' }}>
+            <h3 style={{ color: '#e2e8f0', fontWeight: 600, fontSize: 15, marginBottom: 12, textAlign: 'center' }}>
+              OCR & ID Type Detection
+            </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
               {ocrEntries.map((entry, idx) => (
                 <div key={entry.key} style={{ display: 'flex', gap: 16, alignItems: 'flex-start', justifyContent: 'center', padding: 12, borderRadius: 8, background: '#1e293b', border: '1px solid #334155' }}>
@@ -1461,14 +1474,46 @@ export default function App() {
               <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8' }}>DOC QUALITY SERVER</div>
               <select value={docQualityServerUrl} onChange={(e) => setDocQualityServerUrl(e.target.value)}
                 style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box' }}>
-                <option value="http://localhost:5190">Localhost (http://localhost:5190)</option>
-                <option value="https://face-id-matcher.onrender.com">Render (https://face-id-matcher.onrender.com)</option>
+                <option value="http://localhost:5190">Local (localhost:5190)</option>
+                <option value="https://face-id-matcher.onrender.com">Deployed (Render)</option>
               </select>
+              <div style={{ fontSize: 11, color: '#e2e8f0', lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={docQualityServerUrl}>
+                → {docQualityServerUrl}
+              </div>
               <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.6 }}>
                 <strong style={{ color: '#94a3b8' }}>KYCB-787 POC</strong> — local blur check (Laplacian variance, $0, instant) + AWS Rekognition DetectText readability (~$0.0015/check).<br /><br />
-                <strong style={{ color: '#94a3b8' }}>PASS needs:</strong> score ≥ 70, sharpness ≠ blurry, ≥3 text lines, avg confidence ≥ 70%.<br /><br />
-                <strong style={{ color: '#94a3b8' }}>Sharpness:</strong> blurry &lt; 25 · marginal 25–80 · sharp &gt; 80.<br />
+                <strong style={{ color: '#94a3b8' }}>PASS needs:</strong> score ≥ 70, sharp, text ≥1% of frame, avg conf ≥ 70%, ≤ 40% low-conf, ≥5 real words (≥50%), ≤ 50% fragments. No MP floor — judged on text detail; maxed-out camera → upload instead.<br /><br />
+                <strong style={{ color: '#94a3b8' }}>Sharpness:</strong> raw Laplacian (real sharp docs read in the thousands) — blurry &lt; 25 · marginal 25–80 · sharp &gt; 80, worth 30 pts.<br />
                 Works without AWS creds — returns local-only verdict (lighting/sharpness) with a note.
+              </div>
+              <div style={{ borderTop: '1px solid #334155', paddingTop: 8 }}>
+                <button onClick={() => setShowDocMetrics(!showDocMetrics)}
+                  style={{ width: '100%', textAlign: 'left', padding: '2px 0', fontSize: 11, fontWeight: 700, border: 'none', cursor: 'pointer', background: 'transparent', color: '#38bdf8' }}>
+                  <span>{showDocMetrics ? '\u25BC' : '\u25B6'} METRIC DEFINITIONS</span>
+                </button>
+                {showDocMetrics && (
+                  <div style={{ fontSize: 10, color: '#64748b', lineHeight: 1.65, marginTop: 6 }}>
+                    <div style={{ fontWeight: 700, color: '#38bdf8', marginBottom: 2 }}>VERDICT</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>PASS</strong> = score ≥ 70 + sharp + every gate below. Gates beat score — a 79 can still RETAKE.</div>
+                    <div style={{ fontWeight: 700, color: '#38bdf8', margin: '6px 0 2px' }}>LOCAL — $0, instant</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>Sharpness</strong> = Laplacian variance (edge energy). Real sharp docs read in the hundreds–thousands. Labels: blurry &lt;25 · marginal 25–80 · sharp &gt;80. Worth 30 pts (full at raw ≥150).</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>Lighting</strong> = mean gray 0–255. White paper ≈175. Worth 10 pts. Flags: dark &lt;80, overexposed &gt;235.</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>Contrast</strong> = gray std-dev (ink-vs-paper). Good ≥25. Worth 10 pts (full at ≥45).</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>Brightness / Contrast numbers</strong> = the raw mean / std-dev behind the two point scores above.</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>Capture</strong> = captured MP vs camera-reported max (Chromium only; uploads show no max). Tells "too far" apart from "camera tapped out".</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>Text detail</strong> = MP × coverage = megapixels actually on text. Full marks ≈25KP. Worth 5 pts. No sensor-MP floor exists.</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>Glare</strong> = &gt;2% blown-out pixels → tilt away from light.</div>
+                    <div style={{ fontWeight: 700, color: '#38bdf8', margin: '6px 0 2px' }}>AWS — ~$0.0015/check</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>Text lines / Words</strong> = LINE / WORD detection counts. Gate: ≥3 lines.</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>Avg conf</strong> = mean WORD confidence. Gate ≥70%.</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>Low-conf words</strong> = share of words &lt;80% conf. Gate ≤40%.</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>Real words</strong> = tokens with 3+ letters/digits, as count/share. Gates: ≥5 AND ≥50%. Script-based — Filipino counts, <em>ng / M / -</em> don't.</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>Fragment lines</strong> = lines with &lt;3 alnum chars (<em>B, -, . -</em>). Gate ≤50%. Shown in the readability row's detail.</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>Text coverage</strong> = text-box area ÷ frame. Gate ≥1%. Doubles as the too-far detector.</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>Text readability</strong> = 45 pts = confidence × content blend (fragment share + real-word share).</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>Full captured text</strong> = every LINE, scrollable. Header "n of N" — if n &lt; N, your backend is stale.</div>
+                  </div>
+                )}
               </div>
               <div style={{ borderTop: '1px solid #334155', paddingTop: 8, fontSize: 11, color: '#64748b', lineHeight: 1.7 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8', marginBottom: 4 }}>CAPTURE TIPS</div>

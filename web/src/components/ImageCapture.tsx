@@ -6,6 +6,9 @@ export type CaptureImageData = {
   width: number;
   height: number;
   size: number;
+  /** Browser-reported sensor max MP (track.getCapabilities), if available. Lets the
+   *  server tell "too far" apart from "camera maxed out". Undefined for uploads. */
+  cameraMaxMp?: number;
 } | null;
 
 type FaceBox = { x: number; y: number; width: number; height: number; score: number };
@@ -155,8 +158,21 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
     }
     ctx.drawImage(video, 0, 0);
     const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+    // Snapshot the sensor's reported max so the backend can distinguish
+    // "too far" (fixable now) from "camera maxed out" (needs switch/upload).
+    // getCapabilities is Chromium-only; guarded for Safari/Firefox.
+    let cameraMaxMp: number | undefined;
+    try {
+      const track = streamRef.current?.getVideoTracks?.()[0] as (MediaStreamTrack & { getCapabilities?: () => unknown }) | undefined;
+      const caps = track?.getCapabilities?.() as { width?: { max?: unknown }; height?: { max?: unknown } } | undefined;
+      const wMax = typeof caps?.width?.max === 'number' ? (caps.width.max as number) : undefined;
+      const hMax = typeof caps?.height?.max === 'number' ? (caps.height.max as number) : undefined;
+      if (wMax && hMax) cameraMaxMp = Math.round(((wMax * hMax) / 1_000_000) * 100) / 100;
+    } catch {
+      cameraMaxMp = undefined;
+    }
     stopCamera();
-    processImage(dataUrl, 0);
+    processImage(dataUrl, 0, cameraMaxMp);
   }, [stopCamera, facingMode]);
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -170,11 +186,11 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
     reader.readAsDataURL(file);
   }, []);
 
-  const processImage = useCallback((dataUrl: string, fileSize?: number) => {
+  const processImage = useCallback((dataUrl: string, fileSize?: number, cameraMaxMp?: number) => {
     const img = new Image();
     img.onload = () => {
       const size = fileSize != null ? fileSize : Math.round(dataUrl.length * 0.75);
-      onCapture({ url: dataUrl, element: img, width: img.naturalWidth, height: img.naturalHeight, size });
+      onCapture({ url: dataUrl, element: img, width: img.naturalWidth, height: img.naturalHeight, size, cameraMaxMp });
       setMode('preview');
       setImgTransform({ rotate: 0, flipH: false, flipV: false });
     };

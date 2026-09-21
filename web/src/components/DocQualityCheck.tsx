@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ImageCapture, CaptureImageData } from './ImageCapture';
 
-interface QualityBreakdown { label: string; pts: number; max: number }
+interface QualityBreakdown { label: string; pts: number; max: number; detail?: string }
 interface QualityResult {
   is_usable: boolean;
   verdict: 'PASS' | 'RETAKE';
@@ -14,9 +14,16 @@ interface QualityResult {
   glare_detected: boolean;
   text_lines: number;
   text_words: number;
+  full_text?: string[];
+  text_sample?: string[];
   avg_confidence: number;
   low_conf_ratio: number;
-  text_sample: string[];
+  real_words: number;
+  real_word_ratio: number;
+  fragment_ratio: number;
+  text_coverage: number;
+  text_mp: number;
+  camera_max_mp?: number | null;
   reasons: string[];
   breakdown: QualityBreakdown[];
   aws_checked: boolean;
@@ -49,7 +56,7 @@ export default function DocQualityCheck({ serverUrl }: Props) {
       const res = await fetch(`${serverUrl.replace(/\/+$/, '')}/document/quality`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: b64, check_text: true }),
+        body: JSON.stringify({ image: b64, check_text: true, camera_max_mp: image.cameraMaxMp ?? null }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -68,12 +75,9 @@ export default function DocQualityCheck({ serverUrl }: Props) {
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto' }}>
-      <h3 style={{ color: '#e2e8f0', fontWeight: 600, fontSize: 15, marginBottom: 4, textAlign: 'center' }}>
+      <h3 style={{ color: '#e2e8f0', fontWeight: 600, fontSize: 15, marginBottom: 12, textAlign: 'center' }}>
         Document Quality Check
       </h3>
-      <p style={{ color: '#64748b', fontSize: 12, textAlign: 'center', margin: '0 0 12px 0' }}>
-        KYCB-787 POC — capture a document, detect blur + unreadable text before OCR
-      </p>
 
       <ImageCapture
         title="Document photo"
@@ -130,16 +134,16 @@ export default function DocQualityCheck({ serverUrl }: Props) {
             </div>
             <div style={{ color: pass ? '#86efac' : '#fca5a5', fontSize: 12 }}>
               Sharpness: {result.sharpness_label} ({result.sharpness}) · Text lines: {result.text_lines}
-              {result.aws_checked ? ` · Avg conf: ${result.avg_confidence}%` : ' · AWS text check skipped'}
+              {result.aws_checked ? ` · Avg conf: ${result.avg_confidence}% · Low-conf: ${Math.round(result.low_conf_ratio * 100)}% (max 40%) · Real words: ${result.real_words ?? 0} (min 5)` : ' · AWS text check skipped'}
             </div>
 
             {result.breakdown?.length > 0 && (
               <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 3 }}>
                 <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>Score breakdown</div>
                 {result.breakdown.map((b, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#cbd5e1', padding: '2px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3 }}>
-                    <span>{b.label}</span>
-                    <span style={{ fontWeight: 600 }}>{b.pts}/{b.max}</span>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, fontSize: 12, color: '#cbd5e1', padding: '2px 6px', background: 'rgba(0,0,0,0.2)', borderRadius: 3 }}>
+                    <span>{b.label}{b.detail ? <span style={{ color: '#64748b', fontSize: 10 }}> · {b.detail}</span> : null}</span>
+                    <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{b.pts}/{b.max}</span>
                   </div>
                 ))}
               </div>
@@ -161,10 +165,13 @@ export default function DocQualityCheck({ serverUrl }: Props) {
             {[
               { k: 'Brightness', v: `${result.brightness}` },
               { k: 'Contrast', v: `${result.contrast}` },
-              { k: 'Resolution', v: `${result.resolution_mp} MP` },
+              { k: 'Capture', v: result.camera_max_mp ? `${result.resolution_mp} of ${result.camera_max_mp}MP max` : `${result.resolution_mp} MP` },
+              { k: 'Text detail', v: `${Math.round((result.text_mp ?? 0) * 1000)} KP` },
               { k: 'Glare', v: result.glare_detected ? 'Yes ⚠' : 'No ✓' },
               { k: 'Words', v: `${result.text_words}` },
               { k: 'Low-conf words', v: `${Math.round(result.low_conf_ratio * 100)}%` },
+              { k: 'Real words', v: `${result.real_words ?? 0}/${result.text_words} (${Math.round((result.real_word_ratio ?? 0) * 100)}%)` },
+              { k: 'Text coverage', v: `${((result.text_coverage ?? 0) * 100).toFixed(1)}%` },
             ].map((m, i) => (
               <div key={i} style={{ background: '#1e293b', borderRadius: 6, padding: '8px 10px', border: '1px solid #334155' }}>
                 <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>{m.k}</div>
@@ -173,11 +180,13 @@ export default function DocQualityCheck({ serverUrl }: Props) {
             ))}
           </div>
 
-          {result.text_sample?.length > 0 && (
+          {((result.full_text ?? result.text_sample) ?.length ?? 0) > 0 && (
             <div style={{ padding: 12, background: '#1e293b', borderRadius: 8, border: '1px solid #475569' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#4ade80', marginBottom: 6 }}>TEXT SAMPLE (AWS)</div>
-              <div style={{ fontSize: 11, color: '#e2e8f0', fontFamily: 'monospace', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
-                {result.text_sample.join('\n')}
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#4ade80', marginBottom: 6 }}>
+                Full captured text (AWS) — {(result.full_text ?? result.text_sample ?? []).length} of {result.text_lines} lines
+              </div>
+              <div style={{ fontSize: 11, color: '#e2e8f0', fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 400, overflow: 'auto', lineHeight: 1.5 }}>
+                {(result.full_text ?? result.text_sample ?? []).join('\n')}
               </div>
             </div>
           )}

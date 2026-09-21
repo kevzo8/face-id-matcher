@@ -772,7 +772,14 @@ class DocumentQualityResponse(BaseModel):
     text_words: int = 0
     avg_confidence: float = 0
     low_conf_ratio: float = 0
+    real_words: int = 0
+    real_word_ratio: float = 0
+    fragment_ratio: float = 0
+    text_coverage: float = 0
+    text_mp: float = 0
+    camera_max_mp: float | None = None
     text_sample: list[str] = []
+    full_text: list[str] = []
     reasons: list[str] = []
     breakdown: list[dict] = []
     aws_checked: bool = False
@@ -837,18 +844,63 @@ def _analyze_document_local(image_bytes: bytes) -> dict:
     }
 
 
+def _analyze_text_content(lines: list[dict]) -> dict:
+    """Content-level garbage detection on DetectText LINEs.
+
+    Confidence alone passes crisp garbage ("B", "-", ". -" fragments from
+    card graphics). Real readable text has multi-char tokens, few fragment
+    lines, and covers a meaningful share of the frame.
+    """
+    import re as _re
+
+    texts = [str(d.get("DetectedText", "")) for d in lines]
+    # Real words: tokens with 3+ alnum chars ("Republic", "P1234567", "1990-01-31",
+    # "Pilipinas" all count; "B", "M", "-" do not). Script-based, not a
+    # dictionary — Filipino/Tagalog counts identically to English.
+    real_words = sum(
+        1 for t in texts for tok in _re.split(r"\s+", t) if _re.search(r"[A-Za-z0-9]{3,}", tok)
+    )
+    # Fragment lines: <3 alnum chars in the whole line
+    frag = sum(1 for t in texts if len(_re.sub(r"[^A-Za-z0-9]", "", t)) < 3)
+    fragment_ratio = round(frag / len(texts), 2) if texts else 1.0
+    # Frame coverage: summed LINE bbox areas (relative coords) — a document
+    # photographed from too far away yields tiny text boxes
+    coverage = 0.0
+    for d in lines:
+        box = (d.get("Geometry") or {}).get("BoundingBox") or {}
+        try:
+            coverage += float(box.get("Width", 0)) * float(box.get("Height", 0))
+        except (TypeError, ValueError):
+            continue
+    return {
+        "real_words": real_words,
+        "fragment_ratio": fragment_ratio,
+        "coverage": round(min(1.0, coverage), 4),
+    }
+
+
 @app.post("/document/quality", response_model=DocumentQualityResponse)
 async def document_quality(request: Request):
     """KYCB-787 POC: detect blurry documents + unreadable text.
 
     Combines free local blur analysis (Laplacian variance, brightness,
     contrast, resolution, glare) with AWS Rekognition DetectText
-    confidence (readability signal). Works without AWS creds —
-    returns local-only verdict with aws_checked=false.
+    confidence + content analysis (real words, fragment ratio, frame
+    coverage). Works without AWS creds — returns local-only verdict
+    with aws_checked=false.
     """
     body = await request.json()
     image_b64 = body.get("image")
     check_text = body.get("check_text", True)
+    # Optional: browser-reported camera max (from track.getCapabilities()).
+    # Lets the endpoint tell "too far" (fixable now) apart from "camera maxed
+    # out" (fixable only by switching camera / uploading a file).
+    camera_max_mp: float | None = None
+    try:
+        if body.get("camera_max_mp"):
+            camera_max_mp = float(body.get("camera_max_mp"))
+    except (TypeError, ValueError):
+        camera_max_mp = None
     if not image_b64:
         raise HTTPException(status_code=400, detail="No image provided")
 
@@ -877,34 +929,41 @@ async def document_quality(request: Request):
     def clamp(v, lo, hi):
         return max(0.0, min(1.0, (v - lo) / (hi - lo)))
 
-    # Local sub-scores (max 55 when AWS is skipped, 55 + 45 text = 100)
+    # Local sub-scores (resolution scored after AWS: what matters is pixels
+    # ON TEXT, not sensor megapixels — a 0.3MP frame-filling shot beats a
+    # 12MP shot from across the room)
     s_sharp = clamp(lap_var, 10, 150)          # 0-1 -> 30 pts
-    s_bright = 1.0 - clamp(abs(brightness - 130), 0, 110)  # ideal ~130 -> 10 pts
-    if brightness < 40 or brightness > 220:
+    # Document-tuned ideals (faces meter darker; white paper meters ~175).
+    # Calibrated against excellent real capture: mean 169, std 36, 24KP text.
+    s_bright = 1.0 - clamp(abs(brightness - 175), 0, 120)  # paper ≈175 -> 10 pts
+    if brightness < 80 or brightness > 235:
         s_bright *= 0.4  # severely under/over-exposed
-    s_contrast = clamp(contrast, 15, 60)       # 0-1 -> 10 pts
-    s_res = clamp(mp, 0.2, 2.0)                # 0-1 -> 5 pts
+    s_contrast = clamp(contrast, 10, 45)       # 0-1 -> 10 pts (docs are flatter than faces)
 
     reasons: list[str] = []
     if sharp_label == "blurry":
         reasons.append(f"Blurry (sharpness {lap_var:.1f} < 25) — hold steady, tap to focus, clean lens")
     elif sharp_label == "marginal":
         reasons.append(f"Slightly soft (sharpness {lap_var:.1f}) — hold steadier / move closer")
-    if brightness < 60:
+    if brightness < 80:
         reasons.append(f"Too dark (brightness {brightness:.0f}) — add light, avoid shadows")
-    elif brightness > 200:
+    elif brightness > 235:
         reasons.append(f"Overexposed (brightness {brightness:.0f}) — reduce glare / move out of direct light")
     if contrast < 25:
         reasons.append(f"Low contrast ({contrast:.0f}) — improve lighting, flatten document")
-    if mp < 0.3:
-        reasons.append(f"Low resolution ({mp} MP) — move closer, use higher quality capture")
     if glare:
         reasons.append("Glare detected — tilt document away from light source")
+    # Sanity floor only (thumbnails/icons): real gating is content-based below
+    resolution_ok = mp >= 0.15
+    if not resolution_ok:
+        reasons.append(f"Too tiny ({mp} MP) — capture at higher quality or upload a photo")
 
-    # AWS readability check (DetectText)
+    # AWS readability + content check (DetectText)
     text_lines, text_words = 0, 0
     avg_conf, low_conf_ratio = 0.0, 0.0
+    real_words, real_word_ratio, fragment_ratio, text_coverage = 0, 0.0, 1.0, 0.0
     text_sample: list[str] = []
+    full_text: list[str] = []
     aws_checked = False
     aws_error: str | None = None
     if check_text:
@@ -923,8 +982,28 @@ async def document_quality(request: Request):
                 low = sum(1 for c in confs if c < 80)
                 low_conf_ratio = round(low / len(confs), 2)
                 text_sample = [str(d.get("DetectedText", "")) for d in lines[:5]]
+                full_text = [str(d.get("DetectedText", "")) for d in lines]
+            if lines:
+                content = _analyze_text_content(lines)
+                real_words = content["real_words"]
+                fragment_ratio = content["fragment_ratio"]
+                text_coverage = content["coverage"]
+                # Word-level share: how much of what AWS found is language.
+                # Catches mixed captures (clear half + garbage half) that pass
+                # line-level checks — e.g. "Dela Cruz X Q 7" is not a fragment
+                # line, but half its words are junk.
+                real_word_ratio = round(real_words / text_words, 2) if text_words else 0.0
         except Exception as e:
             aws_error = str(e)
+
+    # Detail that matters: megapixels actually ON TEXT (camera-independent).
+    # 0.15MP of text detail ≈ full marks; scored 0-1 -> 5 pts.
+    text_mp = round(mp * text_coverage, 4) if aws_checked else 0.0
+    if aws_checked:
+        # Calibrated: an excellent real capture carries ~24KP of text detail
+        s_res = clamp(text_mp, 0.003, 0.025)
+    else:
+        s_res = clamp(mp, 0.2, 2.0)
 
     # Text sub-score (45 pts when AWS available)
     if aws_checked:
@@ -940,6 +1019,20 @@ async def document_quality(request: Request):
                 reasons.append(f"Text unclear (avg confidence {avg_conf}%) — retake sharper / better lit")
             elif low_conf_ratio > 0.4:
                 reasons.append(f"{int(low_conf_ratio * 100)}% of words low-confidence — retake sharper")
+            # Crisp garbage (card graphics read as fragments) scores confidence
+            # but has no language content — discount by blended content factor
+            # (fragment share + real-word share averaged: good docs ≈1.0,
+            # half-garbage ≈0.5, pure fragments ≈0.1)
+            content_factor = ((1.0 - fragment_ratio) + real_word_ratio) / 2
+            s_text *= content_factor
+            if real_word_ratio < 0.5:
+                reasons.append(f"Only {int(real_word_ratio * 100)}% real words ({real_words}/{text_words}) — part of the text is unreadable, retake closer and steadier")
+            elif real_words < 5:
+                reasons.append(f"Only {real_words} readable word(s) — text is fragments, move closer and hold steady")
+            if fragment_ratio > 0.5:
+                reasons.append(f"{int(fragment_ratio * 100)}% fragment lines (single chars/symbols) — not real text, retake closer")
+            if text_coverage < 0.01:
+                reasons.append("Text covers <1% of frame — document too far/small, fill the frame")
         score = int(round(s_sharp * 30 + s_bright * 10 + s_contrast * 10 + s_res * 5 + s_text * 45))
     else:
         s_text = 0.0
@@ -948,20 +1041,51 @@ async def document_quality(request: Request):
 
     score = max(0, min(100, score))
 
-    # Verdict: PASS needs score>=70 AND not blurry AND (text ok or AWS skipped+sharp)
+    # Verdict: PASS needs score>=70 AND not blurry AND readable language
+    # content that fills the frame (or AWS skipped + sharp + sane size).
+    # NOTE: no sensor-megapixel floor — a small sensor with the document
+    # filling the frame is judged on its text, not its spec sheet.
     if aws_checked:
-        text_ok = text_lines >= 3 and avg_conf >= 70 and low_conf_ratio <= 0.4
-        is_usable = score >= 70 and sharp_label != "blurry" and text_ok
+        text_ok = (
+            text_lines >= 3 and avg_conf >= 70 and low_conf_ratio <= 0.4
+            and real_words >= 5 and real_word_ratio >= 0.5
+            and fragment_ratio <= 0.5 and text_coverage >= 0.01
+        )
+        is_usable = score >= 70 and sharp_label != "blurry" and resolution_ok and text_ok
     else:
-        is_usable = score >= 70 and sharp_label == "sharp"
+        is_usable = score >= 70 and sharp_label == "sharp" and resolution_ok
+
+    # Camera-aware guidance: "move closer" only helps when the camera has
+    # headroom. At max sensor quality with failing content, the fix is a
+    # different camera or an uploaded (phone-gallery) photo.
+    at_max = bool(camera_max_mp) and mp >= float(camera_max_mp) * 0.9
+    if aws_checked and not text_ok:
+        if at_max and (camera_max_mp or 0) < 1.0:
+            reasons.append(f"Camera maxed out at {mp} MP and text still unreadable — switch camera or use Upload File (phone photos are usually 8MP+)")
+        elif text_coverage < 0.03:
+            reasons.append("Document looks small in frame — move closer before switching cameras")
+
     verdict = "PASS" if is_usable else "RETAKE"
 
+    # Every row carries its raw evidence + threshold so points are auditable:
+    # no more mystery gaps between "2234", "<25" and "30/30".
+    if aws_checked:
+        detail_res = f"{text_mp * 1000:.0f}KP on text (full ≈25KP)"
+        detail_text = f"avg {avg_conf}% · share {int(real_word_ratio * 100)}% · frag {int(fragment_ratio * 100)}%"
+    else:
+        detail_res = f"{mp}MP captured"
+        detail_text = "skipped (no AWS)"
     breakdown = [
-        {"label": "Sharpness", "pts": round(s_sharp * 30, 1), "max": 30},
-        {"label": "Lighting", "pts": round(s_bright * 10, 1), "max": 10},
-        {"label": "Contrast", "pts": round(s_contrast * 10, 1), "max": 10},
-        {"label": "Resolution", "pts": round(s_res * 5, 1), "max": 5},
-        {"label": "Text readability", "pts": round(s_text * 45, 1) if aws_checked else 0, "max": 45},
+        {"label": "Sharpness", "pts": round(s_sharp * 30, 1), "max": 30,
+         "detail": f"laplacian {lap_var:.0f} (sharp ≥80)"},
+        {"label": "Lighting", "pts": round(s_bright * 10, 1), "max": 10,
+         "detail": f"mean {brightness:.0f} (paper ≈175)"},
+        {"label": "Contrast", "pts": round(s_contrast * 10, 1), "max": 10,
+         "detail": f"std {contrast:.0f} (good ≥25)"},
+        {"label": "Text detail", "pts": round(s_res * 5, 1), "max": 5,
+         "detail": detail_res},
+        {"label": "Text readability", "pts": round(s_text * 45, 1) if aws_checked else 0, "max": 45,
+         "detail": detail_text},
     ]
 
     return DocumentQualityResponse(
@@ -971,7 +1095,10 @@ async def document_quality(request: Request):
         resolution_mp=mp, glare_detected=glare,
         text_lines=text_lines, text_words=text_words,
         avg_confidence=avg_conf, low_conf_ratio=low_conf_ratio,
-        text_sample=text_sample, reasons=reasons,
+        real_words=real_words, real_word_ratio=real_word_ratio,
+        fragment_ratio=fragment_ratio, text_coverage=text_coverage,
+        text_mp=text_mp, camera_max_mp=camera_max_mp,
+        text_sample=text_sample, full_text=full_text, reasons=reasons,
         breakdown=breakdown, aws_checked=aws_checked,
         error=aws_error,
     )

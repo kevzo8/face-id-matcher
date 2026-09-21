@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { slides, livenessSlides, ocrSlides, biometricSlides, Slide } from '../data/slides.tsx';
+import { slides, livenessSlides, ocrSlides, biometricSlides, docQualitySlides, Slide } from '../data/slides.tsx';
 
 const sectionColors: Record<string, string> = {
   Overview: '#6366f1',
@@ -46,7 +46,7 @@ const lightTheme = {
 const MOBILE_BP = 768;
 
 export default function Presentation({ feature = 'id_to_face', initialSlide = 0, onClose }: { feature?: string; initialSlide?: number; onClose: () => void }) {
-  const currentSlides = feature === 'liveness' ? livenessSlides : feature === 'ocr' ? ocrSlides : feature === 'biometric' ? biometricSlides : slides;
+  const currentSlides = feature === 'liveness' ? livenessSlides : feature === 'ocr' ? ocrSlides : feature === 'biometric' ? biometricSlides : feature === 'doc_quality' ? docQualitySlides : slides;
   const [current, setCurrent] = useState(initialSlide);
   const [isMobile, setIsMobile] = useState(window.innerWidth < MOBILE_BP);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= MOBILE_BP);
@@ -60,7 +60,7 @@ export default function Presentation({ feature = 'id_to_face', initialSlide = 0,
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  const baseRoute = '/' + ({ id_to_face: 'face-id', liveness: 'liveness', ocr: 'ocr', biometric: 'biometric' })[feature] + '/presentation/';
+  const baseRoute = '/' + ({ id_to_face: 'face-id', liveness: 'liveness', ocr: 'ocr', biometric: 'biometric', doc_quality: 'doc-quality' })[feature] + '/presentation/';
 
   const goTo = useCallback((i: number) => {
     if (i >= 0 && i < total) {
@@ -211,6 +211,10 @@ export default function Presentation({ feature = 'id_to_face', initialSlide = 0,
           <button onClick={() => window.location.href = '/ocr/presentation/0'}
             style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, border: 'none', borderRadius: 4, cursor: 'pointer', background: 'transparent', color: feature === 'ocr' ? '#86efac' : t.textMuted, textAlign: 'left', borderLeft: `3px solid ${feature === 'ocr' ? '#22c55e' : 'transparent'}` }}>
             OCR & ID Type
+          </button>
+          <button onClick={() => window.location.href = '/doc-quality/presentation/0'}
+            style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, border: 'none', borderRadius: 4, cursor: 'pointer', background: 'transparent', color: feature === 'doc_quality' ? '#7dd3fc' : t.textMuted, textAlign: 'left', borderLeft: `3px solid ${feature === 'doc_quality' ? '#38bdf8' : 'transparent'}` }}>
+            Doc Quality
           </button>
           <button onClick={() => window.location.href = '/biometric/presentation/0'}
             style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, border: 'none', borderRadius: 4, cursor: 'pointer', background: 'transparent', color: feature === 'biometric' ? '#fbbf24' : t.textMuted, textAlign: 'left', borderLeft: `3px solid ${feature === 'biometric' ? '#fbbf24' : 'transparent'}` }}>
@@ -382,6 +386,27 @@ export default function Presentation({ feature = 'id_to_face', initialSlide = 0,
                     gradFrom: '#fbbf24', gradMid: '#f59e0b', gradTo: '#fcd34d',
                     btnGradFrom: '#d97706', btnGradTo: '#f59e0b',
                   },
+                  'docquality-title': {
+                    icon: <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 6 }}>
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                      <line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
+                    </svg>,
+                    title: 'Document Quality Check', subtitle: 'Blur Detection and Readability Gate — KYCB-787', fullTitle: 'KYCB-787: Detect Blurry Documents and Unreadable Text Before OCR',
+                    badges: [
+                      { label: 'Local Blur $0', color: '#86efac', bgFrom: 'rgba(34,197,94,0.25)', bgTo: 'rgba(74,222,128,0.15)' },
+                      { label: 'AWS $0.0015/check', color: '#a5b4fc', bgFrom: 'rgba(99,102,241,0.25)', bgTo: 'rgba(129,140,248,0.15)' },
+                      { label: '100-pt Score', color: '#7dd3fc', bgFrom: 'rgba(56,189,248,0.25)', bgTo: 'rgba(125,211,252,0.15)' },
+                      { label: '8 PASS Checks', color: '#fde68a', bgFrom: 'rgba(234,179,8,0.25)', bgTo: 'rgba(250,204,21,0.15)' },
+                    ],
+                    desc: 'Pre-OCR quality gate for KYC captures: free local blur detection plus AWS readability, one PASS/RETAKE verdict with actionable reasons. Calibrated on real Philippine ID captures.',
+                    jira: 'KYCB-787',
+                    links: [
+                      { label: 'Jira: KYCB-787', url: 'https://svi-jira.atlassian.net/browse/KYCB-787' },
+                      { label: 'Live App', url: 'https://vegamatcher.kevinguadalupevega.com/' },
+                    ],
+                    gradFrom: '#38bdf8', gradMid: '#0ea5e9', gradTo: '#22c55e',
+                    btnGradFrom: '#0284c7', btnGradTo: '#22c55e',
+                  },
                 };
 
                 const cfg = titleConfig[sid];
@@ -466,7 +491,7 @@ export default function Presentation({ feature = 'id_to_face', initialSlide = 0,
                 }
                 return null;
               })()}
-              {currentSlides[current].id !== 'app' && currentSlides[current].id !== 'liveness-title' && currentSlides[current].id !== 'ocr-title' && currentSlides[current].id !== 'bio-title' && currentSlides[current].content === null ? (
+              {currentSlides[current].id !== 'app' && currentSlides[current].id !== 'liveness-title' && currentSlides[current].id !== 'ocr-title' && currentSlides[current].id !== 'bio-title' && currentSlides[current].id !== 'docquality-title' && currentSlides[current].content === null ? (
                 <div style={{ textAlign: 'center', paddingTop: isMobile ? '4vh' : '10vh' }}>
                   <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
                     <div style={{ fontSize: isMobile ? 26 : 36, fontWeight: 800, background: 'linear-gradient(135deg, #818cf8, #a78bfa, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: 8 }}>
@@ -491,7 +516,7 @@ export default function Presentation({ feature = 'id_to_face', initialSlide = 0,
                     </motion.div>
                   </motion.div>
                 </div>
-              ) : currentSlides[current].id === 'thankyou' || currentSlides[current].id === 'liveness-thanks' || currentSlides[current].id === 'ocr-thanks' ? (
+              ) : currentSlides[current].id === 'thankyou' || currentSlides[current].id === 'liveness-thanks' || currentSlides[current].id === 'ocr-thanks' || currentSlides[current].id === 'docquality-thanks' ? (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
