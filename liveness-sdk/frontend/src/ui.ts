@@ -29,7 +29,7 @@ export function renderUI(container: HTMLElement, theme: SviLivenessTheme, hasMul
   if (camSelect) camSelect.addEventListener('change', (e) => onSwitchCamera((e.target as HTMLSelectElement).value));
 }
 
-export function renderResult(container: HTMLElement, result: { passed: boolean; confidence: number; score?: number; provider?: string; breakdown?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; txnId?: string }): void {
+export function renderResult(container: HTMLElement, result: { passed: boolean; confidence: number; score?: number; threshold?: number; maxScore?: number; provider?: string; breakdown?: { label: string; pts: number }[]; info?: { label: string; value: string }[]; transactionId?: string; rejectionReason?: string; detectedLabels?: { label: string; confidence: number }[] }): void {
   const passedBg = result.passed ? '#064e3b' : '#450a0a';
   const passedBorder = result.passed ? '#22c55e' : '#ef4444';
   const passedText = result.passed ? '#86efac' : '#fca5a5';
@@ -41,8 +41,22 @@ export function renderResult(container: HTMLElement, result: { passed: boolean; 
   }
 
   let infoHtml = '';
-  if (result.info) {
-    infoHtml = `<div style="margin-top:6px;font-size:10px;color:#64748b;">${result.info.map(i => `<div>${i.label}: <strong style="color:#94a3b8;">${i.value}</strong></div>`).join('')}</div>`;
+  const infoRows = [...(result.info ?? [])];
+  (result.detectedLabels ?? []).forEach(d =>
+    infoRows.push({ label: 'scene', value: `${d.label} ${Math.round(d.confidence)}%` })
+  );
+  if (infoRows.length) {
+    infoHtml = `<div style="margin-top:6px;font-size:10px;color:#64748b;">${infoRows.map(i => `<div>${i.label}: <strong style="color:#94a3b8;">${i.value}</strong></div>`).join('')}</div>`;
+  }
+
+  let reasonHtml = '';
+  if (!result.passed && result.rejectionReason) {
+    reasonHtml = `<div style="margin-top:8px;font-size:11px;line-height:1.5;color:#fecaca;background:rgba(239,68,68,.12);border:1px solid #7f1d1d;border-radius:6px;padding:6px 8px;text-align:left;">${result.rejectionReason}</div>`;
+  }
+
+  let scoreHtml = '';
+  if (result.threshold != null && result.score != null) {
+    scoreHtml = `<div style="color:#94a3b8;font-size:11px;margin-top:4px;">Score ${result.score} / ${result.threshold}${result.maxScore != null ? ` (max ${result.maxScore})` : ''}</div>`;
   }
 
   container.innerHTML = `
@@ -50,8 +64,10 @@ export function renderResult(container: HTMLElement, result: { passed: boolean; 
       <div style="font-size:20px;font-weight:700;color:${passedText};margin-bottom:4px;">${passedLabel}</div>
       <div style="font-size:32px;font-weight:800;color:${result.passed ? '#bbf7d0' : '#fecaca'};margin-bottom:4px;">${Math.round(result.confidence * 100)}%</div>
       <div style="color:${passedText};font-size:12px;">${result.passed ? 'Real face detected' : 'Spoof detected'}</div>
+      ${scoreHtml}
+      ${reasonHtml}
       ${result.provider ? `<div style="color:#64748b;font-size:10px;margin-top:2px;">Provider: ${result.provider}</div>` : ''}
-      ${result.txnId ? `<div style="color:#475569;font-size:9px;margin-top:1px;">TXN: ${result.txnId.slice(0, 8)}...</div>` : ''}
+      ${result.transactionId ? `<div style="color:#475569;font-size:9px;margin-top:1px;">Transaction ID: ${result.transactionId.slice(0, 8)}...</div>` : ''}
       ${breakdownHtml}
       ${infoHtml}
       <button id="svi-retry-btn" style="margin-top:8px;padding:6px 16px;font-size:12px;border:1px solid #334155;border-radius:6px;cursor:pointer;background:#1e293b;color:#cbd5e1;">Retry</button>

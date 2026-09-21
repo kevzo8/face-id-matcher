@@ -30,6 +30,8 @@ class AWSDetectFacesProvider:
             confidence = face.get("Confidence", 0)
             eyes_open = face.get("EyesOpen", {}).get("Value", False)
             eyes_open_conf = face.get("EyesOpen", {}).get("Confidence", 0)
+            occluded = face.get("FaceOccluded", {}).get("Value", False)
+            occluded_conf = face.get("FaceOccluded", {}).get("Confidence", 0)
             quality = face.get("Quality", {})
             brightness = quality.get("Brightness", 0)
             sharpness = quality.get("Sharpness", 0)
@@ -46,13 +48,15 @@ class AWSDetectFacesProvider:
                 "confidence": confidence,
                 "eyes_open": eyes_open,
                 "eyes_open_confidence": eyes_open_conf,
+                "face_occluded": occluded,
+                "face_occluded_confidence": occluded_conf,
                 "quality_brightness": brightness,
                 "quality_sharpness": sharpness,
                 "score": score,
                 "age_low": face.get("AgeRange", {}).get("Low"),
                 "age_high": face.get("AgeRange", {}).get("High"),
                 "gender": face.get("Gender", {}).get("Value"),
-                "expression": max(emotions, key=lambda e: e.get("Confidence", 0)).get("Type") if face.get("Emotions") else None,
+                "expression": max(face.get("Emotions", []), key=lambda e: e.get("Confidence", 0)).get("Type") if face.get("Emotions") else None,
                 "breakdown": [
                     {"label": "Face Confidence", "pts": 5 if confidence > 90 else 0},
                     {"label": "Eyes Open", "pts": 5 if eyes_open and eyes_open_conf > 80 else 0},
@@ -63,6 +67,7 @@ class AWSDetectFacesProvider:
                     {"label": "Age", "value": f"{face.get('AgeRange', {}).get('Low', '?')}-{face.get('AgeRange', {}).get('High', '?')}"},
                     {"label": "Gender", "value": face.get("Gender", {}).get("Value", "?")},
                     {"label": "Eyes Open", "value": f"Yes ({eyes_open_conf:.0f}%)" if eyes_open else "No"},
+                    {"label": "Occluded", "value": f"Yes ({occluded_conf:.0f}%)" if occluded else "No"},
                     {"label": "Lighting", "value": f"{brightness:.0f}"},
                     {"label": "Sharpness", "value": f"{sharpness:.0f}"},
                 ],
@@ -78,7 +83,12 @@ class AWSDetectFacesProvider:
             }
 
     def is_available(self) -> bool:
+        # boto3 builds a client even with no credentials — require resolvable
+        # credentials so callers don't make doomed AWS calls that fail silently.
         try:
+            import boto3
+            if boto3.Session().get_credentials() is None:
+                return False
             self._get_client()
             return True
         except Exception:

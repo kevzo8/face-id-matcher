@@ -164,10 +164,18 @@ export class SviLivenessCore {
     return {
       passed: data.passed,
       confidence: data.confidence,
-      txnId: data.txn_id,
+      transactionId: data.transaction_id,
+      sessionId: data.session_id ?? this.sessionId ?? undefined,
       capturedFaceBase64: data.captured_face,
       provider: data.provider,
       usedFallback: data.used_fallback,
+      score: data.score,
+      threshold: data.threshold,
+      maxScore: data.max_score,
+      rejectionReason: data.rejection_reason,
+      detectedLabels: data.detected_labels,
+      breakdown: data.breakdown,
+      info: data.info,
     };
   }
 

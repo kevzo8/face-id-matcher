@@ -219,7 +219,7 @@ export class SviPassiveLiveness extends SviLivenessCore {
     const result: LivenessResult = {
       passed,
       confidence: Math.min(1, score / 100),
-      txnId: '',
+      transactionId: '',
       capturedFaceBase64: base64,
       provider: 'svi_passive_mediapipe',
       usedFallback: false,
@@ -227,6 +227,28 @@ export class SviPassiveLiveness extends SviLivenessCore {
       breakdown,
       info,
     };
+
+    // Server verdict is authoritative: the same frame goes to the backend
+    // (AWS-first) and its verdict replaces the local MediaPipe one.
+    // Backend unreachable → keep the local verdict as fallback.
+    try {
+      const server = await this.callLivenessApi(base64);
+      result.passed = server.passed;
+      result.confidence = server.confidence;
+      result.transactionId = server.transactionId;
+      result.sessionId = server.sessionId;
+      result.provider = server.provider;
+      result.usedFallback = server.usedFallback;
+      result.score = server.score;
+      result.threshold = server.threshold;
+      result.maxScore = server.maxScore;
+      if (server.breakdown) result.breakdown = server.breakdown;
+      if (server.info) result.info = [...(result.info ?? []), ...server.info];
+      result.rejectionReason = server.rejectionReason;
+      result.detectedLabels = server.detectedLabels;
+    } catch {
+      // backend down — local verdict stands
+    }
 
     renderResult(container, result);
     const btn = container.querySelector('#svi-retry-btn');

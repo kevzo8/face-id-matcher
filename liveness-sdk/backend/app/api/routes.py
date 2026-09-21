@@ -4,9 +4,11 @@ from fastapi import APIRouter, HTTPException, Header, Request
 
 from ..models.schemas import LivenessRequest, LivenessResponse, SessionCreateResponse, ErrorResponse
 from ..core.session import session_store
-from ..core.audit import log_liveness_txn
+from ..core.audit import log_liveness_transaction
 from ..config import config
 from ..liveness.engine import LivenessEngine
+from ..liveness.providers.heuristic import PASSIVE_MAX_SCORE, PASSIVE_MIN_SCORE
+from ..liveness.providers.open_face_liveness import ACTIVE_MAX_SCORE, ACTIVE_MIN_SCORE
 
 logger = logging.getLogger("svi.api")
 router = APIRouter()
@@ -17,10 +19,15 @@ def verify_auth(authorization: str | None):
     if config.environment == "development":
         return "dev_app"
     if not authorization:
-        raise HTTPException(status_code=401, detail="Missing Authorization header")
+        raise HTTPException(
+            status_code=401,
+            detail="Missing Authorization header. Send 'Authorization: Bearer <API_KEY>' "
+                   "on POST /api/v1/session/create and POST /api/v1/liveness. "
+                   "Ask the backend owner for an API key (API_KEYS in the EC2 .env).",
+        )
     scheme, _, token = authorization.partition(" ")
-    if scheme.lower() != "bearer":
-        raise HTTPException(status_code=401, detail="Invalid auth scheme")
+    if scheme.lower() != "bearer" or not token:
+        raise HTTPException(status_code=401, detail="Invalid auth scheme. Use 'Authorization: Bearer <API_KEY>'")
     if token not in config.api_keys:
         raise HTTPException(status_code=401, detail="Invalid API key")
     return token
@@ -42,6 +49,16 @@ def check_sdk_version(x_sdk_version: str | None):
 
 
 # ─── New API (session-based, v1) ────────────────────────────────────────────
+
+
+@router.get("/health")
+async def v1_health():
+    # Public (no auth) so load balancers / smoke tests work; matches README + EC2 guide.
+    return {
+        "status": "ok",
+        "environment": config.environment,
+        "providers": engine.get_status(),
+    }
 
 
 @router.post("/session/create", response_model=SessionCreateResponse)
@@ -80,13 +97,15 @@ async def run_liveness(
 
     if req.mode == "active":
         result, provider, used_fallback = engine.process_active(image_bytes, req.challenge_data)
+        threshold, max_score = ACTIVE_MIN_SCORE, ACTIVE_MAX_SCORE
     elif req.mode == "passive":
         result, provider, used_fallback = engine.process_passive(image_bytes)
+        threshold, max_score = PASSIVE_MIN_SCORE, PASSIVE_MAX_SCORE
     else:
         raise HTTPException(status_code=400, detail="Invalid mode. Use 'active' or 'passive'")
 
     status = "passed" if result.get("is_real") else "failed" if result.get("error") is None else "error"
-    txn_id = log_liveness_txn(
+    transaction_id = log_liveness_transaction(
         mode=req.mode,
         provider=provider,
         used_fallback=used_fallback,
@@ -100,11 +119,17 @@ async def run_liveness(
     return LivenessResponse(
         passed=result.get("is_real", False),
         confidence=result.get("confidence", 0),
-        txn_id=txn_id,
+        score=result.get("score", 0),
+        threshold=threshold,
+        max_score=max_score,
+        transaction_id=transaction_id,
+        session_id=req.session_id,
         provider=provider,
         used_fallback=used_fallback,
         captured_face=req.image if result.get("is_real") else None,
         error=result.get("error"),
+        rejection_reason=result.get("rejection_reason"),
+        detected_labels=result.get("detected_labels"),
     )
 
 
@@ -131,8 +156,10 @@ async def passive_liveness(request: Request):
         "is_real": result.get("is_real", False),
         "confidence": result.get("confidence", 0),
         "score": result.get("score", 0),
-        "details": "Passed" if result.get("is_real") else "Failed",
+        "details": result.get("rejection_reason") or ("Passed" if result.get("is_real") else "Failed"),
         "provider": provider,
+        "rejection_reason": result.get("rejection_reason"),
+        "detected_labels": result.get("detected_labels"),
         "error": result.get("error"),
     }
 

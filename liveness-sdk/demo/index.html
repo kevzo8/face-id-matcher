@@ -127,15 +127,25 @@
     let videoElement    = null;             // Preview <video> (separate from SDK's internal video)
 
     // ─── Logging helper ─────────────────────────────────────────────────────
-    // Prepends timestamped messages to the #output div.
+    // Prepends timestamped messages to the #output div (as nodes, so
+    // expandable JSON blocks below survive later log calls).
     // Also displayed in the browser console for debugging.
     let logInitialized = false;
     function log(msg) {
       const el = document.getElementById('output');
       if (!el) return;
-      if (!logInitialized) { el.textContent = ''; logInitialized = true; }
-      el.textContent = new Date().toLocaleTimeString() + ' - ' + msg + '\n' + el.textContent;
+      if (!logInitialized) { el.innerHTML = ''; logInitialized = true; }
+      const div = document.createElement('div');
+      div.textContent = new Date().toLocaleTimeString() + ' - ' + msg;
+      el.prepend(div);
       console.log('[demo]', msg);
+    }
+
+    // Long base64 blobs would flood the panel — show a stub instead.
+    function truncJson(obj) {
+      return JSON.stringify(obj, function(k, v) {
+        return (typeof v === 'string' && v.length > 300) ? v.slice(0, 60) + '…[' + v.length + ' chars]' : v;
+      }, 2);
     }
 
     // ─── Camera preview (separate from SDK) ─────────────────────────────────
@@ -202,7 +212,8 @@
           log('PASSED=' + result.passed +
               '  CONF=' + Math.round(result.confidence * 100) + '%' +
               '  PROV=' + result.provider +
-              '  TXN=' + result.txnId +
+              '  TRANSACTION_ID=' + result.transactionId +
+              '  SESSION=' + (result.sessionId || '') +
               '  HAS_FACE=' + (result.capturedFaceBase64 ? 'yes' : 'no'));
           // Show the captured face thumbnail if available
           if (result.capturedFaceBase64) {
@@ -262,7 +273,23 @@
         d.response && d.response.session_id ? 'session=' + d.response.session_id :
         d.response && d.response.is_real !== undefined ? 'is_real=' + d.response.is_real :
         d.response && d.response === '—' ? '...' : JSON.stringify(d.response);
-      log(d.method + ' ' + d.url.split('/').pop() + ' -> ' + status);
+      var label = d.method + ' ' + d.url.split('/').pop() + ' -> ' + status;
+      log(label);
+      // Expandable full backend JSON (request + response) under the summary.
+      try {
+        var el = document.getElementById('output');
+        var wrap = document.createElement('details');
+        wrap.style.cssText = 'border:1px solid #334155;border-radius:6px;margin:4px 0;background:#020617;';
+        var sum = document.createElement('summary');
+        sum.style.cssText = 'cursor:pointer;font-size:11px;color:#7dd3fc;padding:4px 8px;';
+        sum.textContent = 'JSON ' + d.method + ' ' + d.url;
+        var pre = document.createElement('pre');
+        pre.style.cssText = 'margin:0;padding:8px;font-size:10px;line-height:1.5;color:#cbd5e1;white-space:pre-wrap;word-break:break-word;max-height:320px;overflow:auto;border-top:1px solid #334155;';
+        pre.textContent = truncJson({ request: d.request, response: d.response });
+        wrap.appendChild(sum);
+        wrap.appendChild(pre);
+        el.prepend(wrap);
+      } catch (err) { console.log('[demo] json block failed', err); }
     });
 
     // ─── Auto-start when page loads ─────────────────────────────────────────
