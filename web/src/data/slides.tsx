@@ -2379,7 +2379,7 @@ export const docQualitySlides: Slide[] = [
           {[
             { step: '1. Backend', detail: 'python main.py --port 5190 in server/ — needs AWS creds for readability' },
             { step: '2. Frontend', detail: 'npm run dev in web/ — open the Doc Quality tab' },
-            { step: '3. Capture', detail: 'Rear camera, fill the frame, hold steady — or Upload File' },
+            { step: '3. Capture', detail: 'Rear camera, fill the frame, hold steady — or upload JPG, PNG, or TIFF (server converts the first TIFF page to JPEG)' },
             { step: '4. Check', detail: 'Press Check Quality: verdict, breakdown with evidence, full text, reasons' },
             { step: '5. Tips', detail: 'Fill frame, hold steady, even light, tilt from glare, flatten curls' },
           ].map((p, i) => (
