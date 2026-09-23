@@ -909,6 +909,24 @@ async def document_quality(request: Request):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid base64 image")
 
+    # TIFF support: browsers can't preview it and Rekognition only takes
+    # JPEG/PNG, so normalize server-side — first page, RGB JPEG.
+    tiff_note: str | None = None
+    try:
+        from PIL import Image as _PILImage
+        with _PILImage.open(io.BytesIO(image_bytes)) as _im:
+            if (_im.format or "").upper() in ("TIFF", "TIF"):
+                try:
+                    _im.seek(0)
+                except Exception:
+                    pass
+                _buf = io.BytesIO()
+                _im.convert("RGB").save(_buf, format="JPEG", quality=92)
+                image_bytes = _buf.getvalue()
+                tiff_note = "TIFF input converted to JPEG (first page) for analysis"
+    except Exception:
+        pass  # not PIL-readable — downstream decode errors surface normally
+
     try:
         local = _analyze_document_local(image_bytes)
     except Exception as e:
@@ -941,6 +959,8 @@ async def document_quality(request: Request):
     s_contrast = clamp(contrast, 10, 45)       # 0-1 -> 10 pts (docs are flatter than faces)
 
     reasons: list[str] = []
+    if tiff_note:
+        reasons.append(tiff_note)
     if sharp_label == "blurry":
         reasons.append(f"Blurry (sharpness {lap_var:.1f} < 25) — hold steady, tap to focus, clean lens")
     elif sharp_label == "marginal":

@@ -157,7 +157,7 @@ export default function App() {
   }, [idToFaceProvider]);
 
   const handleMatch = useCallback(async () => {
-    if (!idImage || !selfieImage || !modelsLoaded) return;
+    if (!idImage || !selfieImage || !modelsLoaded || !idImage.element || !selfieImage.element) return;
     setMatching(true);
     setResult(null);
 
@@ -1503,6 +1503,7 @@ export default function App() {
                     <div><strong style={{ color: '#e2e8f0' }}>Capture</strong> = captured MP vs camera-reported max (Chromium only; uploads show no max). Tells "too far" apart from "camera tapped out".</div>
                     <div><strong style={{ color: '#e2e8f0' }}>Text detail</strong> = MP × coverage = megapixels actually on text. Full marks ≈25KP. Worth 5 pts. No sensor-MP floor exists.</div>
                     <div><strong style={{ color: '#e2e8f0' }}>Glare</strong> = &gt;2% blown-out pixels → tilt away from light.</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>TIFF</strong> = converted server-side (first page) to JPEG — browsers cannot preview it, but uploads still check fine.</div>
                     <div style={{ fontWeight: 700, color: '#38bdf8', margin: '6px 0 2px' }}>AWS — ~$0.0015/check</div>
                     <div><strong style={{ color: '#e2e8f0' }}>Text lines / Words</strong> = LINE / WORD detection counts. Gate: ≥3 lines.</div>
                     <div><strong style={{ color: '#e2e8f0' }}>Avg conf</strong> = mean WORD confidence. Gate ≥70%.</div>

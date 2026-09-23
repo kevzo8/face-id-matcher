@@ -70,14 +70,17 @@ def blur_copy(img):
     return small.resize(img.size, Image.BILINEAR)
 
 
-def jpeg_b64(img):
+def img_b64(img, fmt="JPEG"):
     buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=90)
+    if fmt.upper() in ("TIFF", "TIF"):
+        img.save(buf, format="TIFF")
+    else:
+        img.save(buf, format="JPEG", quality=90)
     return base64.b64encode(buf.getvalue()).decode()
 
 
-def check(url, img, camera_max_mp=None):
-    payload = {"image": jpeg_b64(img), "check_text": True}
+def check(url, img, camera_max_mp=None, fmt="JPEG"):
+    payload = {"image": img_b64(img, fmt), "check_text": True}
     if camera_max_mp is not None:
         payload["camera_max_mp"] = camera_max_mp
     req = urllib.request.Request(
@@ -125,6 +128,14 @@ def main():
             "extra_note": "real-word share below 50%",
         },
         {
+            "name": "sharp Filipino ID as TIFF",
+            "img": sharp,
+            "expect": "PASS",
+            "extra": lambda r: r["score"] >= 70 and any("TIFF" in x for x in r["reasons"]),
+            "extra_note": "server normalizes TIFF, notes it",
+            "format": "TIFF",
+        },
+        {
             "name": "tiny garbage, camera maxed out",
             "img": render(GARBAGE_LINES, 30, 640, 480),
             "expect": "RETAKE",
@@ -137,7 +148,7 @@ def main():
     failures = 0
     print(f"{'case':38} {'verdict':8} {'score':6} signals")
     for c in cases:
-        r = check(args.url, c["img"], c.get("camera_max_mp"))
+        r = check(args.url, c["img"], c.get("camera_max_mp"), c.get("format", "JPEG"))
         if not r.get("aws_checked"):
             print(f"FAIL: {c['name']} — aws_checked is False (no AWS creds?)")
             failures += 1

@@ -81,13 +81,14 @@ export default function DocQualityCheck({ serverUrl }: Props) {
 
       <ImageCapture
         title="Document photo"
-        subtitle="Use rear camera, fill frame, hold steady"
+        subtitle="Use rear camera, fill frame, hold steady · JPG, PNG, or TIFF upload"
         image={image}
         onCapture={handleCapture}
         facingMode="environment"
         accentColor="#38bdf8"
         icon="card"
         mockup="id-front"
+        accept="image/*,.tif,.tiff,image/tiff"
       />
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12 }}>

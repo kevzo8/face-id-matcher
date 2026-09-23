@@ -123,10 +123,11 @@ Note: the overexposed/brightness advisories on these rows are synthetic-image ar
 
 | File | Change |
 |------|--------|
-| `server/main.py` | New `POST /document/quality` + `DocumentQualityResponse` schema + `_analyze_document_local()` |
+| `server/main.py` | New `POST /document/quality` + `DocumentQualityResponse` schema + `_analyze_document_local()` + TIFF→JPEG normalization (first page, noted in reasons) |
 | `server/requirements.txt` | Added `numpy`, `pillow` (already used by `liveness_passive.py`, now declared) |
 | `server/test_doc_quality_battery.py` | **New.** 5-case regression battery (sharp / blurred / tiny-readable / garbage / maxed-out). Run `python test_doc_quality_battery.py` in `server/` — expect `ALL GREEN` |
-| `web/src/components/DocQualityCheck.tsx` | **New.** Camera capture → Check Quality → verdict badge, score breakdown with raw evidence, metric grid, reasons, full scrollable AWS text (`full_text`, `n of N` header) |
+| `web/src/components/DocQualityCheck.tsx` | **New.** Camera capture → Check Quality → verdict badge, score breakdown with raw evidence, metric grid, reasons, full scrollable AWS text (`full_text`, `n of N` header). TIFF-inclusive upload filter |
+| `web/src/components/ImageCapture.tsx` | Optional `accept` filter, TIFF upload branch (placeholder preview, nullable element, unreadable-file error), upload file-name metadata |
 | `web/src/App.tsx` | New `doc_quality` feature: left-menu entry, `/doc-quality` route, center panel, right sidebar (server URL + thresholds + Sharpness note + METRIC DEFINITIONS glossary + capture tips) |
 | `web/src/data/slides.tsx` | New `docQualitySlides` (13 slides: problem → metrics → gates → calibration → how-to → evidence with file refs). Sidebar Presentations entry sits between OCR & ID Type and Biometric Auth |
 | `web/src/components/Presentation.tsx` | `docquality-title` landing cover (badges/links/gradients), Switch-Presentation entry, title/thanks parity with other decks |

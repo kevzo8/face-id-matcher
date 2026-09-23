@@ -2,7 +2,12 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 
 export type CaptureImageData = {
   url: string;
-  element: HTMLImageElement;
+  /** Decoded image for canvas/face-api use. Null when the browser cannot decode
+   *  the file (e.g. TIFF) — the raw bytes in `url` still go to the server,
+   *  which normalizes them. */
+  element: HTMLImageElement | null;
+  /** Original file name for uploads (used for the preview placeholder). */
+  fileName?: string;
   width: number;
   height: number;
   size: number;
@@ -23,9 +28,12 @@ interface ImageCaptureProps {
   icon: 'card' | 'person';
   faceBox?: FaceBox | null;
   mockup?: 'id-front' | 'id-back' | 'selfie';
+  /** File-picker filter. Defaults to 'image/*'. Pass TIFF-inclusive value
+   *  only where the backend normalizes it (Doc Quality). */
+  accept?: string;
 }
 
-export function ImageCapture({ title, subtitle, image, onCapture, facingMode, accentColor, icon, faceBox, mockup }: ImageCaptureProps) {
+export function ImageCapture({ title, subtitle, image, onCapture, facingMode, accentColor, icon, faceBox, mockup, accept = 'image/*' }: ImageCaptureProps) {
   const [mode, setMode] = useState<'idle' | 'camera' | 'preview'>(
     image ? 'preview' : 'idle',
   );
@@ -175,27 +183,42 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
     processImage(dataUrl, 0, cameraMaxMp);
   }, [stopCamera, facingMode]);
 
+  const processImage = useCallback((dataUrl: string, fileSize?: number, cameraMaxMp?: number, fileName?: string) => {
+    const img = new Image();
+    img.onload = () => {
+      const size = fileSize != null ? fileSize : Math.round(dataUrl.length * 0.75);
+      onCapture({ url: dataUrl, element: img, fileName, width: img.naturalWidth, height: img.naturalHeight, size, cameraMaxMp });
+      setMode('preview');
+      setImgTransform({ rotate: 0, flipH: false, flipV: false });
+    };
+    img.onerror = () => {
+      setError('Could not read that file in the browser — try JPG, PNG, or (for documents) TIFF.');
+    };
+    img.src = dataUrl;
+  }, [onCapture]);
+
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const fileSize = file.size;
+    const fileName = file.name;
+    const isTiff = file.type === 'image/tiff' || /\.tiff?$/i.test(fileName);
     const reader = new FileReader();
     reader.onload = () => {
-      processImage(reader.result as string, fileSize);
+      const dataUrl = reader.result as string;
+      if (isTiff) {
+        // Browsers cannot decode TIFF into an <img>, so there is no element
+        // for canvas/face-api use — but the raw bytes still go to the server,
+        // which converts the first page to JPEG. Dimensions unknown client-side.
+        onCapture({ url: dataUrl, element: null, fileName, width: 0, height: 0, size: fileSize });
+        setMode('preview');
+        setImgTransform({ rotate: 0, flipH: false, flipV: false });
+        return;
+      }
+      processImage(dataUrl, fileSize, undefined, fileName);
     };
     reader.readAsDataURL(file);
-  }, []);
-
-  const processImage = useCallback((dataUrl: string, fileSize?: number, cameraMaxMp?: number) => {
-    const img = new Image();
-    img.onload = () => {
-      const size = fileSize != null ? fileSize : Math.round(dataUrl.length * 0.75);
-      onCapture({ url: dataUrl, element: img, width: img.naturalWidth, height: img.naturalHeight, size, cameraMaxMp });
-      setMode('preview');
-      setImgTransform({ rotate: 0, flipH: false, flipV: false });
-    };
-    img.src = dataUrl;
-  }, [onCapture]);
+  }, [onCapture, processImage]);
 
   const handleRetake = useCallback(() => {
     onCapture(null);
@@ -442,7 +465,7 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept={accept}
               onChange={handleFileUpload}
               style={{ display: 'none' }}
             />
@@ -568,15 +591,23 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
               position: 'relative',
             }}
           >
-            <img
-              src={image.url}
-              alt={title}
-              style={{
-                width: '100%', display: 'block', maxHeight: 'min(220px, 50vh)', objectFit: 'contain',
-                transform: `rotate(${imgTransform.rotate}deg) scaleX(${imgTransform.flipH ? -1 : 1}) scaleY(${imgTransform.flipV ? -1 : 1})`,
-                transition: 'transform 0.2s',
-              }}
-            />
+            {image.element ? (
+              <img
+                src={image.url}
+                alt={title}
+                style={{
+                  width: '100%', display: 'block', maxHeight: 'min(220px, 50vh)', objectFit: 'contain',
+                  transform: `rotate(${imgTransform.rotate}deg) scaleX(${imgTransform.flipH ? -1 : 1}) scaleY(${imgTransform.flipV ? -1 : 1})`,
+                  transition: 'transform 0.2s',
+                }}
+              />
+            ) : (
+              <div style={{ padding: '28px 16px', textAlign: 'center', color: '#94a3b8' }}>
+                <div style={{ fontSize: 34, marginBottom: 8 }}>🗎</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', wordBreak: 'break-all' }}>{image.fileName ?? 'TIFF document'}</div>
+                <div style={{ fontSize: 11, marginTop: 4 }}>Preview unavailable in browser — the server converts the first page to JPEG on check.</div>
+              </div>
+            )}
             {faceBox && (
               <canvas
                 ref={overlayRef}
@@ -584,14 +615,16 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
               />
             )}
           </div>
-          {/* Transform buttons */}
-          <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
-            <button onClick={() => setImgTransform((p) => ({ ...p, rotate: ((p.rotate + 90) % 360 + 360) % 360 }))} style={btnStyle} title="Rotate 90° CW">↻ 90°</button>
-            <button onClick={() => setImgTransform((p) => ({ ...p, rotate: ((p.rotate - 90) % 360 + 360) % 360 }))} style={btnStyle} title="Rotate 90° CCW">↺ 90°</button>
-            <button onClick={() => setImgTransform((p) => ({ ...p, flipH: !p.flipH }))} style={btnStyle} title="Flip horizontal">⇔</button>
-            <button onClick={() => setImgTransform((p) => ({ ...p, flipV: !p.flipV }))} style={btnStyle} title="Flip vertical">⇕</button>
-            <button onClick={() => setImgTransform({ rotate: 0, flipH: false, flipV: false })} style={{ ...btnStyle, color: '#94a3b8', borderColor: '#475569' }} title="Reset">Reset</button>
-          </div>
+          {/* Transform buttons (decoded images only — raw uploads go to the server untouched) */}
+          {image.element && (
+            <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
+              <button onClick={() => setImgTransform((p) => ({ ...p, rotate: ((p.rotate + 90) % 360 + 360) % 360 }))} style={btnStyle} title="Rotate 90° CW">↻ 90°</button>
+              <button onClick={() => setImgTransform((p) => ({ ...p, rotate: ((p.rotate - 90) % 360 + 360) % 360 }))} style={btnStyle} title="Rotate 90° CCW">↺ 90°</button>
+              <button onClick={() => setImgTransform((p) => ({ ...p, flipH: !p.flipH }))} style={btnStyle} title="Flip horizontal">⇔</button>
+              <button onClick={() => setImgTransform((p) => ({ ...p, flipV: !p.flipV }))} style={btnStyle} title="Flip vertical">⇕</button>
+              <button onClick={() => setImgTransform({ rotate: 0, flipH: false, flipV: false })} style={{ ...btnStyle, color: '#94a3b8', borderColor: '#475569' }} title="Reset">Reset</button>
+            </div>
+          )}
           {/* Status badge */}
           <div
             style={{
@@ -612,9 +645,10 @@ export function ImageCapture({ title, subtitle, image, onCapture, facingMode, ac
           </div>
           {/* Metadata */}
           <div style={{ marginTop: 6, fontSize: 10, color: '#64748b', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <span>{image.width} &times; {image.height}px</span>
+            {image.fileName && <span>{image.fileName}</span>}
+            {image.width > 0 && <span>{image.width} &times; {image.height}px</span>}
             <span>{image.size > 1048576 ? (image.size / 1048576).toFixed(1) + ' MB' : (image.size / 1024).toFixed(0) + ' KB'}</span>
-            {(image.width < 300 || image.height < 300) && (
+            {image.width > 0 && (image.width < 300 || image.height < 300) && (
               <span style={{ color: '#f59e0b' }}>Too small &mdash; may fail face detection</span>
             )}
             {image.size > 0 && image.size < 102400 && (
