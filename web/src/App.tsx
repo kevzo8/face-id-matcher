@@ -457,8 +457,8 @@ export default function App() {
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: 16 }}>
       {/* Header — general suite title plus a subtitle that follows the selected app */}
-      <header style={{ marginBottom: 12, textAlign: 'center' }}>
-        <div style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: 700, marginBottom: 2 }}>Secure Verification of Identity</div><div style={{ fontSize: 12, fontWeight: 500, color: '#64748b', marginBottom: 2 }}>POCs by Kevin G. Vega</div>
+      <header style={{ marginBottom: 12, textAlign: 'left' }}>
+        <div style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: 700, marginBottom: 2 }}>Secure Verification of Identities to Know Your Customer (SVI KYC)</div><div style={{ fontSize: 12, fontWeight: 500, color: '#64748b', marginBottom: 2 }}>POCs by Kevin G. Vega</div>
         <p style={{ color: '#94a3b8', fontSize: 13 }}>
           {showPrototype ? FEATURE_SUBTITLES.biometric : FEATURE_SUBTITLES[feature]}
         </p>
@@ -536,6 +536,7 @@ export default function App() {
             { key: 'id_to_face' as const, label: 'ID to Face', color: '#a855f7', icon: '\u2696', demo: 'https://screenrec.com/share/irItDuPKEv' },
             { key: 'liveness' as const, label: 'Liveness Test', color: '#f97316', icon: '\u25C9', demo: 'https://screenrec.com/share/jARxoyaW2G' },
             { key: 'ocr' as const, label: 'OCR & ID Type', color: '#22c55e', icon: '\u2630', demo: 'https://screenrec.com/share/P5ULAjxOBZ' },
+            { key: 'doc_quality' as const, label: 'Doc Quality', color: '#38bdf8', icon: '▣', demo: 'https://screenrec.com/share/fhieQYjXBE' },
             { key: 'biometric' as const, label: 'Biometric Auth', color: '#fbbf24', icon: '\u26A1', demo: 'https://screenrec.com/share/NBHv1XiC8j' },
           ]).map((f) => (
             f.demo ? (

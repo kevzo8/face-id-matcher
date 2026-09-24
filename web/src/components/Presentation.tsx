@@ -403,6 +403,7 @@ export default function Presentation({ feature = 'id_to_face', initialSlide = 0,
                     links: [
                       { label: 'Jira: KYCB-787', url: 'https://svi-jira.atlassian.net/browse/KYCB-787' },
                       { label: 'Live App', url: 'https://vegamatcher.kevinguadalupevega.com/' },
+                      { label: 'Demo Video', url: 'https://screenrec.com/share/fhieQYjXBE' },
                     ],
                     gradFrom: '#38bdf8', gradMid: '#0ea5e9', gradTo: '#22c55e',
                     btnGradFrom: '#0284c7', btnGradTo: '#22c55e',
@@ -481,6 +482,11 @@ export default function Presentation({ feature = 'id_to_face', initialSlide = 0,
                           >
                             Start Presentation <motion.span animate={{ x: [0, 4, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}>→</motion.span>
                           </motion.button>
+                          {cfg.links.filter((l) => /demo video/i.test(l.label)).map((l, i) => (
+                            <a key={i} href={l.url} target="_blank" rel="noopener noreferrer" style={{ padding: '12px 28px', background: 'linear-gradient(135deg, #dc2626, #f87171)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 20px rgba(220,38,38,0.4)' }}>
+                              ▶ Demo Video
+                            </a>
+                          ))}
                           <button onClick={onClose} style={{ padding: '12px 28px', background: t.sidebarBg, color: t.textSecondary, border: `1px solid ${t.border}`, borderRadius: 10, fontSize: 14, cursor: 'pointer' }}>
                             Back to App
                           </button>

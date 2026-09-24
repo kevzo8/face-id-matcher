@@ -2421,6 +2421,8 @@ export const docQualitySlides: Slide[] = [
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.5 }} style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>KYCB-787 spike complete</motion.div>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.55 }} style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>
           <a href="https://svi-jira.atlassian.net/browse/KYCB-787" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Jira: KYCB-787</a>
+          {' · '}
+          <a href="https://screenrec.com/share/fhieQYjXBE" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Demo Video</a>
         </motion.div>
         <motion.div initial={{ width: 0 }} animate={{ width: 60 }} transition={{ duration: 0.6, delay: 0.6 }} style={{ height: 2, background: 'linear-gradient(90deg, #38bdf8, #22c55e)', margin: '12px 0', borderRadius: 2 }} />
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.7 }} style={{ fontSize: 16, color: '#cbd5e1', marginBottom: 2, fontWeight: 700, letterSpacing: 2 }}>KGV</motion.div>
