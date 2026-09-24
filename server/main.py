@@ -973,10 +973,10 @@ async def document_quality(request: Request):
         reasons.append(f"Low contrast ({contrast:.0f}) — improve lighting, flatten document")
     if glare:
         reasons.append("Glare detected — tilt document away from light source")
-    # Sanity floor only (thumbnails/icons): real gating is content-based below
+    # Sanity floor only (thumbnails/icons). Whether it warns is decided after
+    # the AWS block below, once we know if content evidence exists: with AWS,
+    # readable text is readable text regardless of megapixels.
     resolution_ok = mp >= 0.15
-    if not resolution_ok:
-        reasons.append(f"Too tiny ({mp} MP) — capture at higher quality or upload a photo")
 
     # AWS readability + content check (DetectText)
     text_lines, text_words = 0, 0
@@ -1015,6 +1015,9 @@ async def document_quality(request: Request):
                 real_word_ratio = round(real_words / text_words, 2) if text_words else 0.0
         except Exception as e:
             aws_error = str(e)
+
+    if not resolution_ok and not aws_checked:
+        reasons.append(f"Too tiny ({mp} MP) — capture at higher quality or upload a photo")
 
     # Detail that matters: megapixels actually ON TEXT (camera-independent).
     # 0.15MP of text detail ≈ full marks; scored 0-1 -> 5 pts.
@@ -1071,7 +1074,7 @@ async def document_quality(request: Request):
             and real_words >= 5 and real_word_ratio >= 0.5
             and fragment_ratio <= 0.5 and text_coverage >= 0.01
         )
-        is_usable = score >= 70 and sharp_label != "blurry" and resolution_ok and text_ok
+        is_usable = score >= 70 and sharp_label != "blurry" and text_ok
     else:
         is_usable = score >= 70 and sharp_label == "sharp" and resolution_ok
 

@@ -73,7 +73,7 @@ export default function App() {
   const [faceplusServerUrl, setFaceplusServerUrl] = useState('https://face-id-matcher.onrender.com');
   const [awsServerUrl, setAwsServerUrl] = useState('https://face-id-matcher.onrender.com');
   const [feature, setFeature] = useState<'id_to_face' | 'liveness' | 'ocr' | 'doc_quality' | 'biometric'>('id_to_face');
-  const [docQualityServerUrl, setDocQualityServerUrl] = useState('http://localhost:5190');
+  const [docQualityServerUrl, setDocQualityServerUrl] = useState('http://127.0.0.1:5190');
   const [mode, setMode] = useState<'single' | 'batch' | 'csv'>('single');
   const [showInfo, setShowInfo] = useState(false);
   const [showTips, setShowTips] = useState(true);
@@ -1474,7 +1474,7 @@ export default function App() {
               <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8' }}>DOC QUALITY SERVER</div>
               <select value={docQualityServerUrl} onChange={(e) => setDocQualityServerUrl(e.target.value)}
                 style={{ width: '100%', padding: '5px 8px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, boxSizing: 'border-box' }}>
-                <option value="http://localhost:5190">Local (localhost:5190)</option>
+                <option value="http://127.0.0.1:5190">Local (127.0.0.1:5190)</option>
                 <option value="https://face-id-matcher.onrender.com">Deployed (Render)</option>
               </select>
               <div style={{ fontSize: 11, color: '#e2e8f0', lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={docQualityServerUrl}>
