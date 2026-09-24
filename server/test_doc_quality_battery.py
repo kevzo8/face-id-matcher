@@ -79,8 +79,8 @@ def img_b64(img, fmt="JPEG"):
     return base64.b64encode(buf.getvalue()).decode()
 
 
-def check(url, img, camera_max_mp=None, fmt="JPEG"):
-    payload = {"image": img_b64(img, fmt), "check_text": True}
+def check(url, img, camera_max_mp=None, fmt="JPEG", doc_type="printed"):
+    payload = {"image": img_b64(img, fmt), "check_text": True, "doc_type": doc_type}
     if camera_max_mp is not None:
         payload["camera_max_mp"] = camera_max_mp
     req = urllib.request.Request(
@@ -136,6 +136,14 @@ def main():
             "format": "TIFF",
         },
         {
+            "name": "garbage in handwritten mode",
+            "img": render(GARBAGE_LINES, 44, 1200, 900),
+            "expect": "RETAKE",
+            "extra": lambda r: r["real_word_ratio"] < 0.5,
+            "extra_note": "toggle relaxes confidence only, not share",
+            "doc_type": "handwritten",
+        },
+        {
             "name": "tiny garbage, camera maxed out",
             "img": render(GARBAGE_LINES, 30, 640, 480),
             "expect": "RETAKE",
@@ -148,7 +156,7 @@ def main():
     failures = 0
     print(f"{'case':38} {'verdict':8} {'score':6} signals")
     for c in cases:
-        r = check(args.url, c["img"], c.get("camera_max_mp"), c.get("format", "JPEG"))
+        r = check(args.url, c["img"], c.get("camera_max_mp"), c.get("format", "JPEG"), c.get("doc_type", "printed"))
         if not r.get("aws_checked"):
             print(f"FAIL: {c['name']} — aws_checked is False (no AWS creds?)")
             failures += 1

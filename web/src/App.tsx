@@ -1495,6 +1495,7 @@ export default function App() {
                   <div style={{ fontSize: 10, color: '#64748b', lineHeight: 1.65, marginTop: 6 }}>
                     <div style={{ fontWeight: 700, color: '#38bdf8', marginBottom: 2 }}>VERDICT</div>
                     <div><strong style={{ color: '#e2e8f0' }}>PASS</strong> = score ≥ 70 + sharp + every gate below. Gates beat score — a 79 can still RETAKE.</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>Handwritten mode</strong> = avg bar 50% (not 70), no low-conf cap, text points split 50/50 confidence/content. Lines, share, fragment, coverage bars unchanged. Toggle sits above Check Quality.</div>
                     <div style={{ fontWeight: 700, color: '#38bdf8', margin: '6px 0 2px' }}>LOCAL — $0, instant</div>
                     <div><strong style={{ color: '#e2e8f0' }}>Sharpness</strong> = Laplacian variance (edge energy). Real sharp docs read in the hundreds–thousands. Labels: blurry &lt;25 · marginal 25–80 · sharp &gt;80. Worth 30 pts (full at raw ≥150).</div>
                     <div><strong style={{ color: '#e2e8f0' }}>Lighting</strong> = mean gray 0–255. White paper ≈175. Worth 10 pts. Flags: dark &lt;80, overexposed &gt;235.</div>
@@ -1505,9 +1506,9 @@ export default function App() {
                     <div><strong style={{ color: '#e2e8f0' }}>Glare</strong> = &gt;2% blown-out pixels → tilt away from light.</div>
                     <div><strong style={{ color: '#e2e8f0' }}>TIFF</strong> = converted server-side (first page) to JPEG — browsers cannot preview it, but uploads still check fine.</div>
                     <div style={{ fontWeight: 700, color: '#38bdf8', margin: '6px 0 2px' }}>AWS — ~$0.0015/check</div>
-                    <div><strong style={{ color: '#e2e8f0' }}>Text lines / Words</strong> = LINE / WORD detection counts. Gate: ≥3 lines.</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>Text lines / Words</strong> = LINE / WORD detection counts. Gate: ≥2 lines.</div>
                     <div><strong style={{ color: '#e2e8f0' }}>Avg conf</strong> = mean WORD confidence. Gate ≥70%.</div>
-                    <div><strong style={{ color: '#e2e8f0' }}>Low-conf words</strong> = share of words &lt;80% conf. Gate ≤40%.</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>Low-conf words</strong> = share of words &lt;80% conf. Gate ≤40% printed; no cap in handwritten mode (avg bar covers it).</div>
                     <div><strong style={{ color: '#e2e8f0' }}>Real words</strong> = tokens with 3+ letters/digits, as count/share. Gates: ≥5 AND ≥50%. Script-based — Filipino counts, <em>ng / M / -</em> don't.</div>
                     <div><strong style={{ color: '#e2e8f0' }}>Fragment lines</strong> = lines with &lt;3 alnum chars (<em>B, -, . -</em>). Gate ≤50%. Shown in the readability row's detail.</div>
                     <div><strong style={{ color: '#e2e8f0' }}>Text coverage</strong> = text-box area ÷ frame. Gate ≥1%. Doubles as the too-far detector.</div>

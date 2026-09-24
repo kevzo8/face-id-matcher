@@ -780,6 +780,7 @@ class DocumentQualityResponse(BaseModel):
     camera_max_mp: float | None = None
     text_sample: list[str] = []
     full_text: list[str] = []
+    doc_type: str = "printed"
     reasons: list[str] = []
     breakdown: list[dict] = []
     aws_checked: bool = False
@@ -901,6 +902,30 @@ async def document_quality(request: Request):
             camera_max_mp = float(body.get("camera_max_mp"))
     except (TypeError, ValueError):
         camera_max_mp = None
+    # Optional: "printed" (default) or "handwritten". Handwriting tanks AWS
+    # confidence while content stays strong, so handwritten mode trusts
+    # content over confidence: confidence bars relax, text points reweight
+    # toward the content factor. Share/fragment/coverage gates stay strict,
+    # so printed garbage still fails in either mode.
+    doc_type = str(body.get("doc_type") or "printed").lower()
+    if doc_type not in ("printed", "handwritten"):
+        doc_type = "printed"
+    handwritten = doc_type == "handwritten"
+    # PRINTED vs HANDWRITTEN adjustment — single source of truth (the sidebar
+    # METRIC DEFINITIONS glossary mirrors this table):
+    #   avg-confidence gate : 70% printed / 50% handwritten
+    #   low-conf-word gate  : 40% printed / NONE handwritten (confidence runs
+    #                         systematically low on handwriting, so the ratio
+    #                         carries no signal beyond the average above)
+    #   text-points blend   : printed = confidence × content (multiplicative,
+    #                         garbage with 91% conf still scores ~0.26);
+    #                         handwritten = 50/50 additive split, so strong
+    #                         language with shaky confidence still earns points
+    #   lines/coverage/real-word/fragment gates, score floor (70), sharpness:
+    #                         IDENTICAL in both modes
+    # Rationale: handwriting deflates AWS confidence while preserving language;
+    # printed garbage dies on the unchanged share/fragment gates in either mode
+    # (battery anti-case: garbage in handwritten mode still RETAKEs).
     if not image_b64:
         raise HTTPException(status_code=400, detail="No image provided")
 
@@ -1034,20 +1059,31 @@ async def document_quality(request: Request):
             s_text = 0.0
             reasons.append("No readable text detected — fill frame with document, focus, add light")
         else:
-            s_text = clamp(avg_conf, 50, 95)  # 0-1
-            if text_lines < 3:
-                s_text *= 0.6
-                reasons.append(f"Only {text_lines} text line(s) found — capture full document, not cropped")
-            if avg_conf < 70:
-                reasons.append(f"Text unclear (avg confidence {avg_conf}%) — retake sharper / better lit")
-            elif low_conf_ratio > 0.4:
-                reasons.append(f"{int(low_conf_ratio * 100)}% of words low-confidence — retake sharper")
             # Crisp garbage (card graphics read as fragments) scores confidence
             # but has no language content — discount by blended content factor
             # (fragment share + real-word share averaged: good docs ≈1.0,
             # half-garbage ≈0.5, pure fragments ≈0.1)
             content_factor = ((1.0 - fragment_ratio) + real_word_ratio) / 2
-            s_text *= content_factor
+            if handwritten:
+                # Confidence runs systematically low on handwriting, so split
+                # the row evenly: 50% confidence base, 50% content. Share /
+                # fragment / coverage gates below stay strict and do the
+                # real rejecting — the points only need to stop lying.
+                s_text = clamp(avg_conf, 50, 95) * 0.5 + content_factor * 0.5
+            else:
+                s_text = clamp(avg_conf, 50, 95) * content_factor  # 0-1
+            if text_lines < 2:
+                s_text *= 0.6
+                reasons.append("Only 1 text line found — capture full document, not cropped")
+            conf_gate = 50 if handwritten else 70
+            if avg_conf < conf_gate:
+                reasons.append(f"Text unclear (avg confidence {avg_conf}%) — retake sharper / better lit")
+            elif not handwritten and low_conf_ratio > 0.4:
+                # Printed only: in handwriting, low-conf share is systematically
+                # deflated and carries no signal beyond avg confidence (gated above).
+                reasons.append(f"{int(low_conf_ratio * 100)}% of words low-confidence — retake sharper")
+            if handwritten:
+                reasons.append("Handwritten mode: confidence bars relaxed and content-weighted — share/fragment/coverage gates still apply")
             if real_word_ratio < 0.5:
                 reasons.append(f"Only {int(real_word_ratio * 100)}% real words ({real_words}/{text_words}) — part of the text is unreadable, retake closer and steadier")
             elif real_words < 5:
@@ -1070,7 +1106,8 @@ async def document_quality(request: Request):
     # filling the frame is judged on its text, not its spec sheet.
     if aws_checked:
         text_ok = (
-            text_lines >= 3 and avg_conf >= 70 and low_conf_ratio <= 0.4
+            text_lines >= 2 and avg_conf >= (50 if handwritten else 70)
+            and (True if handwritten else low_conf_ratio <= 0.4)
             and real_words >= 5 and real_word_ratio >= 0.5
             and fragment_ratio <= 0.5 and text_coverage >= 0.01
         )
@@ -1094,7 +1131,7 @@ async def document_quality(request: Request):
     # no more mystery gaps between "2234", "<25" and "30/30".
     if aws_checked:
         detail_res = f"{text_mp * 1000:.0f}KP on text (full ≈25KP)"
-        detail_text = f"avg {avg_conf}% · share {int(real_word_ratio * 100)}% · frag {int(fragment_ratio * 100)}%"
+        detail_text = f"avg {avg_conf}% · share {int(real_word_ratio * 100)}% · frag {int(fragment_ratio * 100)}%" + (" · handwritten" if handwritten else "")
     else:
         detail_res = f"{mp}MP captured"
         detail_text = "skipped (no AWS)"
@@ -1121,7 +1158,8 @@ async def document_quality(request: Request):
         real_words=real_words, real_word_ratio=real_word_ratio,
         fragment_ratio=fragment_ratio, text_coverage=text_coverage,
         text_mp=text_mp, camera_max_mp=camera_max_mp,
-        text_sample=text_sample, full_text=full_text, reasons=reasons,
+        text_sample=text_sample, full_text=full_text, doc_type=doc_type,
+        reasons=reasons,
         breakdown=breakdown, aws_checked=aws_checked,
         error=aws_error,
     )

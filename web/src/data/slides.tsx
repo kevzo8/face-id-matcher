@@ -2294,7 +2294,7 @@ export const docQualitySlides: Slide[] = [
           {[
             { title: 'Text lines / Words', desc: 'LINE and WORD detection counts. Gate: 3 lines or more.', color: '#22c55e' },
             { title: 'Average confidence', desc: 'Mean WORD confidence. Gate: 70 percent or more.', color: '#8b5cf6' },
-            { title: 'Low-conf words', desc: 'Share of words under 80 percent confidence. Gate: 40 percent or less.', color: '#f59e0b' },
+            { title: 'Low-conf words', desc: 'Share of words under 80 percent confidence. Gate: 40 percent or less in printed mode; handwritten mode has no cap, the average gate covers it.', color: '#f59e0b' },
             { title: 'Real words', desc: 'Tokens with 3+ letters/digits, count and share. Gates: 5 words AND 50 percent. Filipino counts; ng, M, and dashes do not.', color: '#10b981' },
             { title: 'Fragment lines', desc: 'Lines with under 3 alphanumerics. Gate: 50 percent or less. Shown in the readability row detail.', color: '#6366f1' },
             { title: 'Text coverage', desc: 'Text-box area over frame. Gate: 1 percent or more. Doubles as the too-far detector.', color: '#38bdf8' },
@@ -2307,6 +2307,39 @@ export const docQualitySlides: Slide[] = [
             </motion.div>
           ))}
         </div>
+      </div>
+    ),
+  },
+  {
+    id: 'docquality-modes',
+    title: 'Printed vs Handwritten',
+    subtitle: 'Same bars where it counts, relaxed where confidence lies',
+    section: 'Results',
+    content: (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
+          Handwriting deflates AWS confidence while preserving language, so the mode trusts content over confidence — but only there. Everything that kills garbage stays identical.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+          <div style={{ background: 'rgba(56,189,248,0.06)', borderRadius: 10, padding: '12px 14px', border: '1px solid rgba(56,189,248,0.3)' }}>
+            <div style={{ fontWeight: 800, color: '#7dd3fc', fontSize: 15, marginBottom: 8 }}>Printed (stricter)</div>
+            {['Avg confidence bar 70 percent', 'Low-conf cap 40 percent', 'Points: confidence times content', 'For laser-sharp office documents'].map((t, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, fontSize: 13, color: '#cbd5e1', marginBottom: 6 }}><span style={{ color: '#38bdf8' }}>▸</span><span>{t}</span></div>
+            ))}
+          </div>
+          <div style={{ background: 'rgba(251,191,36,0.06)', borderRadius: 10, padding: '12px 14px', border: '1px solid rgba(251,191,36,0.3)' }}>
+            <div style={{ fontWeight: 800, color: '#fcd34d', fontSize: 15, marginBottom: 8 }}>Handwritten (lenient)</div>
+            {['Avg confidence bar 50 percent', 'No low-conf cap at all', 'Points: 50/50 confidence and content', 'For notes, forms, and pen-on-paper'].map((t, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, fontSize: 13, color: '#cbd5e1', marginBottom: 6 }}><span style={{ color: '#fbbf24' }}>▸</span><span>{t}</span></div>
+            ))}
+          </div>
+        </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+          <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>Unchanged in both modes</div>
+          <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>
+            Lines 2+, real words 5+, share 50%+, fragments 50%-, coverage 1%+, score floor 70, sharpness. Proof: printed garbage in handwritten mode scores 65 yet still RETAKEs on share — the battery asserts it.
+          </div>
+        </motion.div>
       </div>
     ),
   },
@@ -2325,7 +2358,7 @@ export const docQualitySlides: Slide[] = [
             { label: 'Score 70+', detail: 'Weighted total of the five point rows', gate: 'hard floor' },
             { label: 'Sharp, not blurry', detail: 'Marginal passes with a warning; blurry never does', gate: 'label gate' },
             { label: 'Size sanity 0.15MP', detail: 'Thumbnails only — there is deliberately no real MP floor', gate: 'sanity' },
-            { label: 'Lines 3+, avg 70+, low-conf 40%-', detail: 'The readability triple: enough text, confident text', gate: 'AWS bars' },
+            { label: 'Lines 2+, avg 70/50, low-conf 40/none', detail: 'Readability bars, printed versus handwritten; content bars identical', gate: 'AWS bars' },
             { label: 'Real 5+ and 50%+, frag 50%-, cover 1%+', detail: 'The content triple: language, not fragments, filling frame', gate: 'AWS bars' },
             { label: 'Camera-aware advice', detail: 'Headroom means move closer; maxed-out means switch camera or upload a phone photo', gate: 'guidance, not verdict' },
             { label: 'No AWS creds', detail: 'Degrades to a local-only verdict from sharpness and lighting, with an explanatory note', gate: 'degraded mode' },
@@ -2334,31 +2367,6 @@ export const docQualitySlides: Slide[] = [
               <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 14, minWidth: 190 }}>{item.label}</span>
               <span style={{ color: '#94a3b8', fontSize: 13, flex: 1 }}>{item.detail}</span>
               <span style={{ color: '#fbbf24', fontSize: 12, fontWeight: 600 }}>{item.gate}</span>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    ),
-  },
-  {
-    id: 'docquality-calibration',
-    title: 'Calibration Story',
-    subtitle: 'Three rounds: each scale earned, none invented',
-    section: 'Conclusion',
-    content: (
-      <div style={{ maxWidth: 760, margin: '0 auto' }}>
-        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
-          Every threshold below was set by a failing real capture, not by guessing. The battery that replays all three rounds lives at server/test_doc_quality_battery.py.
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-          {[
-            { round: 'Round 1 — the MP floor was wrong', story: 'A readable 0.31MP capture failed a 0.5MP sensor floor. Fix: judge text pixels (MP x coverage), never the spec sheet. Tiny-readable now passes.', color: '#38bdf8' },
-            { round: 'Round 2 — confidence is not content', story: 'Crisp garbage scored 91 percent confidence. Fix: real-word share and fragment ratio gates plus a blended content factor. Half-readable still passes at 74 percent share.', color: '#8b5cf6' },
-            { round: 'Round 3 — face-tuned scales', story: 'An excellent capture scored 0.7 on detail and 6.5 on lighting. Fix: document-tuned ideals (paper near 175, full detail near 25KP). Excellent now lands in the mid-80s.', color: '#22c55e' },
-          ].map((item, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} style={{ background: `${item.color}08`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${item.color}33`, borderLeft: `4px solid ${item.color}` }}>
-              <div style={{ fontWeight: 700, color: '#e2e8f0', marginBottom: 4, fontSize: 14 }}>{item.round}</div>
-              <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>{item.story}</div>
             </motion.div>
           ))}
         </div>
@@ -2389,41 +2397,7 @@ export const docQualitySlides: Slide[] = [
             </motion.div>
           ))}
         </div>
-      </div>
-    ),
-  },
-  {
-    id: 'docquality-evidence',
-    title: 'Test Evidence',
-    subtitle: 'Real captures prove the system works',
-    section: 'Conclusion',
-    content: (
-      <div style={{ maxWidth: 760, margin: '0 auto' }}>
-        <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
-          Calibrated against real Philippine ID captures. Sharp-readable passes, sharp-unreadable fails, blurred fails, and tiny-but-readable passes when the text detail is genuinely there.
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-          {[
-            { verdict: 'PASS 85', details: 'Sharp Filipino ID, 44 lines, 96 percent confidence, 73 percent real words', color: '#22c55e' },
-            { verdict: 'RETAKE 9', details: 'Blurred copy, softness near zero, 4 percent real words', color: '#ef4444' },
-            { verdict: 'PASS 76', details: 'Tiny 0.31MP frame-filler, same readable text, no sensor floor', color: '#10b981' },
-            { verdict: 'RETAKE 46', details: 'Tiny garbage at maxed camera, 38 percent real words, advised to switch or upload', color: '#ef4444' },
-            { verdict: 'RETAKE 43', details: 'Sharp garbage, crisp but only 33 percent real words', color: '#ef4444' },
-            { verdict: 'PASS 71', details: 'Half-garbage mix, 74 percent real-word share clears the 50 bar', color: '#10b981' },
-          ].map((item, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} style={{ background: `${item.color}08`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${item.color}33`, borderLeft: `4px solid ${item.color}` }}>
-              <div style={{ fontWeight: 700, color: '#e2e8f0', marginBottom: 4, fontSize: 15 }}>{item.verdict}</div>
-              <div style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5 }}>{item.details}</div>
-            </motion.div>
-          ))}
-        </div>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
-          <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>No megapixel floor</div>
-          <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>
-            A 0.31MP frame-filler beats a 12MP shot from across the room. Quality is judged on text detail, never on the spec sheet.
-          </div>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
           <div style={{ fontWeight: 700, color: '#38bdf8', marginBottom: 4, fontSize: 14 }}>Reference these files</div>
           <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.7 }}>
             Battery: server/test_doc_quality_battery.py — run it in server/, expect ALL GREEN.<br />

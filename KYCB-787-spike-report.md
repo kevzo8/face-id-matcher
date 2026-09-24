@@ -45,9 +45,9 @@ Same Laplacian-variance technique already proven in `server/providers/liveness_p
 | Metric | How | Thresholds |
 |--------|-----|-----------|
 | Sharpness (Laplacian var) | Variance of 3×3 Laplacian on grayscale | blurry < 25 · marginal 25–80 · sharp > 80 |
-| Brightness | Mean gray 0–255 (ideal ~130) | dark < 60 · overexposed > 200 |
-| Contrast | Std-dev of gray | low < 25 |
-| Resolution | Megapixels | warn < 0.5 MP · fail < 0.3 MP |
+| Brightness | Mean gray 0–255 (white paper ≈ 175) | dark < 80 · overexposed > 235 |
+| Contrast | Std-dev of gray (docs flatter than faces) | low < 25 · full marks ≥ 45 |
+| Sensor size | Megapixels | local-only sanity < 0.15 MP — never a gate when AWS content evidence exists |
 | Glare | Saturated near-white pixel ratio | flag > 2% |
 
 ### 2.2 AWS readability + content metrics (~$0.0015)
@@ -56,15 +56,15 @@ Confidence alone passes crisp garbage (card graphics read as `B`, `-`, `. -` fra
 
 | Metric | PASS bar | Why |
 |--------|----------|-----|
-| Text lines (`LINE` detections) | ≥ 3 | Cropped/empty captures |
-| Avg word confidence | ≥ 70% | Blurry/glare-degraded text |
-| Low-conf word ratio (words < 80%) | ≤ 40% | Partially readable text |
+| Text lines (`LINE` detections) | ≥ 2 (single line scored ×0.6) | Cropped/empty captures |
+| Avg word confidence | ≥ 70% printed / ≥ 50% handwritten | Blurry/glare-degraded text |
+| Low-conf word ratio (words < 80%) | ≤ 40% printed / no cap handwritten | Partially readable text (handwriting deflates confidence; the avg bar covers it) |
 | Real words (tokens with 3+ alnum chars) | ≥ 5 | Fragment soup (`B`, `-`, `abeped -`) |
 | Real-word share (real ÷ total words) | ≥ 50% | Mixed captures — clear half + garbage half (`Dela Cruz X Q 7` passes line checks, fails here) |
 | Fragment line ratio (lines with <3 alnum chars) | ≤ 50% | Graphics misread as text |
 | Text frame coverage (summed LINE bbox area) | ≥ 1% | Document too far/small in frame |
 | Text detail (MP × coverage, camera-independent) | scores 0–5 pts | A 0.3MP frame-filling shot beats a 12MP shot from across the room |
-| Sensor MP | **no floor** (0.15MP sanity only) | Punishing hardware the user can't change is wrong — judge the text, not the spec sheet |
+| Sensor MP | **no floor** with AWS evidence (0.15MP sanity gates local-only verdicts only) | Punishing hardware the user can't change is wrong — judge the text, not the spec sheet |
 
 "Real word" is script-based (`[A-Za-z0-9]{3,}`), **not an English dictionary** — Filipino/Tagalog (`Pilipinas`, `Pangalan`, `Apelyido`, `Kapanganakan`) counts identically. Short particles (`ng`, `sa`, `at`) and single-letter markers (`M`/`F`) don't count individually, which is fine against a ≥5 threshold on a full document.
 
@@ -78,7 +78,7 @@ Confidence alone passes crisp garbage (card graphics read as `B`, `-`, `. -` fra
 | Resolution | 5 |
 | Text readability (AWS) | 45 |
 
-Text pts are multiplied by the blended content factor `((1 − fragment_ratio) + real_word_ratio) / 2`, and **gates override score**. `PASS` requires **score ≥ 70 AND sharp AND all content bars above** — with no sensor-MP floor. The frontend reports the camera's max MP (`track.getCapabilities()`, Chromium) as `camera_max_mp`, so advice splits into fixable-now vs hardware-limited: "move closer" when the camera has headroom, vs "camera maxed out at X MP — switch camera or use Upload File" when the sensor is the bottleneck (Upload File re-enters the same gates, so no quality escapes).
+Text pts blend confidence with the content factor `((1 − fragment_ratio) + real_word_ratio) / 2` — multiplicatively in printed mode (`conf × content`), 50/50 additively in handwritten mode — and **gates override score**. Handwritten mode keeps share/fragment/coverage/lines bars identical and only relaxes confidence (avg 50, no low-conf cap); the full contract lives as a comment at the `doc_type` parse site in `server/main.py`. Real handwritten evidence: 10-line note at 56.7% avg conf, 93% share, 0% frags → PASS ~76; same-shape printed garbage still RETAKEs on share. `PASS` requires **score ≥ 70 AND sharp AND all content bars above** — with no sensor-MP floor. The frontend reports the camera's max MP (`track.getCapabilities()`, Chromium) as `camera_max_mp`, so advice splits into fixable-now vs hardware-limited: "move closer" when the camera has headroom, vs "camera maxed out at X MP — switch camera or use Upload File" when the sensor is the bottleneck (Upload File re-enters the same gates, so no quality escapes).
 
 > **Calibration status:** weights and the 70 bar are reasoned starting values (70 inherits the app's liveness convention), **not** fitted to data. A good phone capture scores ~85–92; the line placement needs a 50–100 real-capture batch (see §6.1).
 
