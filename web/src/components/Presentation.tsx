@@ -398,7 +398,7 @@ export default function Presentation({ feature = 'id_to_face', initialSlide = 0,
                       { label: '100-pt Score', color: '#7dd3fc', bgFrom: 'rgba(56,189,248,0.25)', bgTo: 'rgba(125,211,252,0.15)' },
                       { label: '8 PASS Checks', color: '#fde68a', bgFrom: 'rgba(234,179,8,0.25)', bgTo: 'rgba(250,204,21,0.15)' },
                     ],
-                    desc: 'Pre-OCR quality gate for KYC captures: free local blur detection plus AWS readability, one PASS/RETAKE verdict with actionable reasons. Calibrated on real Philippine ID captures.',
+                    desc: 'Pre-OCR quality gate for any KYC document — IDs, forms, certificates: free local blur detection plus AWS readability, one PASS/RETAKE verdict with actionable reasons. Calibrated on real Philippine ID captures.',
                     jira: 'KYCB-787',
                     links: [
                       { label: 'Jira: KYCB-787', url: 'https://svi-jira.atlassian.net/browse/KYCB-787' },

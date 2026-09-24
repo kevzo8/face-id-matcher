@@ -1503,7 +1503,7 @@ export default function App() {
                     <div><strong style={{ color: '#e2e8f0' }}>Contrast</strong> = gray std-dev (ink-vs-paper). Good ≥25. Worth 10 pts (full at ≥45).</div>
                     <div><strong style={{ color: '#e2e8f0' }}>Brightness / Contrast numbers</strong> = the raw mean / std-dev behind the two point scores above.</div>
                     <div><strong style={{ color: '#e2e8f0' }}>Capture</strong> = captured MP vs camera-reported max (Chromium only; uploads show no max). Tells "too far" apart from "camera tapped out".</div>
-                    <div><strong style={{ color: '#e2e8f0' }}>Text detail</strong> = MP × coverage = megapixels actually on text. Full marks ≈25KP. Worth 5 pts. No sensor-MP floor exists.</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>Text detail</strong> = MP × coverage = megapixels actually on text, shown as KP (kilopixels = MP × 1000, since values are small fractions). Why it matters: sensor MP misleads across distances, but text pixels predict what OCR can read on any camera — full marks ≈25KP from excellent captures, starvation below ≈3KP. Worth 5 pts. No sensor-MP floor exists.</div>
                     <div><strong style={{ color: '#e2e8f0' }}>Glare</strong> = &gt;2% blown-out pixels → tilt away from light.</div>
                     <div><strong style={{ color: '#e2e8f0' }}>TIFF</strong> = converted server-side (first page) to JPEG — browsers cannot preview it, but uploads still check fine.</div>
                     <div style={{ fontWeight: 700, color: '#38bdf8', margin: '6px 0 2px' }}>AWS — ~$0.0015/check</div>

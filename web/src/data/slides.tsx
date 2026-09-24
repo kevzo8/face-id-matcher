@@ -2270,7 +2270,7 @@ export const docQualitySlides: Slide[] = [
             { title: 'Contrast — 10 pts', desc: 'Gray spread, ink versus paper. Good at 25 and up, full marks at 45. Documents are flatter than faces.', color: '#38bdf8' },
             { title: 'Brightness / Contrast numbers', desc: 'The raw mean and spread behind the two point scores above. Read them when points disagree with your eyes.', color: '#94a3b8' },
             { title: 'Capture', desc: 'Captured MP versus camera-reported max (Chromium only, uploads show no max). Tells too-far apart from camera tapped out.', color: '#a78bfa' },
-            { title: 'Text detail — 5 pts', desc: 'MP times coverage: megapixels actually on text. Full marks near 25KP. No sensor-MP floor exists anywhere.', color: '#10b981' },
+            { title: 'Text detail — 5 pts', desc: 'Why kilopixels matter: sensor MP lies — a 12MP shot from across the room holds almost no text pixels, while a 0.3MP frame-filler holds 25KP. OCR reads pixels, not spec sheets, so detail (MP x coverage, in thousands) predicts readability on any camera. Full marks near 25KP, calibrated from excellent captures; below 3KP glyphs starve. No sensor floor anywhere.', color: '#10b981' },
             { title: 'Glare', desc: 'Over 2 percent blown-out specular pixels. Advisory only — the fix is to tilt away from the light.', color: '#f97316' },
           ].map((item, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} style={{ background: `${item.color}08`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${item.color}33`, borderTop: `3px solid ${item.color}` }}>

@@ -192,21 +192,22 @@ export default function DocQualityCheck({ serverUrl }: Props) {
             {(() => {
               const hw = result.doc_type === 'handwritten';
               const aws = result.aws_checked;
-              const tiles = [
-                { k: 'Brightness', v: `${result.brightness}`, warn: result.brightness < 80 || result.brightness > 235 },
-                { k: 'Contrast', v: `${result.contrast}`, warn: result.contrast < 25 },
-                { k: 'Capture', v: result.camera_max_mp ? `${result.resolution_mp} of ${result.camera_max_mp}MP max` : `${result.resolution_mp} MP`, warn: result.resolution_mp < 0.15 },
-                { k: 'Text detail', v: `${Math.round((result.text_mp ?? 0) * 1000)} KP`, warn: aws && (result.text_mp ?? 0) < 0.003 },
-                { k: 'Glare', v: result.glare_detected ? 'Yes ⚠' : 'No ✓', warn: result.glare_detected },
-                { k: 'Words', v: `${result.text_words}`, warn: aws && result.text_words === 0 },
-                { k: 'Low-conf words', v: `${Math.round(result.low_conf_ratio * 100)}%`, warn: aws && !hw && result.low_conf_ratio > 0.4 },
-                { k: 'Real words', v: `${result.real_words ?? 0}/${result.text_words} (${Math.round((result.real_word_ratio ?? 0) * 100)}%)`, warn: aws && ((result.real_words ?? 0) < 5 || (result.real_word_ratio ?? 0) < 0.5) },
-                { k: 'Text coverage', v: `${((result.text_coverage ?? 0) * 100).toFixed(1)}%`, warn: aws && (result.text_coverage ?? 0) < 0.01 },
+              const tiles: { k: string; v: string; warn: boolean; sub?: string }[] = [
+                { k: 'Brightness', v: `${result.brightness}`, warn: result.brightness < 80 || result.brightness > 235, sub: 'paper ≈175 · flags below 80, over 235' },
+                { k: 'Contrast', v: `${result.contrast}`, warn: result.contrast < 25, sub: 'good at 25+ · full at 45' },
+                { k: 'Capture', v: result.camera_max_mp ? `${result.resolution_mp} of ${result.camera_max_mp}MP max` : `${result.resolution_mp} MP`, warn: result.resolution_mp < 0.15, sub: 'tiny below 0.15MP · no sensor floor' },
+                { k: 'Text detail', v: `${Math.round((result.text_mp ?? 0) * 1000)} KP`, warn: aws && (result.text_mp ?? 0) < 0.003, sub: 'KP = MP × coverage × 1000 · full ≈25KP' },
+                { k: 'Glare', v: result.glare_detected ? 'Yes ⚠' : 'No ✓', warn: result.glare_detected, sub: 'flagged over 2% blown pixels' },
+                { k: 'Words', v: `${result.text_words}`, warn: aws && result.text_words === 0, sub: 'needs 2+ text lines' },
+                { k: 'Low-conf words', v: `${Math.round(result.low_conf_ratio * 100)}%`, warn: aws && !hw && result.low_conf_ratio > 0.4, sub: hw ? 'no cap in handwritten' : 'cap 40% in printed' },
+                { k: 'Real words', v: `${result.real_words ?? 0}/${result.text_words} (${Math.round((result.real_word_ratio ?? 0) * 100)}%)`, warn: aws && ((result.real_words ?? 0) < 5 || (result.real_word_ratio ?? 0) < 0.5), sub: 'gates: 5+ words and 50% share' },
+                { k: 'Text coverage', v: `${((result.text_coverage ?? 0) * 100).toFixed(1)}%`, warn: aws && (result.text_coverage ?? 0) < 0.01, sub: 'gate 1%+ of frame' },
               ];
               return tiles.map((m, i) => (
                 <div key={i} style={{ background: m.warn ? 'rgba(239,68,68,0.08)' : '#1e293b', borderRadius: 6, padding: '8px 10px', border: `1px solid ${m.warn ? '#ef4444' : '#334155'}` }}>
                   <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>{m.k}</div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: m.warn ? '#fca5a5' : '#e2e8f0' }}>{m.v}{m.warn && m.k !== 'Glare' ? ' ⚠' : ''}</div>
+                  {m.sub && <div style={{ fontSize: 9, color: '#64748b', marginTop: 2 }}>{m.sub}</div>}
                 </div>
               ));
             })()}
