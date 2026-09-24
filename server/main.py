@@ -828,9 +828,13 @@ def _analyze_document_local(image_bytes: bytes) -> dict:
     glare_mask = (max_rgb > 240) & ((max_rgb - mean_rgb) > 30)
     glare_ratio = float(_np.sum(glare_mask)) / (h * w)
 
-    if lap_var < 25:
+    # Calibrated on real captures (2026-09): blurred bold print still reads
+    # ~121 (edge energy survives blur on high-contrast content), softest real
+    # sharp (handwriting) reads ~263, everything else sharp reads 800+.
+    # Bands sit between those witnesses; points still saturate at raw 150.
+    if lap_var < 150:
         sharp_label = "blurry"
-    elif lap_var < 80:
+    elif lap_var < 400:
         sharp_label = "marginal"
     else:
         sharp_label = "sharp"
@@ -987,7 +991,7 @@ async def document_quality(request: Request):
     if tiff_note:
         reasons.append(tiff_note)
     if sharp_label == "blurry":
-        reasons.append(f"Blurry (sharpness {lap_var:.1f} < 25) — hold steady, tap to focus, clean lens")
+        reasons.append(f"Blurry (sharpness {lap_var:.1f} < 150) — hold steady, tap to focus, clean lens")
     elif sharp_label == "marginal":
         reasons.append(f"Slightly soft (sharpness {lap_var:.1f}) — hold steadier / move closer")
     if brightness < 80:
@@ -1137,7 +1141,7 @@ async def document_quality(request: Request):
         detail_text = "skipped (no AWS)"
     breakdown = [
         {"label": "Sharpness", "pts": round(s_sharp * 30, 1), "max": 30,
-         "detail": f"laplacian {lap_var:.0f} (sharp ≥80)"},
+          "detail": f"laplacian {lap_var:.0f} (blurry<150 · sharp>400)"},
         {"label": "Lighting", "pts": round(s_bright * 10, 1), "max": 10,
          "detail": f"mean {brightness:.0f} (paper ≈175)"},
         {"label": "Contrast", "pts": round(s_contrast * 10, 1), "max": 10,

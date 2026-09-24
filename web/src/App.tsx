@@ -1484,7 +1484,7 @@ export default function App() {
               <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.6 }}>
                 <strong style={{ color: '#94a3b8' }}>KYCB-787 POC</strong> — local blur check (Laplacian variance, $0, instant) + AWS Rekognition DetectText readability (~$0.0015/check).<br /><br />
                 <strong style={{ color: '#94a3b8' }}>PASS needs:</strong> score ≥ 70, sharp, text ≥1% of frame, avg conf ≥ 70%, ≤ 40% low-conf, ≥5 real words (≥50%), ≤ 50% fragments. No MP floor — judged on text detail; maxed-out camera → upload instead.<br /><br />
-                <strong style={{ color: '#94a3b8' }}>Sharpness:</strong> raw Laplacian (real sharp docs read in the thousands) — blurry &lt; 25 · marginal 25–80 · sharp &gt; 80, worth 30 pts.<br />
+                <strong style={{ color: '#94a3b8' }}>Sharpness:</strong> raw Laplacian, content-dependent — blurry &lt; 150 · marginal 150–400 · sharp &gt; 400, worth 30 pts (points saturate at raw 150).<br />
                 Works without AWS creds — returns local-only verdict (lighting/sharpness) with a note.
               </div>
               <div style={{ borderTop: '1px solid #334155', paddingTop: 8 }}>
@@ -1498,7 +1498,7 @@ export default function App() {
                     <div><strong style={{ color: '#e2e8f0' }}>PASS</strong> = score ≥ 70 + sharp + every gate below. Gates beat score — a 79 can still RETAKE.</div>
                     <div><strong style={{ color: '#e2e8f0' }}>Handwritten mode</strong> = avg bar 50% (not 70), no low-conf cap, text points split 50/50 confidence/content. Lines, share, fragment, coverage bars unchanged. Toggle sits above Check Quality.</div>
                     <div style={{ fontWeight: 700, color: '#38bdf8', margin: '6px 0 2px' }}>LOCAL — $0, instant</div>
-                    <div><strong style={{ color: '#e2e8f0' }}>Sharpness</strong> = Laplacian variance (edge energy). Real sharp docs read in the hundreds–thousands. Labels: blurry &lt;25 · marginal 25–80 · sharp &gt;80. Worth 30 pts (full at raw ≥150).</div>
+                    <div><strong style={{ color: '#e2e8f0' }}>Sharpness</strong> = Laplacian variance (edge energy, content-dependent: bold print stays edgy when blurred). Labels: blurry &lt;150 · marginal 150–400 · sharp &gt;400. Worth 30 pts (saturates at raw 150).</div>
                     <div><strong style={{ color: '#e2e8f0' }}>Lighting</strong> = mean gray 0–255. White paper ≈175. Worth 10 pts. Flags: dark &lt;80, overexposed &gt;235.</div>
                     <div><strong style={{ color: '#e2e8f0' }}>Contrast</strong> = gray std-dev (ink-vs-paper). Good ≥25. Worth 10 pts (full at ≥45).</div>
                     <div><strong style={{ color: '#e2e8f0' }}>Brightness / Contrast numbers</strong> = the raw mean / std-dev behind the two point scores above.</div>
@@ -1525,6 +1525,12 @@ export default function App() {
                 <div><span style={{ color: '#22c55e' }}>✓</span> Even lighting, no shadows</div>
                 <div><span style={{ color: '#22c55e' }}>✓</span> Tilt away from glare</div>
                 <div><span style={{ color: '#22c55e' }}>✓</span> Flatten curled documents</div>
+              </div>
+              <div style={{ borderTop: '1px solid #334155', paddingTop: 8, fontSize: 11, color: '#64748b', lineHeight: 1.7 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8', marginBottom: 4 }}>TEST DATA</div>
+                <div>
+                  Trial the checker on real blurred text: <a href="https://www.kaggle.com/datasets/anggadwisunarto/text-deblurring-dataset-with-psf-for-ocr" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Text Deblurring Dataset (Kaggle)</a> — download a <em>BMVC_OCR *_blur.png</em> sample and Upload File above. Heavy blur should RETAKE on sharpness and confidence.
+                </div>
               </div>
             </div>
           )}

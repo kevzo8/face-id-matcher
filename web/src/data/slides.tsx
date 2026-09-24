@@ -2112,7 +2112,7 @@ export const docQualitySlides: Slide[] = [
     content: (
       <div style={{ maxWidth: 780, margin: '0 auto' }}>
         <div style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.8, marginBottom: 16 }}>
-          KYC needs documents that are sharp and readable at capture time. Blurred photos or low-contrast text cause OCR failures, retakes, and user friction — a sharp problem for Philippine government IDs with holograms, variable print quality, and bilingual text.
+          KYC needs documents that are sharp and readable at capture time — government IDs, application forms, birth and death certificates, any paper going into OCR. Blurred photos or low-contrast text cause failures, retakes, and user friction, and IDs add holograms, variable print quality, and bilingual text on top.
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
           {[
@@ -2120,6 +2120,8 @@ export const docQualitySlides: Slide[] = [
             { icon: <Sparkles />, title: 'Low contrast', desc: 'Ink blends into the background, starving OCR of edges', color: '#f97316' },
             { icon: <Lightbulb />, title: 'Poor lighting', desc: 'Shadows, glare, and uneven light hide text and security features', color: '#fbbf24' },
             { icon: <Printer />, title: 'Too small in frame', desc: 'A document shot from far away has no pixel detail for OCR', color: '#3b82f6' },
+            { icon: <AlertTriangle />, title: 'Scanner artifacts', desc: 'Skewed pages, feeder streaks, moire, and gray-scale scans that flatten contrast', color: '#f59e0b' },
+            { icon: <Ban />, title: 'Multipage TIFF blind spots', desc: 'Scanners emit TIFFs browsers cannot preview — only the first page gets checked', color: '#a78bfa' },
           ].map((item, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.08 }} style={{ background: `${item.color}08`, borderRadius: 12, padding: '14px 16px', border: `1px solid ${item.color}33`, borderTop: `3px solid ${item.color}` }}>
               <div style={{ flexShrink: 0, color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, background: `${item.color}15`, borderRadius: 10, marginBottom: 8 }}>{item.icon}</div>
@@ -2143,7 +2145,7 @@ export const docQualitySlides: Slide[] = [
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
           {[
-            { title: 'Local blur check', desc: 'Laplacian variance on grayscale. Sharp above 80, blurry below 25. Instant, zero cost.', color: '#22c55e' },
+            { title: 'Local blur check', desc: 'Laplacian variance on grayscale. Sharp above 400, blurry below 150. Instant, zero cost.', color: '#22c55e' },
             { title: 'AWS readability', desc: 'DetectText returns confidences, boxes, and text. We derive coverage, real-word share, and fragment ratio.', color: '#8b5cf6' },
             { title: 'Unified scoring', desc: 'A 0 to 100 score: sharpness 30, lighting 10, contrast 10, text detail 5, readability 45.', color: '#f59e0b' },
             { title: 'Actionable reasons', desc: 'Plain guidance: move closer, cut the glare, hold steady, or switch camera and upload instead.', color: '#10b981' },
@@ -2169,9 +2171,9 @@ export const docQualitySlides: Slide[] = [
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
           {[
-            { label: 'Blurry', value: 'below 25', note: 'Retake mandatory', color: '#ef4444' },
-            { label: 'Marginal', value: '25 to 80', note: 'Warn, still usable', color: '#fbbf24' },
-            { label: 'Sharp', value: 'above 80', note: 'Full 30 points', color: '#22c55e' },
+            { label: 'Blurry', value: 'below 150', note: 'Retake mandatory', color: '#ef4444' },
+            { label: 'Marginal', value: '150 to 400', note: 'Warn, still usable', color: '#fbbf24' },
+            { label: 'Sharp', value: 'above 400', note: 'Points saturate at 150', color: '#22c55e' },
           ].map((t, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} style={{ background: `${t.color}08`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${t.color}33`, textAlign: 'center' }}>
               <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 15 }}>{t.label}</div>
@@ -2229,7 +2231,7 @@ export const docQualitySlides: Slide[] = [
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
           {[
-            { label: 'Sharpness, 30 pts', detail: 'Raw Laplacian, sharp at 80 and full marks at 150', gate: 'not blurry' },
+            { label: 'Sharpness, 30 pts', detail: 'Raw Laplacian, blurry under 150, sharp over 400, points saturate at 150', gate: 'not blurry' },
             { label: 'Lighting, 10 pts', detail: 'Mean gray, white paper near 175', gate: '80 to 235' },
             { label: 'Contrast, 10 pts', detail: 'Gray spread, ink versus paper, good at 25', gate: 'sane spread' },
             { label: 'Text detail, 5 pts', detail: 'Megapixels actually on text, full marks near 25KP', gate: 'coverage 1 pct' },
@@ -2263,7 +2265,7 @@ export const docQualitySlides: Slide[] = [
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
           {[
-            { title: 'Sharpness — 30 pts', desc: 'Laplacian variance, edge energy. Real sharp docs read in the hundreds to thousands. Blurry below 25, marginal 25 to 80, sharp above 80. Full marks at raw 150.', color: '#22c55e' },
+            { title: 'Sharpness — 30 pts', desc: 'Laplacian variance, edge energy. Blurry below 150, marginal 150 to 400, sharp above 400. Points saturate early at raw 150; labels stay conservative.', color: '#22c55e' },
             { title: 'Lighting — 10 pts', desc: 'Mean gray 0 to 255. White paper meters near 175. Flags: dark below 80, overexposed above 235.', color: '#fbbf24' },
             { title: 'Contrast — 10 pts', desc: 'Gray spread, ink versus paper. Good at 25 and up, full marks at 45. Documents are flatter than faces.', color: '#38bdf8' },
             { title: 'Brightness / Contrast numbers', desc: 'The raw mean and spread behind the two point scores above. Read them when points disagree with your eyes.', color: '#94a3b8' },
@@ -2398,6 +2400,12 @@ export const docQualitySlides: Slide[] = [
           ))}
         </div>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
+          <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4, fontSize: 14 }}>Real blurred benchmark</div>
+          <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6 }}>
+            Text Deblurring Dataset with PSF for OCR (Kaggle) — BMVC OCR blurred text images. Download a blur sample and upload it in the app to trial the checker; heavy blur should RETAKE on sharpness and confidence. <a href="https://www.kaggle.com/datasets/anggadwisunarto/text-deblurring-dataset-with-psf-for-ocr" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>Kaggle dataset</a>
+          </div>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} style={{ background: '#1e293b', borderRadius: 10, padding: '12px 14px', border: '1px solid #334155' }}>
           <div style={{ fontWeight: 700, color: '#38bdf8', marginBottom: 4, fontSize: 14 }}>Reference these files</div>
           <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.7 }}>
             Battery: server/test_doc_quality_battery.py — run it in server/, expect ALL GREEN.<br />

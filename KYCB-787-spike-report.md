@@ -44,7 +44,7 @@ Same Laplacian-variance technique already proven in `server/providers/liveness_p
 
 | Metric | How | Thresholds |
 |--------|-----|-----------|
-| Sharpness (Laplacian var) | Variance of 3×3 Laplacian on grayscale | blurry < 25 · marginal 25–80 · sharp > 80 |
+| Sharpness (Laplacian var) | Variance of 3×3 Laplacian on grayscale (content-dependent: bold print stays edgy when blurred) | blurry < 150 · marginal 150–400 · sharp > 400 (points saturate at raw 150; bands sit between witnesses: blurred print 121, softest sharp handwriting 263) |
 | Brightness | Mean gray 0–255 (white paper ≈ 175) | dark < 80 · overexposed > 235 |
 | Contrast | Std-dev of gray (docs flatter than faces) | low < 25 · full marks ≥ 45 |
 | Sensor size | Megapixels | local-only sanity < 0.15 MP — never a gate when AWS content evidence exists |
@@ -180,7 +180,7 @@ Savings angle: every RETAKE caught here avoids a wasted `/ocr/detect` + `/ocr/pa
 
 ## 6. Follow-ups (out of POC scope)
 
-1. **Calibrate thresholds on real PH IDs** — current cutoffs (25/80 sharpness, 70% conf) come from synthetic + face-tuned heuristics; run 50–100 real captures (good/blurry/dark/glare) and adjust.
+1. **Calibrate thresholds on real PH IDs** — sharpness bands (150/400) were moved off one blurred-print witness (121) sitting below soft handwriting (263); confirm on a 50–100 real-capture batch, ideally the parked Kaggle text-deblurring set with known blur levels.
 2. **Optional Textract upgrade** — `DetectText` is enough for readability gating; only switch to Textract `DetectDocumentText` if word-level geometry (e.g., "document fills < 40% of frame") is needed.
 3. **Client-side pre-check** — port the Laplacian check to a tiny canvas-based JS function for instant viewfinder feedback ("hold steady") before upload; keep server as source of truth.
 4. **Wire into OCR flow** — call `/document/quality` automatically inside `/ocr/detect` (or in the web OCR tab) and return `quality` alongside OCR results.
